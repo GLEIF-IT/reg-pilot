@@ -8,4 +8,6 @@ Development docker images are:
 * [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and [vlei-verifier docker](https://hub.docker.com/r/2byrds/vlei-verifier)
 
 ## Signing a report
-Add info here that aligns with NordLEI file signing
+The high-level idea is that each file has a digest computed on it and the file and signature are added to the zip file.
+
+The vlei-verifier will validate each signatures vs. the digest of each file.
