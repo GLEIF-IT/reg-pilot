@@ -1,5 +1,5 @@
 # reg-pilot
-A project to manage reg-pilot related issues
+A project to manage reg-pilot related information, issues, discussions, and more.
 
 ## Development repos and docker images
 Development docker images are:
