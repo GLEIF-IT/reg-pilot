@@ -3,9 +3,9 @@ Reg-pilot related information, issues, discussions, and more.
 
 ## Development repos and docker images
 Development docker images are:
-* [reg-webapp github](https://github.com/GLEIF-IT/reg-pilot-webapp) and [reg-webapp docker](https://hub.docker.com/r/2byrds/reg-webapp)
-* [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and [reg-pilot-api docker](https://hub.docker.com/r/2byrds/reg-pilot-api)
-* [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and [vlei-verifier docker](https://hub.docker.com/r/2byrds/vlei-verifier)
+* [reg-webapp github](https://github.com/GLEIF-IT/reg-pilot-webapp) and [reg-webapp docker](https://hub.docker.com/r/2byrds/reg-webapp/tags)
+* [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and [reg-pilot-api docker](https://hub.docker.com/r/2byrds/reg-pilot-api/tags)
+* [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and [vlei-verifier docker](https://hub.docker.com/r/2byrds/vlei-verifier/tags)
 
 ## Demo test instances
 * [Demo reg-webapp](http://reg-pilot-webapp.s3-website-us-east-1.amazonaws.com/) currently requires the [signify-browser-extension](https://github.com/WebOfTrust/signify-browser-extension) to be installed
