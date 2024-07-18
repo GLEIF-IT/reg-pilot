@@ -10,7 +10,7 @@ Reg-pilot related information, issues, discussions, and more.
 * Demo keria instance url = ```https://keria-dev.rootsid.cloud/admin``` and boot url = ```https://keria-dev.rootsid.cloud```
 * Demo signify passcode = ```Ap31Xt-FGcNXpkxmBYMQn```
 * [Demo reg-webapp](https://reg-pilot-webapp-test.rootsid.cloud/) currently requires the [signify-browser-extension](https://github.com/WebOfTrust/signify-browser-extension) to be installed
-* [Demo reg-pilot-api](https://reg-api.rootsid.cloud/api/doc#/) - [ping it](https://reg-api.rootsid.cloud/ping)
+* [Demo reg-pilot-api](https://reg-api-test.rootsid.cloud/api/doc#/) - [ping it](https://reg-api-test.rootsid.cloud/ping)
 * Demo witness urls: ```"https://witness-dev01.rootsid.cloud", 
                     "https://witness-dev02.rootsid.cloud",
                     "https://witness-dev03.rootsid.cloud"```
