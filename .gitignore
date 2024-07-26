@@ -1,0 +1,11 @@
+*.log
+.DS_Store
+node_modules
+dist
+
+
+# IntelliJ Project Files
+.idea
+coverage/*
+
+examples/signify-react-ts/.cache
