@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import FormData from 'form-data';
 import fs from 'fs';
 import JSZip from 'jszip';
+import * as process from 'process';
 
 import { getOrCreateClients } from './utils/test-setup';
 import { SignifyClient } from 'signify-ts';
@@ -107,7 +108,7 @@ test('reg-pilot-api', async function run() {
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
     let presp = await fetch(purl + ppath, preq);
-    console.log('login response', presp);
+    console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
     let ecrCreds = await roleClient.credentials().list();
@@ -193,10 +194,16 @@ test('reg-pilot-api', async function run() {
         console.warn("Likely you have failed uploads, skipping test case");
     }
 
-    // upload report
-    let zip = await createEmptyZipAndCalculateDigest()
-    // const exampleFile = fs.createReadStream(path.join(__dirname, "../lib/dummy.pdf"));
-    let uresp = await uploadReport(aidName, ecrAid.prefix, zip.digest, zip.buffer, roleClient)
+    // Get the current working directory
+    const currentDirectory = process.cwd();
+    // Print the current working directory
+    console.log("Current Directory:", currentDirectory);
+
+    // Create form data
+    let fileName = `report.zip`;
+    let zipBuf = fs.readFileSync(`./test/data/${fileName}`);
+
+    let uresp = await uploadReport(aidName, ecrAid.prefix, fileName, zipBuf, roleClient)
     let ubody = await uresp.json();
     assert.equal(uresp.status, 200);
     assert.equal(ubody[0]['submitter'], `${ecrAid.prefix}`);
@@ -240,16 +247,13 @@ async function getReportStatus(
 async function uploadReport(
     aidName: string,
     aidPrefix: string,
-    fileDigest: string,
-    fileBuffer: Buffer,
+    fileName: string,
+    zipBuffer: Buffer,
     client: SignifyClient
 ): Promise<Response> {
-    // Create form data
-    let filename = `report.zip`;
-    let ctype = "application/zip"
-    let unknown_report_zip = fs.readFileSync(`./data/${filename}`);
     let formData = new FormData();
-    formData.append('upload', unknown_report_zip, { filename: `${filename}`, contentType: `${ctype}` });
+    let ctype = "application/zip";
+    formData.append('upload', zipBuffer, { filename: `${fileName}`, contentType: `${ctype}` });
     let formBuffer = formData.getBuffer();
     let req: RequestInit = {
         method: 'POST',
@@ -260,26 +264,9 @@ async function uploadReport(
         }
     };
 
-    const url = `http://localhost:8000/upload/${aidPrefix}/dig`;
+    const url = `http://localhost:8000/upload/${aidPrefix}/dig`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
     return resp;
-}
-
-// Function to create an empty zip file and calculate its digest
-async function createEmptyZipAndCalculateDigest() {
-    // Create a new instance of JSZip
-    const zip = new JSZip();
-
-    // Generate the zip file as a buffer
-    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-    // Calculate the digest (SHA-256) of the zip file
-    const hash = createHash('sha256');
-    hash.update(buffer.valueOf());
-    const digest = hash.digest('hex');
-
-    // Return the zip buffer and its digest
-    return { buffer, digest };
 }
