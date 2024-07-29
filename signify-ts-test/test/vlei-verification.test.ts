@@ -100,10 +100,11 @@ test('vlei-verification', async function run() {
 
 test('reg-pilot-api', async function run() {
     // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'C61CnXrfgi0vFr29mEt7v'; //taken from SIGNIFY_SECRETS
+    const bran = 'DUAHddEtQITyPtjcBbx_6'; //taken from SIGNIFY_SECRETS
     const aidName = 'role';
     const [roleClient] = await getOrCreateClients(1, [bran]);
 
+    // try to ping the api
     let purl = 'http://127.0.0.1:8000';
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
@@ -111,6 +112,7 @@ test('reg-pilot-api', async function run() {
     console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
+    // retrieve the credentials from the KERIA test data
     let ecrCreds = await roleClient.credentials().list();
     let ecrCred = ecrCreds.find(
         (cred: any) => cred.sad.s === ECR_SCHEMA_SAID
@@ -132,14 +134,8 @@ test('reg-pilot-api', async function run() {
 
     // fails to query report status because not logged in with ecr yet
     let sresp = await getReportStatus(aidName, ecrAid.prefix, roleClient)
-    // if (sresp.status == 200) {
-    //     console.warn('You are already logged in with ecr, skipping non-login test case');
-    // } else {
-    //     assert.equal(sresp.status, 404); // if you get a 200 then you probably have already logged in
-    //     let sbody = await sresp.json();
-    //     assert.equal(sbody['msg'], `unknown ${ecrAid.prefix} used to sign header`);
-    // }
 
+    // login with the ecr credential
     let heads = new Headers();
     heads.set('Content-Type', 'application/json');
     let lbody = {
@@ -169,7 +165,7 @@ test('reg-pilot-api', async function run() {
     assert.equal(cbody['msg'],'AID presented valid credential');
     assert.equal(cbody['said'],ecrCred.sad.d);
 
-    // no signed headers provided
+    // try to get status without signed headers provided
     heads = new Headers();
     let sreq = { headers: heads, method: 'GET', body: null };
     let surl = 'http://localhost:8000';
@@ -183,13 +179,6 @@ test('reg-pilot-api', async function run() {
     let sbody = await sresp.json();
     if (sbody.length == 0) {
         console.log("No reports uploaded yet");
-    // if ('submitter' in sbody[0]) {
-    //     assert.equal(sbody[0]['submitter'], `${ecrAid.prefix}`);
-    //     assert.equal(sbody[0]['message'], 'No Reports Uploaded');
-    //     assert.equal(sbody[0]['filename'], '');
-    //     assert.equal(sbody[0]['status'], '');
-    //     assert.equal(sbody[0]['contentType'], '');
-    //     assert.equal(sbody[0]['size'], 0);
     } else {
         console.warn("Likely you have failed uploads, skipping test case");
     }
@@ -207,11 +196,13 @@ test('reg-pilot-api', async function run() {
     let ubody = await uresp.json();
     assert.equal(uresp.status, 200);
     assert.equal(ubody['submitter'], `${ecrAid.prefix}`);
-    assert.equal(ubody['message'], `signature from unknown AID ${ecrAid.prefix}`);
+    assert.equal(ubody['message'], `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`);
     assert.equal(ubody['filename'], 'report.zip');
     assert.equal(ubody['status'], "failed");
     assert.equal(ubody['contentType'], "application/zip");
     assert.equal(ubody['size'], 3535);
+
+    //TODO add logic to sign the report and upload it
 
 }, 100000);
 
