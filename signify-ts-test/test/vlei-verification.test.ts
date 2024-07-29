@@ -100,7 +100,7 @@ test('vlei-verification', async function run() {
 
 test('reg-pilot-api', async function run() {
     // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'B4Zpu2GvAw8IaKnAYlkGR'; //taken from SIGNIFY_SECRETS
+    const bran = 'C61CnXrfgi0vFr29mEt7v'; //taken from SIGNIFY_SECRETS
     const aidName = 'role';
     const [roleClient] = await getOrCreateClients(1, [bran]);
 
@@ -203,16 +203,15 @@ test('reg-pilot-api', async function run() {
     let fileName = `report.zip`;
     let zipBuf = fs.readFileSync(`./test/data/${fileName}`);
 
-    let uresp = await uploadReport(aidName, ecrAid.prefix, fileName, zipBuf, roleClient)
+    let uresp = await uploadReport(aidName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     let ubody = await uresp.json();
     assert.equal(uresp.status, 200);
-    assert.equal(ubody[0]['submitter'], `${ecrAid.prefix}`);
-    assert.equal(ubody[0]['message'], 'No Reports Uploaded');
-    assert.equal(ubody[0]['message'], 'No Reports Uploaded');
-    assert.equal(ubody[0]['filename'], '');
-    assert.equal(ubody[0]['status'], '');
-    assert.equal(ubody[0]['contentType'], '');
-    assert.equal(ubody[0]['size'], 0);
+    assert.equal(ubody['submitter'], `${ecrAid.prefix}`);
+    assert.equal(ubody['message'], `signature from unknown AID ${ecrAid.prefix}`);
+    assert.equal(ubody['filename'], 'report.zip');
+    assert.equal(ubody['status'], "failed");
+    assert.equal(ubody['contentType'], "application/zip");
+    assert.equal(ubody['size'], 3535);
 
 }, 100000);
 
@@ -249,6 +248,7 @@ async function uploadReport(
     aidPrefix: string,
     fileName: string,
     zipBuffer: Buffer,
+    zipDig: string,
     client: SignifyClient
 ): Promise<Response> {
     let formData = new FormData();
@@ -264,7 +264,7 @@ async function uploadReport(
         }
     };
 
-    const url = `http://localhost:8000/upload/${aidPrefix}/dig`; //TODO fix digest, should be zip digest? other test was using ecr digest
+    const url = `http://localhost:8000/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
