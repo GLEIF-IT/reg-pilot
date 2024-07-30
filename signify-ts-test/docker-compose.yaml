@@ -74,6 +74,47 @@ services:
             - 5643:5643
             - 5644:5644
 
+    reg-pilot-api:
+        image: 2byrds/reg-pilot-api:latest
+        ports:
+            - 8000:8000
+        environment:
+            - ENABLE_CORS=true
+            - VERIFIER_AUTHORIZATIONS=http://host.docker.internal:7676/authorizations/
+            - VERIFIER_PRESENTATIONS=http://host.docker.internal:7676/presentations/
+            - VERIFIER_REPORTS=http://host.docker.internal:7676/reports/
+            - VERIFIER_REQUESTS=http://host.docker.internal:7676/request/verify/
+        healthcheck:
+            test:
+                - CMD
+                - curl
+                - -f
+                - http://localhost:8000/ping
+            interval: 2s
+            timeout: 3s
+            retries: 5
+            start_period: 2s
+
+    vlei-verifier:
+        image: 2byrds/vlei-verifier:latest
+        container_name: vlei-verifier
+        hostname: vlei-verifier
+        depends_on:
+              - vlei-server
+              - witness-demo
+        ports:
+            - 7676:7676
+        healthcheck:
+            test:
+                - CMD
+                - curl
+                - -f
+                - http://localhost:7676/health
+            interval: 2s
+            timeout: 3s
+            retries: 5
+            start_period: 2s
+
     deps:
         image: alpine
         command: ['echo', 'Dependencies running']
@@ -89,6 +130,8 @@ services:
         image: alpine
         command: ['echo', 'Dependencies running']
         depends_on:
+            keria:
+                condition: service_healthy
             reg-pilot-api:
                 condition: service_healthy
             vlei-verifier:
