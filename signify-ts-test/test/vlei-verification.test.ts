@@ -10,13 +10,29 @@ import { SignifyClient } from 'signify-ts';
 
 const ECR_SCHEMA_SAID = 'EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw';
 
+const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+if (!process.env.SIGNIFY_SECRETS) {
+    process.env.SIGNIFY_SECRETS = defaultSecrets;
+}
+
+let roleClient: SignifyClient;
+const roleName = "role"
+
+beforeEach(async () => {
+    // Set default value for SIGNIFY_SECRETS if not set in environment
+    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    if (!process.env.SIGNIFY_SECRETS) {
+        process.env.SIGNIFY_SECRETS = defaultSecrets;
+    }
+
+    const [gleifClient, qviClient, leClient, roleClientInstance] =
+        await getOrCreateClients(4, process.env.SIGNIFY_SECRETS.split(','));
+    roleClient = roleClientInstance;
+});
+
 // This test assumes you have run a vlei test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
 test('vlei-verification', async function run() {
-    // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'B4Zpu2GvAw8IaKnAYlkGR'; //taken from SIGNIFY_SECRETS
-    const aidName = 'role';
-    const [roleClient] = await getOrCreateClients(1, [bran]);
 
     let hurl = 'http://127.0.0.1:7676';
     let hpath = '/health';
@@ -51,7 +67,7 @@ test('vlei-verification', async function run() {
 
     let data = 'this is the raw data';
     let raw = new TextEncoder().encode(data);
-    let ecrAid = await roleClient.identifiers().get(aidName);
+    let ecrAid = await roleClient.identifiers().get(roleName);
 
     const keeper = roleClient.manager!.get(ecrAid);
     const signer = keeper.signers[0];
@@ -66,7 +82,7 @@ test('vlei-verification', async function run() {
     let vreqInit = { headers: heads, method: 'POST', body: null };
     let vurl = `http://localhost:7676/request/verify/${ecrAid.prefix}?${params}`;
     let vreq = await roleClient.createSignedRequest(
-        aidName,
+        roleName,
         vurl,
         vreqInit
     );
@@ -77,7 +93,7 @@ test('vlei-verification', async function run() {
     let areqInit = { headers: heads, method: 'GET', body: null };
     let aurl = `http://localhost:7676/authorizations/${ecrAid.prefix}`;
     let areq = await roleClient.createSignedRequest(
-        aidName,
+        roleName,
         aurl,
         areqInit
     );
@@ -93,16 +109,12 @@ test('vlei-verification', async function run() {
     //     let raw = new TextEncoder().encode(data)
     //     let cig = hab.sign(ser=raw, indexed=False)[0]
     // assert cig.qb64 == '0BChOKVR4b5t6-cXKa3u3hpl60X1HKlSw4z1Rjjh1Q56K1WxYX9SMPqjn-rhC4VYhUcIebs3yqFv_uu0Ou2JslQL'
-    //     resp = await roleClient.signedFetch(aidName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
+    //     resp = await roleClient.signedFetch(roleName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
     //     assert.equal(202,resp.status)
 
 }, 100000);
 
 test('reg-pilot-api', async function run() {
-    // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'DUAHddEtQITyPtjcBbx_6'; //taken from SIGNIFY_SECRETS
-    const aidName = 'role';
-    const [roleClient] = await getOrCreateClients(1, [bran]);
 
     // try to ping the api
     let purl = 'http://127.0.0.1:8000';
@@ -130,10 +142,10 @@ test('reg-pilot-api', async function run() {
         .credentials()
         .get(ecrCred.sad.d, true);
 
-    let ecrAid = await roleClient.identifiers().get(aidName);
+    let ecrAid = await roleClient.identifiers().get(roleName);
 
     // fails to query report status because not logged in with ecr yet
-    let sresp = await getReportStatus(aidName, ecrAid.prefix, roleClient)
+    let sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
 
     // login with the ecr credential
     let heads = new Headers();
@@ -174,7 +186,7 @@ test('reg-pilot-api', async function run() {
     assert.equal(sresp.status, 422); // no signed headers provided
 
     // succeeds to query report status
-    sresp = await getReportStatus(aidName, ecrAid.prefix, roleClient)
+    sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
     assert.equal(sresp.status, 202);
     let sbody = await sresp.json();
     if (sbody.length == 0) {
@@ -192,7 +204,7 @@ test('reg-pilot-api', async function run() {
     let fileName = `report.zip`;
     let zipBuf = fs.readFileSync(`./test/data/${fileName}`);
 
-    let uresp = await uploadReport(aidName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
+    let uresp = await uploadReport(roleName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     let ubody = await uresp.json();
     assert.equal(uresp.status, 200);
     assert.equal(ubody['submitter'], `${ecrAid.prefix}`);

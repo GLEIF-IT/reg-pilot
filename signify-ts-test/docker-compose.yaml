@@ -84,3 +84,12 @@ services:
                 condition: service_healthy
             witness-demo:
                 condition: service_healthy
+
+    verify:
+        image: alpine
+        command: ['echo', 'Dependencies running']
+        depends_on:
+            reg-pilot-api:
+                condition: service_healthy
+            vlei-verifier:
+                condition: service_healthy
