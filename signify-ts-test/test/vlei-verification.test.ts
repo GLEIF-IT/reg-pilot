@@ -113,15 +113,6 @@ test('vlei-verification', async function run() {
     assert.equal(body['aid'], `${ecrAid.prefix}`);
     assert.equal(body['said'], `${ecrCred.sad.d}`);
 
-    //     heads.set("Content-Type", "application/json");
-    //     reqInit = {headers: heads, method: 'POST', body: null};
-    //     let data = 'this is the raw data'
-    //     let raw = new TextEncoder().encode(data)
-    //     let cig = hab.sign(ser=raw, indexed=False)[0]
-    // assert cig.qb64 == '0BChOKVR4b5t6-cXKa3u3hpl60X1HKlSw4z1Rjjh1Q56K1WxYX9SMPqjn-rhC4VYhUcIebs3yqFv_uu0Ou2JslQL'
-    //     resp = await roleClient.signedFetch(roleName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
-    //     assert.equal(202,resp.status)
-
 }, 100000);
 
 test('reg-pilot-api', async function run() {
