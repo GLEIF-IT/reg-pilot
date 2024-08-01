@@ -22,7 +22,7 @@ beforeEach(async () => {
     }
     console.log('secrets', process.env.SIGNIFY_SECRETS);
     
-    const defaultEnv = "nordlei";
+    const defaultEnv = "docker";
     if (!process.env.TEST_ENVIRONMENT) {
         process.env.TEST_ENVIRONMENT = defaultEnv;
     }
