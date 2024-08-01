@@ -5,29 +5,39 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import * as process from 'process';
 
-import { getOrCreateClients } from './utils/test-setup';
+import { getOrCreateClients } from './utils/test-util';
 import { SignifyClient } from 'signify-ts';
 
 const ECR_SCHEMA_SAID = 'EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw';
 
-const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
-if (!process.env.SIGNIFY_SECRETS) {
-    process.env.SIGNIFY_SECRETS = defaultSecrets;
-}
-
 let roleClient: SignifyClient;
 const roleName = "role"
 
+let urlAPI = "not set"
+
 beforeEach(async () => {
-    // Set default value for SIGNIFY_SECRETS if not set in environment
-    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,A7DKYPya4oi6uDnvBmjjp";
     if (!process.env.SIGNIFY_SECRETS) {
         process.env.SIGNIFY_SECRETS = defaultSecrets;
     }
+    console.log('secrets', process.env.SIGNIFY_SECRETS);
+    
+    const defaultEnv = "nordlei";
+    if (!process.env.TEST_ENVIRONMENT) {
+        process.env.TEST_ENVIRONMENT = defaultEnv;
+    }
+    console.log('env', process.env.TEST_ENVIRONMENT);
 
     const [gleifClient, qviClient, leClient, roleClientInstance] =
         await getOrCreateClients(4, process.env.SIGNIFY_SECRETS.split(','));
     roleClient = roleClientInstance;
+
+    const defaultApi = "http://127.0.0.1:8000";
+    if (!process.env.REG_PILOT_API) {
+        process.env.REG_PILOT_API = defaultApi;
+    }
+    urlAPI = process.env.REG_PILOT_API
+    console.log('api', urlAPI);
 });
 
 // This test assumes you have run a vlei test that sets up the glief, qvi, le, and
@@ -115,12 +125,10 @@ test('vlei-verification', async function run() {
 }, 100000);
 
 test('reg-pilot-api', async function run() {
-
     // try to ping the api
-    let purl = 'http://127.0.0.1:8000';
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
-    let presp = await fetch(purl + ppath, preq);
+    let presp = await fetch(urlAPI + ppath, preq);
     console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
@@ -159,18 +167,17 @@ test('reg-pilot-api', async function run() {
         method: 'POST',
         body: JSON.stringify(lbody),
     };
-    let lurl = 'http://localhost:8000';
+    
     let lpath = `/login`;
-    let lresp = await fetch(lurl + lpath, lreq);
+    let lresp = await fetch(urlAPI + lpath, lreq);
     console.log('login response', lresp);
     assert.equal(lresp.status, 202);
 
     heads = new Headers();
     heads.set('Content-Type', 'application/json');
     let creq = { headers: heads, method: 'GET', body: null };
-    let curl = 'http://localhost:8000';
     let cpath = `/checklogin/${ecrAid.prefix}`;
-    let cresp = await fetch(curl + cpath, creq);
+    let cresp = await fetch(urlAPI + cpath, creq);
     assert.equal(cresp.status, 200);
     let cbody = await cresp.json();
     assert.equal(cbody['aid'], `${ecrAid.prefix}`);
@@ -180,9 +187,8 @@ test('reg-pilot-api', async function run() {
     // try to get status without signed headers provided
     heads = new Headers();
     let sreq = { headers: heads, method: 'GET', body: null };
-    let surl = 'http://localhost:8000';
     let spath = `/status/${ecrAid.prefix}`;
-    sresp = await fetch(surl + spath, sreq);
+    sresp = await fetch(urlAPI + spath, sreq);
     assert.equal(sresp.status, 422); // no signed headers provided
 
     // succeeds to query report status
@@ -240,7 +246,7 @@ async function getReportStatus(
 ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: 'GET', body: null };
-    const surl = `http://localhost:8000/status/${aidPrefix}`;
+    const surl = `${urlAPI}/status/${aidPrefix}`;
     let shreq = await client.createSignedRequest(aidName, surl, sreq);
     const sresp = await fetch(surl, shreq);
     return sresp;
@@ -267,7 +273,7 @@ async function uploadReport(
         }
     };
 
-    const url = `http://localhost:8000/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
+    const url = `${urlAPI}/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);

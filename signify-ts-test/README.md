@@ -7,9 +7,13 @@ To run the tests, the steps include:
 * OR OPTIONALLY run all of the verify services:
 ```docker compose down -v; docker compose up verify -d```
 
-# Run the tests
+# Run the tests against local docker services
 * Build the tests: ```npm run build```
 * Run the vlei issuance test (supplying predictable secrets) in order to populate the docker keria instance:
 ```SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" npx jest ./singlesig-vlei-issuance.test.ts```
 * Run the vlei verification test (supplying predictable secrets) in order test the api/vlei-verifier:
 ```SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" npx jest ./vlei-verification.test.ts```
+
+# Run the verification test against a remote keria instance that has its own test data (like rootsid_dev)
+* Run the vlei verification test (supplying the proper secrets) in order test the api/vlei-verifier:
+```SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,Ap31Xt-FGcNXpkxmBYMQn" TEST_ENVIRONMENT="rootsid_dev" npx jest ./vlei-verification.test.ts```
