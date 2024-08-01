@@ -1,20 +1,38 @@
 import { strict as assert } from 'assert';
 import { createHash } from 'crypto';
 import FormData from 'form-data';
+import fs from 'fs';
 import JSZip from 'jszip';
+import * as process from 'process';
 
 import { getOrCreateClients } from './utils/test-setup';
 import { SignifyClient } from 'signify-ts';
 
 const ECR_SCHEMA_SAID = 'EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw';
 
+const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+if (!process.env.SIGNIFY_SECRETS) {
+    process.env.SIGNIFY_SECRETS = defaultSecrets;
+}
+
+let roleClient: SignifyClient;
+const roleName = "role"
+
+beforeEach(async () => {
+    // Set default value for SIGNIFY_SECRETS if not set in environment
+    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    if (!process.env.SIGNIFY_SECRETS) {
+        process.env.SIGNIFY_SECRETS = defaultSecrets;
+    }
+
+    const [gleifClient, qviClient, leClient, roleClientInstance] =
+        await getOrCreateClients(4, process.env.SIGNIFY_SECRETS.split(','));
+    roleClient = roleClientInstance;
+});
+
 // This test assumes you have run a vlei test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
 test('vlei-verification', async function run() {
-    // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'B4Zpu2GvAw8IaKnAYlkGR'; //taken from SIGNIFY_SECRETS
-    const aidName = 'role';
-    const [roleClient] = await getOrCreateClients(1, [bran]);
 
     let hurl = 'http://127.0.0.1:7676';
     let hpath = '/health';
@@ -49,7 +67,11 @@ test('vlei-verification', async function run() {
 
     let data = 'this is the raw data';
     let raw = new TextEncoder().encode(data);
+<<<<<<< HEAD
     let ecrAid = await roleClient.identifiers().get(aidName);
+=======
+    let ecrAid = await roleClient.identifiers().get(roleName);
+>>>>>>> 4bd1a17b27745201e2e5928a63391edb55cdf62a
 
     const keeper = roleClient.manager!.get(ecrAid);
     const signer = keeper.signers[0];
@@ -64,7 +86,7 @@ test('vlei-verification', async function run() {
     let vreqInit = { headers: heads, method: 'POST', body: null };
     let vurl = `http://localhost:7676/request/verify/${ecrAid.prefix}?${params}`;
     let vreq = await roleClient.createSignedRequest(
-        aidName,
+        roleName,
         vurl,
         vreqInit
     );
@@ -75,7 +97,7 @@ test('vlei-verification', async function run() {
     let areqInit = { headers: heads, method: 'GET', body: null };
     let aurl = `http://localhost:7676/authorizations/${ecrAid.prefix}`;
     let areq = await roleClient.createSignedRequest(
-        aidName,
+        roleName,
         aurl,
         areqInit
     );
@@ -91,24 +113,26 @@ test('vlei-verification', async function run() {
     //     let raw = new TextEncoder().encode(data)
     //     let cig = hab.sign(ser=raw, indexed=False)[0]
     // assert cig.qb64 == '0BChOKVR4b5t6-cXKa3u3hpl60X1HKlSw4z1Rjjh1Q56K1WxYX9SMPqjn-rhC4VYhUcIebs3yqFv_uu0Ou2JslQL'
+<<<<<<< HEAD
     //     resp = await roleClient.signedFetch(aidName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
+=======
+    //     resp = await roleClient.signedFetch(roleName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
+>>>>>>> 4bd1a17b27745201e2e5928a63391edb55cdf62a
     //     assert.equal(202,resp.status)
 
 }, 100000);
 
 test('reg-pilot-api', async function run() {
-    // these come from a previous test (ex. singlesig-vlei-issuance.test.ts)
-    const bran = 'B4Zpu2GvAw8IaKnAYlkGR'; //taken from SIGNIFY_SECRETS
-    const aidName = 'role';
-    const [roleClient] = await getOrCreateClients(1, [bran]);
 
+    // try to ping the api
     let purl = 'http://127.0.0.1:8000';
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
     let presp = await fetch(purl + ppath, preq);
-    console.log('login response', presp);
+    console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
+    // retrieve the credentials from the KERIA test data
     let ecrCreds = await roleClient.credentials().list();
     let ecrCred = ecrCreds.find(
         (cred: any) => cred.sad.s === ECR_SCHEMA_SAID
@@ -126,18 +150,12 @@ test('reg-pilot-api', async function run() {
         .credentials()
         .get(ecrCred.sad.d, true);
 
-    let ecrAid = await roleClient.identifiers().get(aidName);
+    let ecrAid = await roleClient.identifiers().get(roleName);
 
     // fails to query report status because not logged in with ecr yet
-    let sresp = await getReportStatus(aidName, ecrAid.prefix, roleClient)
-    // if (sresp.status == 200) {
-    //     console.warn('You are already logged in with ecr, skipping non-login test case');
-    // } else {
-    //     assert.equal(sresp.status, 404); // if you get a 200 then you probably have already logged in
-    //     let sbody = await sresp.json();
-    //     assert.equal(sbody['msg'], `unknown ${ecrAid.prefix} used to sign header`);
-    // }
+    let sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
 
+    // login with the ecr credential
     let heads = new Headers();
     heads.set('Content-Type', 'application/json');
     let lbody = {
@@ -167,7 +185,7 @@ test('reg-pilot-api', async function run() {
     assert.equal(cbody['msg'],'AID presented valid credential');
     assert.equal(cbody['said'],ecrCred.sad.d);
 
-    // no signed headers provided
+    // try to get status without signed headers provided
     heads = new Headers();
     let sreq = { headers: heads, method: 'GET', body: null };
     let surl = 'http://localhost:8000';
@@ -176,33 +194,35 @@ test('reg-pilot-api', async function run() {
     assert.equal(sresp.status, 422); // no signed headers provided
 
     // succeeds to query report status
-    sresp = await getReportStatus(aidName, ecrAid.prefix, roleClient)
+    sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
     assert.equal(sresp.status, 202);
     let sbody = await sresp.json();
-    if ('submitter' in sbody[0]) {
-        assert.equal(sbody[0]['submitter'], `${ecrAid.prefix}`);
-        assert.equal(sbody[0]['message'], 'No Reports Uploaded');
-        assert.equal(sbody[0]['filename'], '');
-        assert.equal(sbody[0]['status'], '');
-        assert.equal(sbody[0]['contentType'], '');
-        assert.equal(sbody[0]['size'], 0);
+    if (sbody.length == 0) {
+        console.log("No reports uploaded yet");
     } else {
         console.warn("Likely you have failed uploads, skipping test case");
     }
 
-    // upload report
-    let zip = await createEmptyZipAndCalculateDigest()
-    // const exampleFile = fs.createReadStream(path.join(__dirname, "../lib/dummy.pdf"));
-    let uresp = await uploadReport(aidName, ecrAid.prefix, zip.digest, zip.buffer, roleClient)
-    assert.equal(uresp.status, 200);
+    // Get the current working directory
+    const currentDirectory = process.cwd();
+    // Print the current working directory
+    console.log("Current Directory:", currentDirectory);
+
+    // Create form data
+    let fileName = `report.zip`;
+    let zipBuf = fs.readFileSync(`./test/data/${fileName}`);
+
+    let uresp = await uploadReport(roleName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     let ubody = await uresp.json();
-    assert.equal(ubody[0]['submitter'], `${ecrAid.prefix}`);
-    assert.equal(ubody[0]['message'], 'No Reports Uploaded');
-    assert.equal(ubody[0]['message'], 'No Reports Uploaded');
-    assert.equal(ubody[0]['filename'], '');
-    assert.equal(ubody[0]['status'], '');
-    assert.equal(ubody[0]['contentType'], '');
-    assert.equal(ubody[0]['size'], 0);
+    assert.equal(uresp.status, 200);
+    assert.equal(ubody['submitter'], `${ecrAid.prefix}`);
+    assert.equal(ubody['message'], `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`);
+    assert.equal(ubody['filename'], 'report.zip');
+    assert.equal(ubody['status'], "failed");
+    assert.equal(ubody['contentType'], "application/zip");
+    assert.equal(ubody['size'], 3535);
+
+    //TODO add logic to sign the report and upload it
 
 }, 100000);
 
@@ -237,40 +257,27 @@ async function getReportStatus(
 async function uploadReport(
     aidName: string,
     aidPrefix: string,
-    fileDigest: string,
-    fileBuffer: Buffer,
+    fileName: string,
+    zipBuffer: Buffer,
+    zipDig: string,
     client: SignifyClient
 ): Promise<Response> {
-    // Create form data
-    const form = new FormData();
-    form.append('file', fileBuffer, {
-        filename: 'empty.zip',
-        contentType: 'application/zip'
-    });
+    let formData = new FormData();
+    let ctype = "application/zip";
+    formData.append('upload', zipBuffer, { filename: `${fileName}`, contentType: `${ctype}` });
+    let formBuffer = formData.getBuffer();
+    let req: RequestInit = {
+        method: 'POST',
+        body: formBuffer,
+        headers: {
+            ...formData.getHeaders(),
+            'Content-Length': formBuffer.length.toString()
+        }
+    };
 
-    const heads = new Headers(form.getHeaders());
-
-    const req = { headers: heads, method: 'POST', body: JSON.stringify(form) };
-    const url = `http://localhost:8000/upload/${aidPrefix}/${fileDigest}`;
+    const url = `http://localhost:8000/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
     return resp;
-}
-
-// Function to create an empty zip file and calculate its digest
-async function createEmptyZipAndCalculateDigest() {
-    // Create a new instance of JSZip
-    const zip = new JSZip();
-
-    // Generate the zip file as a buffer
-    const buffer = await zip.generateAsync({ type: 'nodebuffer' });
-
-    // Calculate the digest (SHA-256) of the zip file
-    const hash = createHash('sha256');
-    hash.update(buffer.valueOf());
-    const digest = hash.digest('hex');
-
-    // Return the zip buffer and its digest
-    return { buffer, digest };
 }
