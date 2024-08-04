@@ -213,6 +213,8 @@ test('reg-pilot-api', async function run() {
     assert.equal(unknownBody['size'], 3535);
 
     //Try known aid signed report upload
+    const ecrOobi = await roleClient.oobis().get(roleName, 'agent');
+    console.log("Verifier must have resolved ecr role oobi", ecrOobi);
     const signedFileName = `signed__FR_IF010200_IFCLASS3_2023-12-31_20230222134210000.zip`;
     const signedZipBuf = fs.readFileSync(`./test/data/signed_reports/${signedFileName}`);
     const signedUpResp = await uploadReport(roleName, ecrAid.prefix, signedFileName, signedZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
