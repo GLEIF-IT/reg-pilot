@@ -5,36 +5,46 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import * as process from 'process';
 
-import { getOrCreateClients } from './utils/test-setup';
+import { getOrCreateClients } from './utils/test-util';
 import { SignifyClient } from 'signify-ts';
 
 const ECR_SCHEMA_SAID = 'EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw';
 
-const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
-if (!process.env.SIGNIFY_SECRETS) {
-    process.env.SIGNIFY_SECRETS = defaultSecrets;
-}
-
 let roleClient: SignifyClient;
-const roleName = "role"
+const roleName = "role";
+let apiBaseUrl: string = "";
+let vrifierBaseUrl: string = "";
 
 beforeEach(async () => {
-    // Set default value for SIGNIFY_SECRETS if not set in environment
-    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,A7DKYPya4oi6uDnvBmjjp";
     if (!process.env.SIGNIFY_SECRETS) {
         process.env.SIGNIFY_SECRETS = defaultSecrets;
     }
+    console.log('secrets', process.env.SIGNIFY_SECRETS);
+    
+    const defaultEnv = "docker";
+    if (!process.env.TEST_ENVIRONMENT) {
+        process.env.TEST_ENVIRONMENT = defaultEnv;
+    }
+    console.log('env', process.env.TEST_ENVIRONMENT);
 
     const [gleifClient, qviClient, leClient, roleClientInstance] =
         await getOrCreateClients(4, process.env.SIGNIFY_SECRETS.split(','));
     roleClient = roleClientInstance;
+
+
+    apiBaseUrl = process.env.REG_PILOT_API || "http://127.0.0.1:8000";
+    console.log('api', apiBaseUrl);
+
+    vrifierBaseUrl = process.env.VLEI_VERIFIER || "http://127.0.0.1:7676";    
+    console.log('verifier', vrifierBaseUrl);
 });
 
 // This test assumes you have run a vlei test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
 test('vlei-verification', async function run() {
 
-    let hurl = 'http://127.0.0.1:7676';
+    let hurl = vrifierBaseUrl;
     let hpath = '/health';
     let hreq = { method: 'GET', body: null };
     let hresp = await fetch(hurl + hpath, hreq);
@@ -60,18 +70,14 @@ test('vlei-verification', async function run() {
     let heads = new Headers();
     heads.set('Content-Type', 'application/json+cesr');
     let preq = { headers: heads, method: 'PUT', body: ecrCredCesr };
-    let purl = 'http://localhost:7676';
+    let purl = vrifierBaseUrl;
     let ppath = `/presentations/${ecrCred.sad.d}`;
     let presp = await fetch(purl + ppath, preq);
     assert.equal(202, presp.status);
 
     let data = 'this is the raw data';
     let raw = new TextEncoder().encode(data);
-<<<<<<< HEAD
-    let ecrAid = await roleClient.identifiers().get(aidName);
-=======
     let ecrAid = await roleClient.identifiers().get(roleName);
->>>>>>> 4bd1a17b27745201e2e5928a63391edb55cdf62a
 
     const keeper = roleClient.manager!.get(ecrAid);
     const signer = keeper.signers[0];
@@ -84,7 +90,7 @@ test('vlei-verification', async function run() {
     heads = new Headers();
     heads.set('method', 'POST');
     let vreqInit = { headers: heads, method: 'POST', body: null };
-    let vurl = `http://localhost:7676/request/verify/${ecrAid.prefix}?${params}`;
+    let vurl = `${vrifierBaseUrl}/request/verify/${ecrAid.prefix}?${params}`;
     let vreq = await roleClient.createSignedRequest(
         roleName,
         vurl,
@@ -95,7 +101,7 @@ test('vlei-verification', async function run() {
 
     heads.set('Content-Type', 'application/json');
     let areqInit = { headers: heads, method: 'GET', body: null };
-    let aurl = `http://localhost:7676/authorizations/${ecrAid.prefix}`;
+    let aurl = `${vrifierBaseUrl}/authorizations/${ecrAid.prefix}`;
     let areq = await roleClient.createSignedRequest(
         roleName,
         aurl,
@@ -107,28 +113,13 @@ test('vlei-verification', async function run() {
     assert.equal(body['aid'], `${ecrAid.prefix}`);
     assert.equal(body['said'], `${ecrCred.sad.d}`);
 
-    //     heads.set("Content-Type", "application/json");
-    //     reqInit = {headers: heads, method: 'POST', body: null};
-    //     let data = 'this is the raw data'
-    //     let raw = new TextEncoder().encode(data)
-    //     let cig = hab.sign(ser=raw, indexed=False)[0]
-    // assert cig.qb64 == '0BChOKVR4b5t6-cXKa3u3hpl60X1HKlSw4z1Rjjh1Q56K1WxYX9SMPqjn-rhC4VYhUcIebs3yqFv_uu0Ou2JslQL'
-<<<<<<< HEAD
-    //     resp = await roleClient.signedFetch(aidName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
-=======
-    //     resp = await roleClient.signedFetch(roleName, 'http://localhost:7676', `/request/verify${ecrAid.prefix}?data=data, 'sig': sig`, reqInit);
->>>>>>> 4bd1a17b27745201e2e5928a63391edb55cdf62a
-    //     assert.equal(202,resp.status)
-
 }, 100000);
 
 test('reg-pilot-api', async function run() {
-
     // try to ping the api
-    let purl = 'http://127.0.0.1:8000';
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
-    let presp = await fetch(purl + ppath, preq);
+    let presp = await fetch(apiBaseUrl + ppath, preq);
     console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
@@ -167,18 +158,17 @@ test('reg-pilot-api', async function run() {
         method: 'POST',
         body: JSON.stringify(lbody),
     };
-    let lurl = 'http://localhost:8000';
+    
     let lpath = `/login`;
-    let lresp = await fetch(lurl + lpath, lreq);
+    let lresp = await fetch(apiBaseUrl + lpath, lreq);
     console.log('login response', lresp);
     assert.equal(lresp.status, 202);
 
     heads = new Headers();
     heads.set('Content-Type', 'application/json');
     let creq = { headers: heads, method: 'GET', body: null };
-    let curl = 'http://localhost:8000';
     let cpath = `/checklogin/${ecrAid.prefix}`;
-    let cresp = await fetch(curl + cpath, creq);
+    let cresp = await fetch(apiBaseUrl + cpath, creq);
     assert.equal(cresp.status, 200);
     let cbody = await cresp.json();
     assert.equal(cbody['aid'], `${ecrAid.prefix}`);
@@ -188,9 +178,8 @@ test('reg-pilot-api', async function run() {
     // try to get status without signed headers provided
     heads = new Headers();
     let sreq = { headers: heads, method: 'GET', body: null };
-    let surl = 'http://localhost:8000';
     let spath = `/status/${ecrAid.prefix}`;
-    sresp = await fetch(surl + spath, sreq);
+    sresp = await fetch(apiBaseUrl + spath, sreq);
     assert.equal(sresp.status, 422); // no signed headers provided
 
     // succeeds to query report status
@@ -248,7 +237,7 @@ async function getReportStatus(
 ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: 'GET', body: null };
-    const surl = `http://localhost:8000/status/${aidPrefix}`;
+    const surl = `${apiBaseUrl}/status/${aidPrefix}`;
     let shreq = await client.createSignedRequest(aidName, surl, sreq);
     const sresp = await fetch(surl, shreq);
     return sresp;
@@ -275,7 +264,7 @@ async function uploadReport(
         }
     };
 
-    const url = `http://localhost:8000/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
+    const url = `${apiBaseUrl}/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
