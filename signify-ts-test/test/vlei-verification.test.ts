@@ -16,7 +16,7 @@ const roleName = "role"
 let urlAPI = "not set"
 
 beforeEach(async () => {
-    const defaultSecrets = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,A7DKYPya4oi6uDnvBmjjp";
+    const defaultSecrets = "A7DKYPya4oi6uDnvBmjjp";
     if (!process.env.SIGNIFY_SECRETS) {
         process.env.SIGNIFY_SECRETS = defaultSecrets;
     }
@@ -199,7 +199,7 @@ test('reg-pilot-api', async function run() {
 
     // Create form data
     let fileName = `report.zip`;
-    let zipBuf = fs.readFileSync(`./test/data/${fileName}`);
+    let zipBuf = fs.readFileSync(`./test/data/unknown_reports/${fileName}`);
 
     let uresp = await uploadReport(roleName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     let ubody = await uresp.json();
