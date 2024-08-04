@@ -16,7 +16,7 @@ const roleName = "role"
 let urlAPI = "not set"
 
 beforeEach(async () => {
-    const defaultSecrets = "A7DKYPya4oi6uDnvBmjjp";
+    const defaultSecrets = "CbII3tno87wn3uGBP12qm";
     if (!process.env.SIGNIFY_SECRETS) {
         process.env.SIGNIFY_SECRETS = defaultSecrets;
     }
@@ -28,8 +28,8 @@ beforeEach(async () => {
     }
     console.log('env', process.env.TEST_ENVIRONMENT);
 
-    const [gleifClient, qviClient, leClient, roleClientInstance] =
-        await getOrCreateClients(4, process.env.SIGNIFY_SECRETS.split(','));
+    const [roleClientInstance] =
+        await getOrCreateClients(1, process.env.SIGNIFY_SECRETS.split(','));
     roleClient = roleClientInstance;
 
     const defaultApi = "http://127.0.0.1:8000";
@@ -40,8 +40,10 @@ beforeEach(async () => {
     console.log('api', urlAPI);
 });
 
-// This test assumes you have run a vlei test that sets up the glief, qvi, le, and
+// This test assumes you have run a vlei test that sets up the 
 // role identifiers and Credentials.
+// It also assumes you have generated the different report files
+// from the report test
 test('vlei-verification', async function run() {
 
     let hurl = 'http://127.0.0.1:7676';
@@ -197,21 +199,31 @@ test('reg-pilot-api', async function run() {
     // Print the current working directory
     console.log("Current Directory:", currentDirectory);
 
-    // Create form data
-    let fileName = `report.zip`;
-    let zipBuf = fs.readFileSync(`./test/data/unknown_reports/${fileName}`);
+    // Try unknown aid signed report upload
+    const unknownFileName = `report.zip`;
+    const unknownZipBuf = fs.readFileSync(`./test/data/unknown_reports/${unknownFileName}`);
+    const unknownResp = await uploadReport(roleName, ecrAid.prefix, unknownFileName, unknownZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
+    let unknownBody = await unknownResp.json();
+    assert.equal(unknownResp.status, 200);
+    assert.equal(unknownBody['submitter'], `${ecrAid.prefix}`);
+    assert.equal(unknownBody['message'], `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`);
+    assert.equal(unknownBody['filename'], unknownFileName);
+    assert.equal(unknownBody['status'], "failed");
+    assert.equal(unknownBody['contentType'], "application/zip");
+    assert.equal(unknownBody['size'], 3535);
 
-    let uresp = await uploadReport(roleName, ecrAid.prefix, fileName, zipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
-    let ubody = await uresp.json();
-    assert.equal(uresp.status, 200);
-    assert.equal(ubody['submitter'], `${ecrAid.prefix}`);
-    assert.equal(ubody['message'], `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`);
-    assert.equal(ubody['filename'], 'report.zip');
-    assert.equal(ubody['status'], "failed");
-    assert.equal(ubody['contentType'], "application/zip");
-    assert.equal(ubody['size'], 3535);
-
-    //TODO add logic to sign the report and upload it
+    //Try known aid signed report upload
+    const signedFileName = `signed__FR_IF010200_IFCLASS3_2023-12-31_20230222134210000.zip`;
+    const signedZipBuf = fs.readFileSync(`./test/data/signed_reports/${signedFileName}`);
+    const signedUpResp = await uploadReport(roleName, ecrAid.prefix, signedFileName, signedZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
+    const signedUpBody = await signedUpResp.json();
+    assert.equal(signedUpBody.status, 200);
+    assert.equal(signedUpBody['submitter'], `${ecrAid.prefix}`);
+    assert.equal(signedUpBody['message'], `Valid Signature`);
+    assert.equal(signedUpBody['filename'], signedFileName);
+    assert.equal(signedUpBody['status'], "success");
+    assert.equal(signedUpBody['contentType'], "application/zip");
+    assert.equal(signedUpBody['size'], 3535);
 
 }, 100000);
 
