@@ -76,10 +76,7 @@ test('vlei-verification', async function run() {
     let presp = await fetch(purl + ppath, preq);
     assert.equal(202, presp.status);
 
-    // let data = 'this is the raw data';
-    //                           'templateID,reported\nI_01.01,true\nI_02.03,true\nI_02.04,true\nI_03.01,true\nI_05.00,true\nI_09.01,true\n'
     const filingIndicatorsData = "templateID,reported\r\nI_01.01,true\r\nI_02.03,true\r\nI_02.04,true\r\nI_03.01,true\r\nI_05.00,true\r\nI_09.01,true\r\n" //This is like FilingIndicators.csv
-    const fidBytes = new Uint8Array([116, 101, 109, 112, 108, 97, 116, 101, 73, 68, 44, 114, 101, 112, 111, 114, 116, 101, 100, 13, 10, 73, 95, 48, 49, 46, 48, 49, 44, 116, 114, 117, 101, 13, 10, 73, 95, 48, 50, 46, 48, 51, 44, 116, 114, 117, 101, 13, 10, 73, 95, 48, 50, 46, 48, 52, 44, 116, 114, 117, 101, 13, 10, 73, 95, 48, 51, 46, 48, 49, 44, 116, 114, 117, 101, 13, 10, 73, 95, 48, 53, 46, 48, 48, 44, 116, 114, 117, 101, 13, 10, 73, 95, 48, 57, 46, 48, 49, 44, 116, 114, 117, 101, 13, 10])
     
     let raw = new TextEncoder().encode(filingIndicatorsData);
     let ecrAid = await roleClient.identifiers().get(roleName);
