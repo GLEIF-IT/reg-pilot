@@ -1,5 +1,5 @@
 {
-    "include": ["src", "types", "test", "examples/integration-scripts"],
+    "include": ["src", "types", "test"],
     "extends": "./tsconfig.node.json",
     "compilerOptions": {
         "noEmit": true,

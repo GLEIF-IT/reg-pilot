@@ -1,12 +1,11 @@
 import { strict as assert } from "assert";
 import * as fs from "fs";
-import * as glob from "glob";
 import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
 
 import { getOrCreateClients } from "./utils/test-util";
-import { SignifyClient } from "signify-ts";
+import signify, { Signer, SignifyClient } from "signify-ts";
 
 let roleClient: SignifyClient;
 const roleName = "role";
@@ -267,6 +266,10 @@ async function signReport(
     // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
     const repDirs: string[] = await listDirectories(repDirPath);
     if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
+      const aid = await roleClient.identifiers().get(roleName);
+      const keeper = roleClient.manager!.get(aid);
+      const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+
       // console.log("Found META-INF and reports directories");
       const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
       let manifest;
@@ -285,16 +288,20 @@ async function signReport(
 
       for (const reportEntry of reportEntries) {
         const reportPath = path.join(reportsDir, reportEntry.name);
-        const contents = await fs.promises.readFile(reportPath, "utf-8");
-
+        // let contents = await fs.promises.readFile(reportPath, "utf-8");
+        // remove windows line endings
+        // const normContents = contents.replace(/\r\n/g, "\n");
         // Convert the string content to Uint8Array
-        const encoder = new TextEncoder();
-        const ser = encoder.encode(contents);
+        // const encoder = new TextEncoder();
+        // const ser = encoder.encode(contents);
+        const buffer = await fs.promises.readFile(reportPath);
+        // Convert the Buffer to a Uint8Array
+        const uint8Array = new Uint8Array(buffer);
 
-        let aid = await roleClient.identifiers().get(roleName);
-        const keeper = roleClient.manager!.get(aid);
-        const signer = keeper.signers[0];
-        const sig = signer.sign(ser);
+        const sig = signer.sign(uint8Array,0);
+
+        const result = signer.verfer.verify(sig.raw, uint8Array);
+        assert.equal(result, true);
 
         signatures.push({
           file: `../reports/${reportEntry.name}`,
