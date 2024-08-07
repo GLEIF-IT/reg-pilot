@@ -18,9 +18,13 @@ let roleClient: SignifyClient;
 afterEach(async () => {});
 
 beforeAll(async () => {
-//   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-//   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
-  // process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
+  process.env.REG_PILOT_API = "http://127.0.0.1:8000";
+  process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
+  //   process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
+  process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
+  process.env.ROLE_NAME = "unicredit-datasubmitter";
+  process.env.TEST_ENVIRONMENT = "nordlei_dev";
+  process.env.KERIA="https://errp.wallet.vlei.io";
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(env.secrets.length, env.secrets);
@@ -32,13 +36,17 @@ beforeAll(async () => {
 // It also assumes you have generated the different report files
 // from the report test
 test("vlei-verification", async function run() {
-  let hpath = "/health";
-  let hreq = { method: "GET", body: null };
-  let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
-  assert.equal(200, hresp.status);
-
-  let ecrCreds = await roleClient.credentials().list();
-  let ecrCred = ecrCreds.find((cred: any) => cred.sad.s === ECR_SCHEMA_SAID);
+  let ecrId = await roleClient.identifiers().get(env.roleName);
+  let creds = await roleClient.credentials().list();
+  let ecrCreds = creds.filter(
+    (cred: any) =>
+        // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
+      cred.sad.s === ECR_SCHEMA_SAID &&
+      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
+      cred.sad.a.i === ecrId.prefix
+  );
+  assert.equal(ecrCreds.length,1);
+  const ecrCred = ecrCreds[0];
   let ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
   assert(ecrCred !== undefined);
   assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
@@ -46,6 +54,11 @@ test("vlei-verification", async function run() {
   assert.equal(ecrCredHolder.status.s, "0");
   assert(ecrCredHolder.atc !== undefined);
   let ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+
+  let hpath = "/health";
+  let hreq = { method: "GET", body: null };
+  let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
+  assert.equal(200, hresp.status);
 
   let heads = new Headers();
   heads.set("Content-Type", "application/json+cesr");
@@ -96,8 +109,17 @@ test("reg-pilot-api", async function run() {
   assert.equal(presp.status, 200);
 
   // retrieve the credentials from the KERIA test data
-  let ecrCreds = await roleClient.credentials().list();
-  let ecrCred = ecrCreds.find((cred: any) => cred.sad.s === ECR_SCHEMA_SAID);
+  let ecrId = await roleClient.identifiers().get(env.roleName);
+  let creds = await roleClient.credentials().list();
+  let ecrCreds = creds.filter(
+    (cred: any) =>
+        // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
+      cred.sad.s === ECR_SCHEMA_SAID &&
+      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
+      cred.sad.a.i === ecrId.prefix
+  );
+  assert.equal(ecrCreds.length,1);
+  const ecrCred = ecrCreds[0];
   let ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
   assert(ecrCred !== undefined);
   assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);

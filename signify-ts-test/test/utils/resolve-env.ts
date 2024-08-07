@@ -47,15 +47,15 @@ export function resolveEnvironment(
         case 'local':
             env = {
                 preset: preset,
-                url: 'http://127.0.0.1:3901',
-                bootUrl: 'http://127.0.0.1:3903',
-                vleiServerUrl: 'http://localhost:7723',
-                witnessUrls: [
+                url: process.env.KERIA || 'http://127.0.0.1:3901',
+                bootUrl: process.env.KERIA_BOOT || 'http://127.0.0.1:3903',
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://localhost:7723',
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     'http://localhost:5642',
                     'http://localhost:5643',
                     'http://localhost:5644',
                 ],
-                witnessIds: [WAN, WIL, WES],
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
                 apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -65,15 +65,15 @@ export function resolveEnvironment(
         case 'rootsid_dev':
             env = {
                 preset: preset,
-                url: "https://keria-dev.rootsid.cloud/admin",
-                bootUrl: "https://keria-dev.rootsid.cloud",
-                witnessUrls: [
+                url: process.env.KERIA || "https://keria-dev.rootsid.cloud/admin",
+                bootUrl: process.env.KERIA_BOOT || "https://keria-dev.rootsid.cloud",
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     "https://witness-dev01.rootsid.cloud", 
                     "https://witness-dev02.rootsid.cloud",
                     "https://witness-dev03.rootsid.cloud"
                 ],
-                witnessIds: [WAN, WIL, WES],
-                vleiServerUrl: 'http://schemas.rootsid.cloud',
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://schemas.rootsid.cloud',
                 apiBaseUrl: process.env.REG_PILOT_API || "https://reg-api-dev.rootsid.cloud/doc#/",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -83,15 +83,15 @@ export function resolveEnvironment(
         case 'rootsid_test':
             env = {
                 preset: preset,
-                url: "https://keria-demoservice.rootsid.cloud/admin",
-                bootUrl: "https://keria-demoservice.rootsid.cloud",
-                witnessUrls: [
+                url: process.env.KERIA || "https://keria-demoservice.rootsid.cloud/admin",
+                bootUrl: process.env.KERIA_BOOT || "https://keria-demoservice.rootsid.cloud",
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     "https://witness-dev01.rootsid.cloud", 
                     "https://witness-dev02.rootsid.cloud",
                     "https://witness-dev03.rootsid.cloud"
                 ],
-                witnessIds: [WAN, WIL, WES],
-                vleiServerUrl: 'http://schemas.rootsid.cloud',
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://schemas.rootsid.cloud',
                 apiBaseUrl: process.env.REG_PILOT_API || "https://reg-api-demoservice.rootsid.cloud/doc#/",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -101,23 +101,23 @@ export function resolveEnvironment(
         case 'nordlei_dev':
             env = {
                 preset: preset,
-                url: "https://demo.wallet.vlei.tech",
-                bootUrl: "https://demo.wallet.vlei.tech/boot", // must request access
-                witnessUrls: [
+                url: process.env.KERIA || "https://demo.wallet.vlei.tech",
+                bootUrl: process.env.KERIA_BOOT || "https://demo.wallet.vlei.tech/boot", // must request access
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     "https://william.witness.vlei.io/oobi",
                     "https://wesley.witness.vlei.io/oobi",
                     "https://whitney.witness.vlei.io/oobi",
                     "https://wilma.witness.vlei.io/oobi",
                     "https://wilbur.witness.vlei.io/oobi"
                 ],
-                witnessIds: [
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [
                     "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
                     "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
                     "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
                     "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
                     "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ"
                 ],
-                vleiServerUrl: 'http://schemas.rootsid.cloud',
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://schemas.rootsid.cloud',
                 apiBaseUrl: process.env.REG_PILOT_API || "NordLEI dev reg-pilot-api not set",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -127,23 +127,23 @@ export function resolveEnvironment(
         case 'nordlei_demo':
             env = {
                 preset: preset,
-                url: "https://demo.wallet.vlei.tech/",
-                bootUrl: "https://demo.wallet.vlei.tech/boot",
-                witnessUrls: [
+                url: process.env.KERIA || "https://errp.wallet.vlei.io",
+                bootUrl: process.env.KERIA_BOOT || "https://errp.wallet.vlei.io/boot",
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     "https://william.witness.vlei.io/oobi",
                     "https://wesley.witness.vlei.io/oobi",
                     "https://whitney.witness.vlei.io/oobi",
                     "https://wilma.witness.vlei.io/oobi",
                     "https://wilbur.witness.vlei.io/oobi"
                 ],
-                witnessIds: [
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [
                     "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
                     "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
                     "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
                     "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
                     "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ"
                 ],
-                vleiServerUrl: 'http://schemas.rootsid.cloud',
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://schemas.rootsid.cloud',
                 apiBaseUrl: process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
