@@ -6,37 +6,22 @@ import JSZip from 'jszip';
 import * as process from 'process';
 
 import { getOrCreateClients } from './utils/test-util';
+import { resolveEnvironment, TestEnvironment } from './utils/resolve-env';
 import { Siger,SignifyClient } from 'signify-ts';
 
 const ECR_SCHEMA_SAID = 'EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw';
 
+let env: TestEnvironment;
 let roleClient: SignifyClient;
-const roleName = "role";
-let apiBaseUrl: string = "";
-let vrifierBaseUrl: string = "";
 
-beforeEach(async () => {
-    const defaultSecrets = "CbII3tno87wn3uGBP12qm";
-    if (!process.env.SIGNIFY_SECRETS) {
-        process.env.SIGNIFY_SECRETS = defaultSecrets;
-    }
-    console.log('secrets', process.env.SIGNIFY_SECRETS);
-    
-    const defaultEnv = "docker";
-    if (!process.env.TEST_ENVIRONMENT) {
-        process.env.TEST_ENVIRONMENT = defaultEnv;
-    }
-    console.log('env', process.env.TEST_ENVIRONMENT);
+beforeAll(async () => {
+    env = resolveEnvironment();
 
-    const [roleClientInstance] =
-        await getOrCreateClients(1, process.env.SIGNIFY_SECRETS.split(','));
-    roleClient = roleClientInstance;
-
-    apiBaseUrl = process.env.REG_PILOT_API || "http://127.0.0.1:8000";
-    console.log('api', apiBaseUrl);
-
-    vrifierBaseUrl = process.env.VLEI_VERIFIER || "http://127.0.0.1:7676";    
-    console.log('verifier', vrifierBaseUrl);
+    const [roleClientInstance] = await getOrCreateClients(
+        env.secrets.length,
+        env.secrets,
+      );
+      roleClient = roleClientInstance;
 });
 
 // This test assumes you have run a vlei test that sets up the 
@@ -45,10 +30,9 @@ beforeEach(async () => {
 // from the report test
 test('vlei-verification', async function run() {
 
-    let hurl = vrifierBaseUrl;
     let hpath = '/health';
     let hreq = { method: 'GET', body: null };
-    let hresp = await fetch(hurl + hpath, hreq);
+    let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
     assert.equal(200, hresp.status);
 
     let ecrCreds = await roleClient.credentials().list();
@@ -71,15 +55,14 @@ test('vlei-verification', async function run() {
     let heads = new Headers();
     heads.set('Content-Type', 'application/json+cesr');
     let preq = { headers: heads, method: 'PUT', body: ecrCredCesr };
-    let purl = vrifierBaseUrl;
     let ppath = `/presentations/${ecrCred.sad.d}`;
-    let presp = await fetch(purl + ppath, preq);
-    assert.equal(202, presp.status);
+    let presp = await fetch(env.verifierBaseUrl + ppath, preq);
+    assert.equal(presp.status, 202);
 
     const filingIndicatorsData = "templateID,reported\r\nI_01.01,true\r\nI_02.03,true\r\nI_02.04,true\r\nI_03.01,true\r\nI_05.00,true\r\nI_09.01,true\r\n" //This is like FilingIndicators.csv
     
     let raw = new TextEncoder().encode(filingIndicatorsData);
-    let ecrAid = await roleClient.identifiers().get(roleName);
+    let ecrAid = await roleClient.identifiers().get(env.roleName);
 
     const keeper = roleClient.manager!.get(ecrAid);
     const signer = keeper.signers[0];
@@ -92,9 +75,9 @@ test('vlei-verification', async function run() {
     heads = new Headers();
     heads.set('method', 'POST');
     let vreqInit = { headers: heads, method: 'POST', body: null };
-    let vurl = `${vrifierBaseUrl}/request/verify/${ecrAid.prefix}?${params}`;
+    let vurl = `${env.verifierBaseUrl}/request/verify/${ecrAid.prefix}?${params}`;
     let vreq = await roleClient.createSignedRequest(
-        roleName,
+        env.roleName,
         vurl,
         vreqInit
     );
@@ -103,9 +86,9 @@ test('vlei-verification', async function run() {
 
     heads.set('Content-Type', 'application/json');
     let areqInit = { headers: heads, method: 'GET', body: null };
-    let aurl = `${vrifierBaseUrl}/authorizations/${ecrAid.prefix}`;
+    let aurl = `${env.verifierBaseUrl}/authorizations/${ecrAid.prefix}`;
     let areq = await roleClient.createSignedRequest(
-        roleName,
+        env.roleName,
         aurl,
         areqInit
     );
@@ -121,7 +104,7 @@ test('reg-pilot-api', async function run() {
     // try to ping the api
     let ppath = '/ping';
     let preq = { method: 'GET', body: null };
-    let presp = await fetch(apiBaseUrl + ppath, preq);
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
     console.log('ping response', presp);
     assert.equal(presp.status, 200);
 
@@ -143,10 +126,10 @@ test('reg-pilot-api', async function run() {
         .credentials()
         .get(ecrCred.sad.d, true);
 
-    let ecrAid = await roleClient.identifiers().get(roleName);
+    let ecrAid = await roleClient.identifiers().get(env.roleName);
 
     // fails to query report status because not logged in with ecr yet
-    let sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
+    let sresp = await getReportStatus(env.roleName, ecrAid.prefix, roleClient)
 
     // login with the ecr credential
     let heads = new Headers();
@@ -162,7 +145,7 @@ test('reg-pilot-api', async function run() {
     };
     
     let lpath = `/login`;
-    let lresp = await fetch(apiBaseUrl + lpath, lreq);
+    let lresp = await fetch(env.apiBaseUrl + lpath, lreq);
     console.log('login response', lresp);
     assert.equal(lresp.status, 202);
 
@@ -170,7 +153,7 @@ test('reg-pilot-api', async function run() {
     heads.set('Content-Type', 'application/json');
     let creq = { headers: heads, method: 'GET', body: null };
     let cpath = `/checklogin/${ecrAid.prefix}`;
-    let cresp = await fetch(apiBaseUrl + cpath, creq);
+    let cresp = await fetch(env.apiBaseUrl + cpath, creq);
     assert.equal(cresp.status, 200);
     let cbody = await cresp.json();
     assert.equal(cbody['aid'], `${ecrAid.prefix}`);
@@ -181,11 +164,11 @@ test('reg-pilot-api', async function run() {
     heads = new Headers();
     let sreq = { headers: heads, method: 'GET', body: null };
     let spath = `/status/${ecrAid.prefix}`;
-    sresp = await fetch(apiBaseUrl + spath, sreq);
+    sresp = await fetch(env.apiBaseUrl + spath, sreq);
     assert.equal(sresp.status, 422); // no signed headers provided
 
     // succeeds to query report status
-    sresp = await getReportStatus(roleName, ecrAid.prefix, roleClient)
+    sresp = await getReportStatus(env.roleName, ecrAid.prefix, roleClient)
     assert.equal(sresp.status, 202);
     let sbody = await sresp.json();
     if (sbody.length == 0) {
@@ -220,11 +203,11 @@ test('reg-pilot-api', async function run() {
     // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
 
     //Try known aid signed report upload
-    const ecrOobi = await roleClient.oobis().get(roleName, 'agent');
+    const ecrOobi = await roleClient.oobis().get(env.roleName, 'agent');
     console.log("Verifier must have already seen the login", ecrOobi);
     const signedFileName = `signed__FR_IF010200_IFCLASS3_2023-12-31_20230222134210000.zip`;
     const signedZipBuf = fs.readFileSync(`./test/data/signed_reports/${signedFileName}`);
-    const signedUpResp =  await uploadReport(roleName, ecrAid.prefix, signedFileName, signedZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
+    const signedUpResp =  await uploadReport(env.roleName, ecrAid.prefix, signedFileName, signedZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     assert.equal(signedUpResp.status, 200);
     const signedUpBody = await signedUpResp.json();
     assert.equal(signedUpBody['status'], 'verified');
@@ -237,7 +220,7 @@ test('reg-pilot-api', async function run() {
     // Try unknown aid signed report upload
     const unknownFileName = `report.zip`;
     const unknownZipBuf = fs.readFileSync(`./test/data/unknown_reports/${unknownFileName}`);
-    const unknownResp = await uploadReport(roleName, ecrAid.prefix, unknownFileName, unknownZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
+    const unknownResp = await uploadReport(env.roleName, ecrAid.prefix, unknownFileName, unknownZipBuf, ecrCred.sad.d, roleClient) //TODO fix digest, should be zip digest? other test was using ecr digest
     let unknownBody = await unknownResp.json();
     assert.equal(unknownResp.status, 200);
     assert.equal(unknownBody['submitter'], `${ecrAid.prefix}`);
@@ -271,7 +254,7 @@ async function getReportStatus(
 ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: 'GET', body: null };
-    const surl = `${apiBaseUrl}/status/${aidPrefix}`;
+    const surl = `${env.apiBaseUrl}/status/${aidPrefix}`;
     let shreq = await client.createSignedRequest(aidName, surl, sreq);
     const sresp = await fetch(surl, shreq);
     return sresp;
@@ -298,7 +281,7 @@ async function uploadReport(
         }
     };
 
-    const url = `${apiBaseUrl}/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
+    const url = `${env.apiBaseUrl}/upload/${aidPrefix}/${zipDig}`; //TODO fix digest, should be zip digest? other test was using ecr digest
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
