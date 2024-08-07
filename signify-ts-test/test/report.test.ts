@@ -22,11 +22,8 @@ afterAll(async () => {
 beforeAll(async () => {
   env = resolveEnvironment();
 
-  const [roleClientInstance] = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-  );
-  roleClient = roleClientInstance;
+  const clients = await getOrCreateClients(env.secrets.length, env.secrets);
+  roleClient = clients.pop()!;
 });
 
 // Function to create a directory named 'temp_reports'
