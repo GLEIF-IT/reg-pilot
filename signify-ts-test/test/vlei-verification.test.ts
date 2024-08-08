@@ -18,13 +18,13 @@ let roleClient: SignifyClient;
 afterEach(async () => {});
 
 beforeAll(async () => {
-  process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-  process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
+//   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
+//   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
   //   process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
-  process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-  process.env.ROLE_NAME = "unicredit-datasubmitter";
-  process.env.TEST_ENVIRONMENT = "nordlei_dev";
-  process.env.KERIA="https://errp.wallet.vlei.io";
+//   process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
+//   process.env.ROLE_NAME = "unicredit-datasubmitter";
+//   process.env.TEST_ENVIRONMENT = "nordlei_dev";
+//   process.env.KERIA="https://errp.wallet.vlei.io";
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(env.secrets.length, env.secrets);
