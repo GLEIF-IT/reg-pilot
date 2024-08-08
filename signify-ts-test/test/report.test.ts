@@ -6,9 +6,10 @@ import * as fsExtra from "fs-extra";
 
 import { getOrCreateClients } from "./utils/test-util";
 import signify, { Signer, SignifyClient } from "signify-ts";
+import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 
+let env: TestEnvironment;
 let roleClient: SignifyClient;
-const roleName = "role";
 
 const failDir = "fail_reports";
 const signedDir = "signed_reports";
@@ -19,26 +20,10 @@ afterAll(async () => {
 });
 
 beforeAll(async () => {
-  const defaultSecrets =
-    // "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
-    "CbII3tno87wn3uGBP12qm";
-  if (!process.env.SIGNIFY_SECRETS) {
-    process.env.SIGNIFY_SECRETS = defaultSecrets;
-  }
-  console.log("secrets", process.env.SIGNIFY_SECRETS);
+  env = resolveEnvironment();
 
-  const defaultEnv = "docker";
-  if (!process.env.TEST_ENVIRONMENT) {
-    process.env.TEST_ENVIRONMENT = defaultEnv;
-  }
-  console.log("env", process.env.TEST_ENVIRONMENT);
-
-  // const [gleifClient, qviClient, leClient, roleClientInstance] =
-  const [roleClientInstance] = await getOrCreateClients(
-    1,
-    process.env.SIGNIFY_SECRETS.split(",")
-  );
-  roleClient = roleClientInstance;
+  const clients = await getOrCreateClients(env.secrets.length, env.secrets);
+  roleClient = clients.pop()!;
 });
 
 // Function to create a directory named 'temp_reports'
@@ -266,7 +251,7 @@ async function signReport(
     // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
     const repDirs: string[] = await listDirectories(repDirPath);
     if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
-      const aid = await roleClient.identifiers().get(roleName);
+      const aid = await roleClient.identifiers().get(env.roleName);
       const keeper = roleClient.manager!.get(aid);
       const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 

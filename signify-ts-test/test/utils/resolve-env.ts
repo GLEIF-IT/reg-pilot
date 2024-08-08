@@ -1,4 +1,6 @@
-export type TestEnvironmentPreset = 'local' | 'docker' | 'rootsid_dev' | 'rootsid_test' | 'nordlei_dev' | 'nordlei_test';
+import { SignifyClient } from "signify-ts";
+
+export type TestEnvironmentPreset = 'local' | 'docker' | 'rootsid_dev' | 'rootsid_test' | 'nordlei_dev' | 'nordlei_demo';
 
 export interface TestEnvironment {
     preset: TestEnvironmentPreset;
@@ -7,6 +9,10 @@ export interface TestEnvironment {
     vleiServerUrl: string;
     witnessUrls: string[];
     witnessIds: string[];
+    apiBaseUrl: string;
+    verifierBaseUrl: string;
+    roleName: string;
+    secrets: string[];
 }
 
 const WAN = 'BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha';
@@ -17,23 +23,29 @@ export function resolveEnvironment(
     input?: TestEnvironmentPreset
 ): TestEnvironment {
     const preset = input ?? process.env.TEST_ENVIRONMENT ?? 'docker';
-
+    const providedSecrets = process.env.SIGNIFY_SECRETS || "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    let env;
     switch (preset) {
         case 'docker':
-            return {
+            env = {
                 preset: preset,
-                url: 'http://127.0.0.1:3901',
-                bootUrl: 'http://127.0.0.1:3903',
-                witnessUrls: [
+                url: process.env.KERIA || 'http://127.0.0.1:3901',
+                bootUrl: process.env.KERIA_BOOT || 'http://127.0.0.1:3903',
+                witnessUrls: process.env.WITNESS_URLS?.split(",") || [
                     'http://witness-demo:5642',
                     'http://witness-demo:5643',
                     'http://witness-demo:5644',
                 ],
-                witnessIds: [WAN, WIL, WES],
-                vleiServerUrl: 'http://vlei-server:7723',
+                witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
+                vleiServerUrl: process.env.VLEI_SERVER || 'http://vlei-server:7723',
+                apiBaseUrl: process.env.REG_PILOT_API || "http://reg-pilot-api:8000",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "http://vlei-verifier:7676",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
             };
+            break;
         case 'local':
-            return {
+            env = {
                 preset: preset,
                 url: 'http://127.0.0.1:3901',
                 bootUrl: 'http://127.0.0.1:3903',
@@ -44,12 +56,15 @@ export function resolveEnvironment(
                     'http://localhost:5644',
                 ],
                 witnessIds: [WAN, WIL, WES],
+                apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
             };
+            break;
         case 'rootsid_dev':
-            return {
+            env = {
                 preset: preset,
-                // url: "http://keria--publi-7wqhypzd56ee-cc3c56cbeced4f45.elb.us-east-1.amazonaws.com/admin",
-                // bootUrl: "http://keria--publi-7wqhypzd56ee-cc3c56cbeced4f45.elb.us-east-1.amazonaws.com:3903",
                 url: "https://keria-dev.rootsid.cloud/admin",
                 bootUrl: "https://keria-dev.rootsid.cloud",
                 witnessUrls: [
@@ -59,9 +74,14 @@ export function resolveEnvironment(
                 ],
                 witnessIds: [WAN, WIL, WES],
                 vleiServerUrl: 'http://schemas.rootsid.cloud',
+                apiBaseUrl: process.env.REG_PILOT_API || "https://reg-api-dev.rootsid.cloud/doc#/",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
             };
+            break;
         case 'rootsid_test':
-            return {
+            env = {
                 preset: preset,
                 url: "https://keria-demoservice.rootsid.cloud/admin",
                 bootUrl: "https://keria-demoservice.rootsid.cloud",
@@ -72,9 +92,40 @@ export function resolveEnvironment(
                 ],
                 witnessIds: [WAN, WIL, WES],
                 vleiServerUrl: 'http://schemas.rootsid.cloud',
+                apiBaseUrl: process.env.REG_PILOT_API || "https://reg-api-demoservice.rootsid.cloud/doc#/",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
             };
+            break;
         case 'nordlei_dev':
-            return {
+            env = {
+                preset: preset,
+                url: "https://demo.wallet.vlei.tech",
+                bootUrl: "https://demo.wallet.vlei.tech/boot", // must request access
+                witnessUrls: [
+                    "https://william.witness.vlei.io/oobi",
+                    "https://wesley.witness.vlei.io/oobi",
+                    "https://whitney.witness.vlei.io/oobi",
+                    "https://wilma.witness.vlei.io/oobi",
+                    "https://wilbur.witness.vlei.io/oobi"
+                ],
+                witnessIds: [
+                    "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
+                    "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
+                    "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
+                    "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
+                    "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ"
+                ],
+                vleiServerUrl: 'http://schemas.rootsid.cloud',
+                apiBaseUrl: process.env.REG_PILOT_API || "NordLEI dev reg-pilot-api not set",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
+            };
+            break;
+        case 'nordlei_demo':
+            env = {
                 preset: preset,
                 url: "https://demo.wallet.vlei.tech/",
                 bootUrl: "https://demo.wallet.vlei.tech/boot",
@@ -93,29 +144,15 @@ export function resolveEnvironment(
                     "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ"
                 ],
                 vleiServerUrl: 'http://schemas.rootsid.cloud',
+                apiBaseUrl: process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
+                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                secrets: providedSecrets.split(","),
             };
-        case 'nordlei_test':
-            return {
-                preset: preset,
-                url: "https://demo.wallet.vlei.tech/",
-                bootUrl: "https://demo.wallet.vlei.tech/boot",
-                witnessUrls: [
-                    "https://william.witness.vlei.io/oobi",
-                    "https://wesley.witness.vlei.io/oobi",
-                    "https://whitney.witness.vlei.io/oobi",
-                    "https://wilma.witness.vlei.io/oobi",
-                    "https://wilbur.witness.vlei.io/oobi"
-                ],
-                witnessIds: [
-                    "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
-                    "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
-                    "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
-                    "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
-                    "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ"
-                ],
-                vleiServerUrl: 'http://schemas.rootsid.cloud',
-            };
+            break;
         default:
             throw new Error(`Unknown test environment preset '${preset}'`);
     }
+    console.log("Test environment preset: ", JSON.stringify(env));
+    return env;
 }
