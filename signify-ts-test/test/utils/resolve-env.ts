@@ -38,8 +38,8 @@ export function resolveEnvironment(
                 ],
                 witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
                 vleiServerUrl: process.env.VLEI_SERVER || 'http://vlei-server:7723',
-                apiBaseUrl: process.env.REG_PILOT_API || "http://reg-pilot-api:8000",
-                verifierBaseUrl: process.env.VLEI_VERIFIER || "http://vlei-verifier:7676",
+                apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
+                verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
                 roleName: process.env.ROLE_NAME || "EBADataSubmitter",
                 secrets: providedSecrets.split(","),
             };

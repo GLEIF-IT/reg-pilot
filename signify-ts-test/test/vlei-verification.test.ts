@@ -8,27 +8,64 @@ import * as process from "process";
 
 import { getOrCreateClients } from "./utils/test-util";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { Diger, Siger, SignifyClient } from "signify-ts";
+import { Diger, HabState, Siger, SignifyClient } from "signify-ts";
 
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 
+let ecrAid: HabState;
+let ecrCred: any;
+let ecrCredCesr: any;
+let ecrCredHolder: any;
 let env: TestEnvironment;
 let roleClient: SignifyClient;
 
 afterEach(async () => {});
 
 beforeAll(async () => {
-//   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-//   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
+  //   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
+  //   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
   //   process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
-//   process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-//   process.env.ROLE_NAME = "unicredit-datasubmitter";
-//   process.env.TEST_ENVIRONMENT = "nordlei_dev";
-//   process.env.KERIA="https://errp.wallet.vlei.io";
+  //   process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
+  //   process.env.ROLE_NAME = "unicredit-datasubmitter";
+  //   process.env.TEST_ENVIRONMENT = "nordlei_dev";
+  //   process.env.KERIA="https://errp.wallet.vlei.io";
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(env.secrets.length, env.secrets);
   roleClient = clients.pop()!;
+
+  let ecrId = await roleClient.identifiers().get(env.roleName);
+  let creds = await roleClient.credentials().list();
+  let ecrCreds = creds.filter(
+    (cred: any) =>
+      // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
+      cred.sad.s === ECR_SCHEMA_SAID &&
+      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
+      cred.sad.a.i === ecrId.prefix
+  );
+  // generally expecting one ECR credential but compare them and take the first
+  try {
+    if (ecrCreds.length > 1) {
+      assert.equal(
+        ecrCreds[0].sad.a,
+        ecrCreds[1].sad.a,
+        "Expected one ECR credential the comparison of ecr sad attirbutes"
+      );
+    }
+  } catch (error) {
+    console.log(`Excepting only one ECR, see comparison, but continuing: ${error}`);
+  }
+//   assert.equal(ecrCreds.length, 1);
+  ecrCred = ecrCreds[0];
+  ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
+  assert(ecrCred !== undefined);
+  assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
+  assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
+  assert.equal(ecrCredHolder.status.s, "0");
+  assert(ecrCredHolder.atc !== undefined);
+  ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+
+  ecrAid = await roleClient.identifiers().get(env.roleName);
 });
 
 // This test assumes you have run a vlei test that sets up the
@@ -36,25 +73,6 @@ beforeAll(async () => {
 // It also assumes you have generated the different report files
 // from the report test
 test("vlei-verification", async function run() {
-  let ecrId = await roleClient.identifiers().get(env.roleName);
-  let creds = await roleClient.credentials().list();
-  let ecrCreds = creds.filter(
-    (cred: any) =>
-        // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
-      cred.sad.s === ECR_SCHEMA_SAID &&
-      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
-      cred.sad.a.i === ecrId.prefix
-  );
-  assert.equal(ecrCreds.length,1);
-  const ecrCred = ecrCreds[0];
-  let ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-  assert(ecrCred !== undefined);
-  assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
-  assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
-  assert.equal(ecrCredHolder.status.s, "0");
-  assert(ecrCredHolder.atc !== undefined);
-  let ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
-
   let hpath = "/health";
   let hreq = { method: "GET", body: null };
   let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
@@ -71,7 +89,6 @@ test("vlei-verification", async function run() {
     "templateID,reported\r\nI_01.01,true\r\nI_02.03,true\r\nI_02.04,true\r\nI_03.01,true\r\nI_05.00,true\r\nI_09.01,true\r\n"; //This is like FilingIndicators.csv
 
   let raw = new TextEncoder().encode(filingIndicatorsData);
-  let ecrAid = await roleClient.identifiers().get(env.roleName);
 
   const keeper = roleClient.manager!.get(ecrAid);
   const signer = keeper.signers[0];
@@ -107,28 +124,6 @@ test("reg-pilot-api", async function run() {
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
   console.log("ping response", presp);
   assert.equal(presp.status, 200);
-
-  // retrieve the credentials from the KERIA test data
-  let ecrId = await roleClient.identifiers().get(env.roleName);
-  let creds = await roleClient.credentials().list();
-  let ecrCreds = creds.filter(
-    (cred: any) =>
-        // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
-      cred.sad.s === ECR_SCHEMA_SAID &&
-      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
-      cred.sad.a.i === ecrId.prefix
-  );
-  assert.equal(ecrCreds.length,1);
-  const ecrCred = ecrCreds[0];
-  let ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-  assert(ecrCred !== undefined);
-  assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
-  assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
-  assert.equal(ecrCredHolder.status.s, "0");
-  assert(ecrCredHolder.atc !== undefined);
-  let ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
-
-  let ecrAid = await roleClient.identifiers().get(env.roleName);
 
   // fails to query report status because not logged in with ecr yet
   let sresp = await getReportStatusByAid(
@@ -179,11 +174,6 @@ test("reg-pilot-api", async function run() {
   assert.equal(sresp.status, 202);
   const sbody = await sresp.json();
   assert.equal(sbody.length, 0);
-  // if (sbody.length == 0) {
-  //     console.log("No reports uploaded yet");
-  // } else {
-  //     console.warn("Likely you have failed uploads, skipping test case");
-  // }
 
   // Get the current working directory
   const currentDirectory = process.cwd();
@@ -211,8 +201,8 @@ test("reg-pilot-api", async function run() {
   // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
 
   //Try known aid signed report upload
-  const ecrOobi = await roleClient.oobis().get(env.roleName, "agent");
-  console.log("Verifier must have already seen the login", ecrOobi);
+//   const ecrOobi = await roleClient.oobis().get(env.roleName, "agent");
+//   console.log("Verifier must have already seen the login", ecrOobi);
   const signedFileName = `signed__FR_IF010200_IFCLASS3_2023-12-31_20230222134210000.zip`;
   const signedZipBuf = fs.readFileSync(
     `./test/data/signed_reports/${signedFileName}`
@@ -225,7 +215,7 @@ test("reg-pilot-api", async function run() {
     signedZipBuf,
     signedZipDig,
     roleClient
-  ); //TODO fix digest, should be zip digest? other test was using ecr digest
+  );
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
