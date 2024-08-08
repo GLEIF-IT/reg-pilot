@@ -1,6 +1,6 @@
 import { strict as assert } from 'assert';
 import { Saider, Salter, Serder, SignifyClient } from 'signify-ts';
-import { resolveEnvironment } from './utils/resolve-env';
+import { resolveEnvironment, TestEnvironment } from './utils/resolve-env';
 import {
     Aid,
     assertOperations,
@@ -119,6 +119,12 @@ function createTimestamp() {
     return new Date().toISOString().replace('Z', '000+00:00');
 }
 
+let env: TestEnvironment;
+
+beforeAll(async () => {
+    env = resolveEnvironment();
+  });
+
 test('singlesig-vlei-issuance', async function run() {
     const [gleifClient, qviClient, leClient, roleClient] =
         await getOrCreateClients(4);
@@ -127,17 +133,17 @@ test('singlesig-vlei-issuance', async function run() {
         createAid(gleifClient, 'gleif'),
         createAid(qviClient, 'qvi'),
         createAid(leClient, 'le'),
-        createAid(roleClient, 'role'),
+        createAid(roleClient, env.roleName),
     ]);
 
     await Promise.all([
         getOrCreateContact(gleifClient, 'qvi', qviAid.oobi),
         getOrCreateContact(qviClient, 'gleif', gleifAid.oobi),
         getOrCreateContact(qviClient, 'le', leAid.oobi),
-        getOrCreateContact(qviClient, 'role', roleAid.oobi),
+        getOrCreateContact(qviClient, env.roleName, roleAid.oobi),
         getOrCreateContact(leClient, 'gleif', gleifAid.oobi),
         getOrCreateContact(leClient, 'qvi', qviAid.oobi),
-        getOrCreateContact(leClient, 'role', roleAid.oobi),
+        getOrCreateContact(leClient, env.roleName, roleAid.oobi),
         getOrCreateContact(roleClient, 'gleif', gleifAid.oobi),
         getOrCreateContact(roleClient, 'qvi', qviAid.oobi),
         getOrCreateContact(roleClient, 'le', leAid.oobi),
