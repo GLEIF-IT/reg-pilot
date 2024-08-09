@@ -31,7 +31,7 @@ beforeAll(async () => {
   //   process.env.KERIA="https://errp.wallet.vlei.io";
   env = resolveEnvironment();
 
-  const clients = await getOrCreateClients(env.secrets.length, env.secrets);
+  const clients = await getOrCreateClients(env.secrets.length, env.secrets, true);
   roleClient = clients.pop()!;
 
   let ecrId = await roleClient.identifiers().get(env.roleName);

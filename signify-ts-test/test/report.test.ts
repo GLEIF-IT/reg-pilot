@@ -5,10 +5,11 @@ import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
 
 import { getOrCreateClients } from "./utils/test-util";
-import signify, { Signer, SignifyClient } from "signify-ts";
+import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 
 let env: TestEnvironment;
+let ecrAid: HabState;
 let roleClient: SignifyClient;
 
 const failDir = "fail_reports";
@@ -22,8 +23,10 @@ afterAll(async () => {
 beforeAll(async () => {
   env = resolveEnvironment();
 
-  const clients = await getOrCreateClients(env.secrets.length, env.secrets);
-  roleClient = clients.pop()!;
+  const clients = await getOrCreateClients(env.secrets.length, env.secrets, true);
+  roleClient = clients[clients.length - 1];
+
+  ecrAid = await roleClient.identifiers().get(env.roleName);
 });
 
 // Function to create a directory named 'temp_reports'
@@ -251,8 +254,8 @@ async function signReport(
     // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
     const repDirs: string[] = await listDirectories(repDirPath);
     if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
-      const aid = await roleClient.identifiers().get(env.roleName);
-      const keeper = roleClient.manager!.get(aid);
+      // const aid = await roleClient.identifiers().get(env.roleName);
+      const keeper = roleClient.manager!.get(ecrAid);
       const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
       // console.log("Found META-INF and reports directories");
@@ -290,7 +293,7 @@ async function signReport(
 
         signatures.push({
           file: `../reports/${reportEntry.name}`,
-          aid: aid.prefix,
+          aid: ecrAid.prefix,
           sigs: [sig.qb64],
         });
       }

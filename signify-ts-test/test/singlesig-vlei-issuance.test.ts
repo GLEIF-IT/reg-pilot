@@ -123,11 +123,12 @@ let env: TestEnvironment;
 
 beforeAll(async () => {
     env = resolveEnvironment();
+    assert(env.secrets.length == 4, "Expected 4 secrets in order to cover the 4 roles");
   });
 
 test('singlesig-vlei-issuance', async function run() {
     const [gleifClient, qviClient, leClient, roleClient] =
-        await getOrCreateClients(4);
+        await getOrCreateClients(env.secrets.length, env.secrets, false);
 
     const [gleifAid, qviAid, leAid, roleAid] = await Promise.all([
         createAid(gleifClient, 'gleif'),

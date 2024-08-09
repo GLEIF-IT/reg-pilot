@@ -12,6 +12,7 @@ To run the tests, the steps include:
 * Run the test.sh script:
 ```./test.sh --all```
 
-# Example for how to run the verification test against a remote keria instance that has its own test data (like rootsid_dev)
-* See the test_nord_debug_api_verifier.sh as an example.
+# Example for how to run the verification test against a remote keria instance that has its own test data (like nord_demo)
 * See the options for configuring the KERI, API, VERIFIER, role name, etc. in test/utils/resolve-env.ts
+* Example command for using NordLEI identity to sign a report and then verify it against local API/Verifier:
+```SIGNIFY_SECRETS="A7DKYPya4oi6uDnvBmjjp" TEST_ENVIRONMENT="nordlei_demo" ROLE_NAME="unicredit-datasubmitter" REG_PILOT_API=http://127.0.0.1:8000 VLEI_VERIFIER=http://127.0.0.1:7676 ./test.sh --build --report --verify```

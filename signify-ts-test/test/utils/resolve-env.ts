@@ -146,7 +146,7 @@ export function resolveEnvironment(
                 vleiServerUrl: process.env.VLEI_SERVER || 'http://schemas.rootsid.cloud',
                 apiBaseUrl: process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
                 verifierBaseUrl: process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-                roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+                roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
                 secrets: providedSecrets.split(","),
             };
             break;

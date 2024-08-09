@@ -164,7 +164,8 @@ export async function getOrCreateAID(
  * Connect or boot a SignifyClient instance
  */
 export async function getOrCreateClient(
-    bran: string | undefined = undefined
+    bran: string | undefined = undefined,
+    getOnly: boolean = false
 ): Promise<SignifyClient> {
     const env = resolveEnvironment();
     await ready();
@@ -173,10 +174,14 @@ export async function getOrCreateClient(
     const client = new SignifyClient(env.url, bran, Tier.low, env.bootUrl);
     try {
         await client.connect();
-    } catch {
-        const res = await client.boot();
-        if (!res.ok) throw new Error();
-        await client.connect();
+    } catch (e: any) {
+        if(!getOnly) {
+            const res = await client.boot();
+            if (!res.ok) throw new Error();
+            await client.connect();
+        } else {
+            throw new Error('Could not connect to client w/ bran ' + bran + e.message);
+        }
     }
     console.log('client', {
         agent: client.agent?.pre,
@@ -199,13 +204,14 @@ export async function getOrCreateClient(
  */
 export async function getOrCreateClients(
     count: number,
-    brans: string[] | undefined = undefined
+    brans: string[] | undefined = undefined,
+    getOnly: boolean = false
 ): Promise<SignifyClient[]> {
     const tasks: Promise<SignifyClient>[] = [];
     const secrets = process.env['SIGNIFY_SECRETS']?.split(',');
     for (let i = 0; i < count; i++) {
         tasks.push(
-            getOrCreateClient(brans?.at(i) ?? secrets?.at(i) ?? undefined)
+            getOrCreateClient(brans?.at(i) ?? secrets?.at(i) ?? undefined,getOnly)
         );
     }
     const clients: SignifyClient[] = await Promise.all(tasks);
