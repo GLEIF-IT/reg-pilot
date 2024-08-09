@@ -1,138 +1,138 @@
 services:
-    vlei-server:
-        image: gleif/vlei
-        environment:
-            - PYTHONUNBUFFERED=1
-            - PYTHONIOENCODING=UTF-8
-        command:
-            - vLEI-server
-            - -s
-            - ./schema/acdc
-            - -c
-            - ./samples/acdc/
-            - -o
-            - ./samples/oobis/
-        healthcheck:
-            test:
-                - CMD
-                - curl
-                - -f
-                - http://localhost:7723/oobi/EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao
-            interval: 2s
-            timeout: 3s
-            retries: 5
-            start_period: 2s
-        ports:
-            - 7723:7723
+  vlei-server:
+    image: gleif/vlei
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
+    command:
+      - vLEI-server
+      - -s
+      - ./schema/acdc
+      - -c
+      - ./samples/acdc/
+      - -o
+      - ./samples/oobis/
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:7723/oobi/EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    ports:
+      - 7723:7723
 
-    keria:
-        image: ${KERIA_IMAGE:-weboftrust/keria}:${KERIA_IMAGE_TAG:-0.2.0-dev3}
-        environment:
-            - KERI_AGENT_CORS=1
-            - KERI_URL=http://keria:3902
-            - PYTHONUNBUFFERED=1
-            - PYTHONIOENCODING=UTF-8
-        volumes:
-            - ./config/keria.json:/keria/config/keri/cf/keria.json
-        entrypoint:
-            [
-                'keria',
-                'start',
-                '--config-dir',
-                '/keria/config',
-                '--config-file',
-                'keria',
-                '--name',
-                'agent',
-            ]
-        healthcheck:
-            test: ['CMD', 'wget', '--spider', 'http://keria:3902/spec.yaml']
-            interval: 2s
-            timeout: 3s
-            retries: 5
-            start_period: 2s
-        ports:
-            - 3901:3901
-            - 3902:3902
-            - 3903:3903
+  keria:
+    image: ${KERIA_IMAGE:-weboftrust/keria}:${KERIA_IMAGE_TAG:-0.2.0-dev3}
+    environment:
+      - KERI_AGENT_CORS=1
+      - KERI_URL=http://keria:3902
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
+    volumes:
+      - ./config/keria.json:/keria/config/keri/cf/keria.json
+    entrypoint:
+      [
+        "keria",
+        "start",
+        "--config-dir",
+        "/keria/config",
+        "--config-file",
+        "keria",
+        "--name",
+        "agent",
+      ]
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://keria:3902/spec.yaml"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    ports:
+      - 3901:3901
+      - 3902:3902
+      - 3903:3903
 
-    witness-demo:
-        image: weboftrust/keri-witness-demo:1.1.0
-        environment:
-            - PYTHONUNBUFFERED=1
-            - PYTHONIOENCODING=UTF-8
-        healthcheck:
-            test: ['CMD', 'curl', '-f', 'http://localhost:5642/oobi']
-            interval: 2s
-            timeout: 3s
-            retries: 5
-            start_period: 2s
-        volumes:
-            - ./config/witness-demo:/keripy/scripts/keri/cf/main
-        ports:
-            - 5642:5642
-            - 5643:5643
-            - 5644:5644
+  witness-demo:
+    image: weboftrust/keri-witness-demo:1.1.0
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5642/oobi"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    volumes:
+      - ./config/witness-demo:/keripy/scripts/keri/cf/main
+    ports:
+      - 5642:5642
+      - 5643:5643
+      - 5644:5644
 
-    reg-pilot-api:
-        image: 2byrds/reg-pilot-api:latest
-        ports:
-            - 8000:8000
-        environment:
-            - ENABLE_CORS=true
-            - VERIFIER_AUTHORIZATIONS=http://host.docker.internal:7676/authorizations/
-            - VERIFIER_PRESENTATIONS=http://host.docker.internal:7676/presentations/
-            - VERIFIER_REPORTS=http://host.docker.internal:7676/reports/
-            - VERIFIER_REQUESTS=http://host.docker.internal:7676/request/verify/
-        healthcheck:
-            test:
-                - CMD
-                - curl
-                - -f
-                - http://localhost:8000/ping
-            interval: 2s
-            timeout: 3s
-            retries: 5
-            start_period: 2s
+  reg-pilot-api:
+    image: 2byrds/reg-pilot-api:latest
+    ports:
+      - 8000:8000
+    environment:
+      - ENABLE_CORS=true
+      - VERIFIER_AUTHORIZATIONS=http://host.docker.internal:7676/authorizations/
+      - VERIFIER_PRESENTATIONS=http://host.docker.internal:7676/presentations/
+      - VERIFIER_REPORTS=http://host.docker.internal:7676/reports/
+      - VERIFIER_REQUESTS=http://host.docker.internal:7676/request/verify/
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8000/ping
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
 
-    vlei-verifier:
-        image: 2byrds/vlei-verifier:latest
-        container_name: vlei-verifier
-        hostname: vlei-verifier
-        depends_on:
-              - vlei-server
-              - witness-demo
-        ports:
-            - 7676:7676
-        healthcheck:
-            test:
-                - CMD
-                - curl
-                - -f
-                - http://localhost:7676/health
-            interval: 2s
-            timeout: 3s
-            retries: 5
-            start_period: 2s
+  vlei-verifier:
+    image: 2byrds/vlei-verifier:latest
+    container_name: vlei-verifier
+    hostname: vlei-verifier
+    depends_on:
+      - vlei-server
+      - witness-demo
+    ports:
+      - 7676:7676
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:7676/health
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
 
-    deps:
-        image: alpine
-        command: ['echo', 'Dependencies running']
-        depends_on:
-            vlei-server:
-                condition: service_healthy
-            keria:
-                condition: service_healthy
-            witness-demo:
-                condition: service_healthy
+  deps:
+    image: alpine
+    command: ["echo", "Dependencies running"]
+    depends_on:
+      vlei-server:
+        condition: service_healthy
+      keria:
+        condition: service_healthy
+      witness-demo:
+        condition: service_healthy
 
-    verify:
-        image: alpine
-        command: ['echo', 'Dependencies running']
-        depends_on:
-            keria:
-                condition: service_healthy
-            reg-pilot-api:
-                condition: service_healthy
-            vlei-verifier:
-                condition: service_healthy
+  verify:
+    image: alpine
+    command: ["echo", "Dependencies running"]
+    depends_on:
+      keria:
+        condition: service_healthy
+      reg-pilot-api:
+        condition: service_healthy
+      vlei-verifier:
+        condition: service_healthy
