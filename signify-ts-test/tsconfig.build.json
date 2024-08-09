@@ -1,9 +1,9 @@
 {
-    "include": ["test","types"],
-    "extends": "./tsconfig.node.json",
-    "compilerOptions": {
-        "outDir": "dist",
-        "declaration": true,
-        "emitDeclarationOnly": true
-    }
+  "include": ["test", "types"],
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "emitDeclarationOnly": true
+  }
 }
