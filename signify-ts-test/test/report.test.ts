@@ -28,7 +28,7 @@ beforeAll(async () => {
   const clients = await getOrCreateClients(
     env.secrets.length,
     env.secrets,
-    true
+    true,
   );
   roleClient = clients[clients.length - 1];
 
@@ -152,7 +152,7 @@ async function genMissingSignature(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -184,7 +184,7 @@ async function genNoSignature(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -231,7 +231,7 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -248,7 +248,7 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
 
 async function signReport(
   tempDir: string,
-  roleClient: SignifyClient
+  roleClient: SignifyClient,
 ): Promise<boolean> {
   const dirs: string[] = await listDirectories(tempDir);
 
@@ -304,7 +304,7 @@ async function signReport(
       manifest.documentInfo.signatures = signatures;
       await fs.promises.writeFile(
         manifestPath,
-        JSON.stringify(manifest, null, 2)
+        JSON.stringify(manifest, null, 2),
       );
       return true;
     } else {

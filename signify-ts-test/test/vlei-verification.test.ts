@@ -40,7 +40,7 @@ beforeAll(async () => {
   const clients = await getOrCreateClients(
     env.secrets.length,
     env.secrets,
-    true
+    true,
   );
   roleClient = clients.pop()!;
 
@@ -54,7 +54,7 @@ beforeAll(async () => {
       // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
       cred.sad.s === ECR_SCHEMA_SAID &&
       cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
-      cred.sad.a.i === ecrAid.prefix
+      cred.sad.a.i === ecrAid.prefix,
   );
   // generally expecting one ECR credential but compare them and take the first
   try {
@@ -62,12 +62,12 @@ beforeAll(async () => {
       assert.equal(
         ecrCreds[0].sad.a,
         ecrCreds[1].sad.a,
-        "Expected one ECR credential the comparison of ecr sad attirbutes"
+        "Expected one ECR credential the comparison of ecr sad attirbutes",
       );
     }
   } catch (error) {
     console.log(
-      `Excepting only one ECR, see comparison, but continuing: ${error}`
+      `Excepting only one ECR, see comparison, but continuing: ${error}`,
     );
   }
   //   assert.equal(ecrCreds.length, 1);
@@ -142,7 +142,7 @@ test("reg-pilot-api", async function run() {
   let sresp = await getReportStatusByAid(
     env.roleName,
     ecrAid.prefix,
-    roleClient
+    roleClient,
   );
 
   // login with the ecr credential
@@ -231,7 +231,7 @@ test("reg-pilot-api", async function run() {
         signedReport,
         signedZipBuf,
         signedZipDig,
-        roleClient
+        roleClient,
       );
       assert.equal(signedUpResp.status, 200);
       const signedUpBody = await signedUpResp.json();
@@ -239,7 +239,7 @@ test("reg-pilot-api", async function run() {
       assert.equal(signedUpBody["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         signedUpBody["message"],
-        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
       );
       assert.equal(signedUpBody["filename"], signedReport);
       assert.equal(signedUpBody["contentType"], "application/zip");
@@ -249,7 +249,7 @@ test("reg-pilot-api", async function run() {
         env.roleName,
         ecrAid.prefix,
         signedZipDig,
-        roleClient
+        roleClient,
       );
       assert.equal(sresp.status, 200);
       const signedUploadBody = await sresp.json();
@@ -257,7 +257,7 @@ test("reg-pilot-api", async function run() {
       assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         signedUploadBody["message"],
-        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
       );
       assert.equal(signedUploadBody["filename"], signedReport);
       assert.equal(signedUploadBody["contentType"], "application/zip");
@@ -266,7 +266,7 @@ test("reg-pilot-api", async function run() {
       // Try unknown aid signed report upload
       const unknownFileName = `report.zip`;
       const unknownZipBuf = fs.readFileSync(
-        `./test/data/unknown_reports/${unknownFileName}`
+        `./test/data/unknown_reports/${unknownFileName}`,
       );
       const unknownZipDig = getFileDigest(unknownZipBuf);
       const unknownResp = await uploadReport(
@@ -275,14 +275,14 @@ test("reg-pilot-api", async function run() {
         unknownFileName,
         unknownZipBuf,
         unknownZipDig,
-        roleClient
-      ); 
+        roleClient,
+      );
       let unknownBody = await unknownResp.json();
       assert.equal(unknownResp.status, 200);
       assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         unknownBody["message"],
-        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
       );
       assert.equal(unknownBody["filename"], unknownFileName);
       assert.equal(unknownBody["status"], "failed");
@@ -293,14 +293,14 @@ test("reg-pilot-api", async function run() {
         env.roleName,
         ecrAid.prefix,
         unknownZipDig,
-        roleClient
+        roleClient,
       );
       assert.equal(sresp.status, 200);
       const unknownUploadBody = await sresp.json();
       assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         unknownUploadBody["message"],
-        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
       );
       assert.equal(unknownUploadBody["filename"], unknownFileName);
       assert.equal(unknownUploadBody["status"], "failed");
@@ -310,7 +310,7 @@ test("reg-pilot-api", async function run() {
       sresp = await getReportStatusByAid(
         env.roleName,
         ecrAid.prefix,
-        roleClient
+        roleClient,
       );
       assert.equal(sresp.status, 202);
       const twoUploadsBody = await sresp.json();
@@ -320,7 +320,7 @@ test("reg-pilot-api", async function run() {
       assert.equal(signedStatus["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         signedStatus["message"],
-        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+        `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
       );
       assert.equal(signedStatus["filename"], signedReport);
       assert.equal(signedStatus["contentType"], "application/zip");
@@ -329,7 +329,7 @@ test("reg-pilot-api", async function run() {
       assert.equal(unknownStatus["submitter"], `${ecrAid.prefix}`);
       assert.equal(
         unknownStatus["message"],
-        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+        `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
       );
       assert.equal(unknownStatus["filename"], unknownFileName);
       assert.equal(unknownStatus["status"], "failed");
@@ -339,7 +339,7 @@ test("reg-pilot-api", async function run() {
       return true;
     }
     throw new Error(
-      "No signed reports found in the directory " + signedDirPrefixed
+      "No signed reports found in the directory " + signedDirPrefixed,
     );
   }
   throw new Error("No signed reports for " + ecrAid.prefix);
@@ -347,7 +347,7 @@ test("reg-pilot-api", async function run() {
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string
+  credId: string,
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -363,7 +363,7 @@ export async function getGrantedCredential(
 async function getReportStatusByAid(
   aidName: string,
   aidPrefix: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   const heads = new Headers();
   const sreq = { headers: heads, method: "GET", body: null };
@@ -377,7 +377,7 @@ async function getReportStatusByDig(
   aidName: string,
   aidPrefix: string,
   dig: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   const heads = new Headers();
   const sreq = { headers: heads, method: "GET", body: null };
@@ -401,7 +401,7 @@ async function uploadReport(
   fileName: string,
   zipBuffer: Buffer,
   zipDigest: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   let formData = new FormData();
   let ctype = "application/zip";
@@ -428,7 +428,7 @@ async function uploadReport(
 
 function getFileDigest(buffer: Buffer): string {
   const digest = Buffer.from(
-    blake3.create({ dkLen: 32 }).update(buffer).digest()
+    blake3.create({ dkLen: 32 }).update(buffer).digest(),
   );
 
   const diger = new Diger({ raw: digest });
