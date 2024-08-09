@@ -18,8 +18,8 @@ let roleClient: SignifyClient;
 afterEach(async () => {});
 
 beforeAll(async () => {
-//   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-//   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
+  //   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
+  //   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
   // process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
   env = resolveEnvironment();
 
@@ -112,7 +112,7 @@ test("reg-pilot-api", async function run() {
   let sresp = await getReportStatusByAid(
     env.roleName,
     ecrAid.prefix,
-    roleClient
+    roleClient,
   );
 
   // login with the ecr credential
@@ -193,7 +193,7 @@ test("reg-pilot-api", async function run() {
   console.log("Verifier must have already seen the login", ecrOobi);
   const signedFileName = `signed__FR_IF010200_IFCLASS3_2023-12-31_20230222134210000.zip`;
   const signedZipBuf = fs.readFileSync(
-    `./test/data/signed_reports/${signedFileName}`
+    `./test/data/signed_reports/${signedFileName}`,
   );
   const signedZipDig = getFileDigest(signedZipBuf);
   const signedUpResp = await uploadReport(
@@ -202,7 +202,7 @@ test("reg-pilot-api", async function run() {
     signedFileName,
     signedZipBuf,
     signedZipDig,
-    roleClient
+    roleClient,
   ); //TODO fix digest, should be zip digest? other test was using ecr digest
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
@@ -210,7 +210,7 @@ test("reg-pilot-api", async function run() {
   assert.equal(signedUpBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     signedUpBody["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
   );
   assert.equal(signedUpBody["filename"], signedFileName);
   assert.equal(signedUpBody["contentType"], "application/zip");
@@ -220,7 +220,7 @@ test("reg-pilot-api", async function run() {
     env.roleName,
     ecrAid.prefix,
     signedZipDig,
-    roleClient
+    roleClient,
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
@@ -228,7 +228,7 @@ test("reg-pilot-api", async function run() {
   assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     signedUploadBody["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
   );
   assert.equal(signedUploadBody["filename"], signedFileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
@@ -237,7 +237,7 @@ test("reg-pilot-api", async function run() {
   // Try unknown aid signed report upload
   const unknownFileName = `report.zip`;
   const unknownZipBuf = fs.readFileSync(
-    `./test/data/unknown_reports/${unknownFileName}`
+    `./test/data/unknown_reports/${unknownFileName}`,
   );
   const unknownZipDig = getFileDigest(unknownZipBuf);
   const unknownResp = await uploadReport(
@@ -246,14 +246,14 @@ test("reg-pilot-api", async function run() {
     unknownFileName,
     unknownZipBuf,
     unknownZipDig,
-    roleClient
+    roleClient,
   ); //TODO fix digest, should be zip digest? other test was using ecr digest
   let unknownBody = await unknownResp.json();
   assert.equal(unknownResp.status, 200);
   assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     unknownBody["message"],
-    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
   );
   assert.equal(unknownBody["filename"], unknownFileName);
   assert.equal(unknownBody["status"], "failed");
@@ -264,14 +264,14 @@ test("reg-pilot-api", async function run() {
     env.roleName,
     ecrAid.prefix,
     unknownZipDig,
-    roleClient
+    roleClient,
   );
   assert.equal(sresp.status, 200);
   const unknownUploadBody = await sresp.json();
   assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     unknownUploadBody["message"],
-    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
   );
   assert.equal(unknownUploadBody["filename"], unknownFileName);
   assert.equal(unknownUploadBody["status"], "failed");
@@ -287,7 +287,7 @@ test("reg-pilot-api", async function run() {
   assert.equal(signedStatus["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     signedStatus["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`
+    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
   );
   assert.equal(signedStatus["filename"], signedFileName);
   assert.equal(signedStatus["contentType"], "application/zip");
@@ -296,7 +296,7 @@ test("reg-pilot-api", async function run() {
   assert.equal(unknownStatus["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     unknownStatus["message"],
-    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`
+    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
   );
   assert.equal(unknownStatus["filename"], unknownFileName);
   assert.equal(unknownStatus["status"], "failed");
@@ -306,7 +306,7 @@ test("reg-pilot-api", async function run() {
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string
+  credId: string,
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -322,7 +322,7 @@ export async function getGrantedCredential(
 async function getReportStatusByAid(
   aidName: string,
   aidPrefix: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   const heads = new Headers();
   const sreq = { headers: heads, method: "GET", body: null };
@@ -336,7 +336,7 @@ async function getReportStatusByDig(
   aidName: string,
   aidPrefix: string,
   dig: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   const heads = new Headers();
   const sreq = { headers: heads, method: "GET", body: null };
@@ -360,7 +360,7 @@ async function uploadReport(
   fileName: string,
   zipBuffer: Buffer,
   zipDigest: string,
-  client: SignifyClient
+  client: SignifyClient,
 ): Promise<Response> {
   let formData = new FormData();
   let ctype = "application/zip";
@@ -387,7 +387,7 @@ async function uploadReport(
 
 function getFileDigest(buffer: Buffer): string {
   const digest = Buffer.from(
-    blake3.create({ dkLen: 32 }).update(buffer).digest()
+    blake3.create({ dkLen: 32 }).update(buffer).digest(),
   );
 
   const diger = new Diger({ raw: digest });

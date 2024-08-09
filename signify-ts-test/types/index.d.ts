@@ -1,1 +1,1 @@
-declare module 'ecdsa-secp256r1';
+declare module "ecdsa-secp256r1";

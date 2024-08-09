@@ -146,7 +146,7 @@ async function genMissingSignature(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -178,7 +178,7 @@ async function genNoSignature(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -225,7 +225,7 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
   const repDirs: string[] = await listDirectories(repDirPath);
   assert.equal(
     repDirs.includes("META-INF") && repDirs.includes("reports"),
-    true
+    true,
   );
 
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
@@ -242,7 +242,7 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
 
 async function signReport(
   tempDir: string,
-  roleClient: SignifyClient
+  roleClient: SignifyClient,
 ): Promise<boolean> {
   const dirs: string[] = await listDirectories(tempDir);
 
@@ -283,7 +283,7 @@ async function signReport(
         // Convert the Buffer to a Uint8Array
         const uint8Array = new Uint8Array(buffer);
 
-        const sig = signer.sign(uint8Array,0);
+        const sig = signer.sign(uint8Array, 0);
 
         const result = signer.verfer.verify(sig.raw, uint8Array);
         assert.equal(result, true);
@@ -298,7 +298,7 @@ async function signReport(
       manifest.documentInfo.signatures = signatures;
       await fs.promises.writeFile(
         manifestPath,
-        JSON.stringify(manifest, null, 2)
+        JSON.stringify(manifest, null, 2),
       );
       return true;
     } else {
