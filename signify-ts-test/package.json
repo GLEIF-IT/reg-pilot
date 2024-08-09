@@ -42,7 +42,7 @@
     "jest-fetch-mock": "^3.0.3",
     "jsdoc": "^4.0.2",
     "minami": "^1.2.3",
-    "prettier": "^3.0.3",
+    "prettier": "^3.3.3",
     "ts-jest": "^29.1.1",
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.9.1",
