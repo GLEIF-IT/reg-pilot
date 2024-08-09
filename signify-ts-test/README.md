@@ -9,8 +9,8 @@ To run the tests, the steps include:
 ```docker compose down -v; docker compose up verify -d```
 
 # Run the tests against local docker services
-* Run the test_docker.sh script:
-```./test_docker.sh all```
+* Run the test.sh script:
+```./test.sh --all```
 
 # Example for how to run the verification test against a remote keria instance that has its own test data (like rootsid_dev)
 * See the test_nord_debug_api_verifier.sh as an example.
