@@ -453,11 +453,9 @@ async function checkFailUpload(
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
-    failMessage =
-      "1 files from report package missing valid signed";
+    failMessage = "1 files from report package missing valid signed";
   } else if (fileName.includes("genNoSignature")) {
-    failMessage =
-      "9 files from report package missing valid signed";
+    failMessage = "9 files from report package missing valid signed";
   } else if (fileName.includes("removeMetaInfReportsJson")) {
     failMessage = "No manifest in file, invalid signed report package";
   }
