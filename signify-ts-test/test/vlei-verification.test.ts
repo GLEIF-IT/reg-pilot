@@ -89,9 +89,7 @@ test("vlei-verification", async function run() {
   let hpath = "/health";
   let hreq = { method: "GET", body: null };
   let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
-  assert.equal(200, hresp.status);
-
-  let ecrCreds = await roleClient.credentials().list();
+  assert.equal(200, hresp.status);  
   let ecrCred = ecrCreds.find((cred: any) => cred.sad.s === ECR_SCHEMA_SAID);
   let ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
   assert(ecrCred !== undefined);
@@ -111,8 +109,7 @@ test("vlei-verification", async function run() {
   const filingIndicatorsData =
     "templateID,reported\r\nI_01.01,true\r\nI_02.03,true\r\nI_02.04,true\r\nI_03.01,true\r\nI_05.00,true\r\nI_09.01,true\r\n"; //This is like FilingIndicators.csv
 
-  let raw = new TextEncoder().encode(filingIndicatorsData);
-  let ecrAid = await roleClient.identifiers().get(env.roleName);
+  let raw = new TextEncoder().encode(filingIndicatorsData);  
 
   const keeper = roleClient.manager!.get(ecrAid);
   const signer = keeper.signers[0];
