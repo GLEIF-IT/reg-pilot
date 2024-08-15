@@ -7,6 +7,7 @@ import JSZip from "jszip";
 import * as process from "process";
 
 import { getOrCreateClients } from "./utils/test-util";
+import {generateFileDigest} from "./utils/generate-digest"
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { Diger, HabState, Siger, SignifyClient } from "signify-ts";
 import path from "path";
@@ -28,13 +29,13 @@ let signedDirPrefixed: string;
 afterEach(async () => {});
 
 beforeAll(async () => {
-  //   process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-  //   process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
-  //   process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
-  //   process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-  //   process.env.ROLE_NAME = "unicredit-datasubmitter";
-  //   process.env.TEST_ENVIRONMENT = "nordlei_dev";
-  //   process.env.KERIA="https://errp.wallet.vlei.io";
+    // process.env.REG_PILOT_API = "http://127.0.0.1:8000";
+    // process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
+    // process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
+    // process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
+    // process.env.ROLE_NAME = "unicredit-datasubmitter";
+    // process.env.TEST_ENVIRONMENT = "nordlei_dev";
+    // process.env.KERIA="https://errp.wallet.vlei.io";
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(
@@ -226,7 +227,9 @@ test("reg-pilot-api", async function run() {
       dropReportStatusByAid(ecrAid.prefix);
       console.log(`Processing file: ${filePath}`);
       const signedZipBuf = fs.readFileSync(`${filePath}`);
-      const signedZipDig = getFileDigest(signedZipBuf);
+      const signedZipDig = generateFileDigest(signedZipBuf, 'sha256');
+      console.log("DIGEST:");
+      console.log(signedZipDig);
       const signedUpResp = await uploadReport(
         env.roleName,
         ecrAid.prefix,
@@ -244,7 +247,7 @@ test("reg-pilot-api", async function run() {
       dropReportStatusByAid(ecrAid.prefix);
       console.log(`Processing file: ${filePath}`);
       const failZipBuf = fs.readFileSync(`${filePath}`);
-      const failZipDig = getFileDigest(failZipBuf);
+      const failZipDig = generateFileDigest(failZipBuf, 'sha256');
       const failUpResp = await uploadReport(
         env.roleName,
         ecrAid.prefix,
@@ -379,7 +382,7 @@ async function checkSignedUpload(
   const unknownZipBuf = fs.readFileSync(
     `./test/data/unknown_reports/${unknownFileName}`,
   );
-  const unknownZipDig = getFileDigest(unknownZipBuf);
+  const unknownZipDig = generateFileDigest(unknownZipBuf, 'sha256');
   const unknownResp = await uploadReport(
     env.roleName,
     ecrAid.prefix,
