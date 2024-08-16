@@ -122,11 +122,11 @@ export function resolveEnvironment(
         url: process.env.KERIA || "https://demo.wallet.vlei.tech",
         bootUrl: process.env.KERIA_BOOT || "https://demo.wallet.vlei.tech/boot", // must request access
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [
-          "https://william.witness.vlei.io/oobi",
-          "https://wesley.witness.vlei.io/oobi",
-          "https://whitney.witness.vlei.io/oobi",
-          "https://wilma.witness.vlei.io/oobi",
-          "https://wilbur.witness.vlei.io/oobi",
+          "https://william.witness.vlei.tech/oobi",
+          "https://wesley.witness.vlei.tech/oobi",
+          "https://whitney.witness.vlei.tech/oobi",
+          "https://wilma.witness.vlei.tech/oobi",
+          "https://wilbur.witness.vlei.tech/oobi",
         ],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [
           "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
