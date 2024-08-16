@@ -129,11 +129,11 @@ export function resolveEnvironment(
           "https://wilbur.witness.vlei.tech/oobi",
         ],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [
-          "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
-          "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
-          "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
-          "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
-          "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ",
+          "BMn9DacVHdgg66ukO0fYwQx1IV5hCchPd7Gb5zCCQYsv",
+          "BGNpoM1a8VMMJEZC8DKgiyEsTTviWkgQ6e4f6rRFkoxV",
+          "BLiMaTh2Mr540wD6FynMc3SaAtHhjOTJfO_j-1E7WwC2",
+          "BFX3CtauhMYyLOxX44q4yzQfwd4ekmBWF1oteXx8iiWn",
+          "BOwl2CUm-5nvVy8krTlSxzHkcQSBAXHYz412Cl-e20xS",
         ],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
