@@ -28,17 +28,6 @@ let signedDirPrefixed: string;
 afterEach(async () => {});
 
 beforeAll(async () => {
-    process.env.REG_PILOT_API = "http://127.0.0.1:8000";
-    process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
-  //   // process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-  //   // process.env.ROLE_NAME = "unicredit-datasubmitter";
-  //   // process.env.TEST_ENVIRONMENT = "nordlei_dev";
-  //   process.env.KERIA="https://errp.wallet.vlei.io";
-//   process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
-  process.env.SIGNIFY_SECRETS = "BhqEDDNmpyWgxT8ZIKWdw";
-  process.env.ROLE_NAME = "testbank_submitter";
-  process.env.TEST_ENVIRONMENT = "nordlei_dry";
-  
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(
@@ -55,7 +44,6 @@ beforeAll(async () => {
   let creds = await roleClient.credentials().list();
   let ecrCreds = creds.filter(
     (cred: any) =>
-      // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
       cred.sad.s === ECR_SCHEMA_SAID &&
       cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
       cred.sad.a.i === ecrAid.prefix,
@@ -74,7 +62,7 @@ beforeAll(async () => {
       `Excepting only one ECR, see comparison, but continuing: ${error}`,
     );
   }
-  //   assert.equal(ecrCreds.length, 1);
+
   ecrCred = ecrCreds[0];
   ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
   assert(ecrCred !== undefined);
@@ -462,7 +450,6 @@ async function checkFailUpload(
   assert.equal(failUpBody["status"], "failed");
   assert.equal(failUpBody["submitter"], `${ecrAid.prefix}`);
   expect(failUpBody["message"]).toMatch(new RegExp((`${failMessage}`)));
-  // assert.equal(failUpBody["filename"], fileName);
   assert.equal(failUpBody["contentType"], "application/zip");
   assert.equal(failUpBody["size"] > 3000, true);
 
@@ -477,7 +464,6 @@ async function checkFailUpload(
   assert.equal(signedUploadBody["status"], "failed");
   assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
-  // assert.equal(signedUploadBody["filename"], fileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 3000, true);
   return true;
