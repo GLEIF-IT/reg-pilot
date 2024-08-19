@@ -324,7 +324,7 @@ async function uploadReport(
     },
   };
 
-  const url = `${env.apiBaseUrl}/upload/${aidPrefix}/${zipDigest}`; //TODO fix digest, should be zip digest? other test was using ecr digest
+  const url = `${env.apiBaseUrl}/upload/${aidPrefix}/${zipDigest}`;
 
   let sreq = await client.createSignedRequest(aidName, url, req);
   const resp = await fetch(url, sreq);
