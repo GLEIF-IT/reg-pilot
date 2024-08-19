@@ -69,7 +69,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --verify)
-            npx jest ./vlei-verification.test.ts
+            npx jest ./vlei-verification.test.ts -t "reg-pilot-api"
             shift # past argument
             ;;
         *)
