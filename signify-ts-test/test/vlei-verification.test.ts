@@ -248,7 +248,7 @@ test("reg-pilot-api", async function run() {
       await checkFailUpload(failUpResp, failReport, failZipDig);
     }
   }
-},100000);
+}, 100000);
 
 export async function getGrantedCredential(
   client: SignifyClient,
@@ -449,7 +449,7 @@ async function checkFailUpload(
   const failUpBody = await failUpResp.json();
   assert.equal(failUpBody["status"], "failed");
   assert.equal(failUpBody["submitter"], `${ecrAid.prefix}`);
-  expect(failUpBody["message"]).toMatch(new RegExp((`${failMessage}`)));
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
   assert.equal(failUpBody["contentType"], "application/zip");
   assert.equal(failUpBody["size"] > 3000, true);
 

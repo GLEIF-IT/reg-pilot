@@ -175,26 +175,28 @@ export function resolveEnvironment(
         secrets: providedSecrets.split(","),
       };
       break;
-      case "nordlei_dry":
-        env = {
-          preset: preset,
-          url: process.env.KERIA || "https://testbank.wallet.dryrun.vlei.dev",
-          bootUrl: process.env.KERIA_BOOT || "https://testbank.wallet.dryrun.vlei.dev/boot",
-          witnessUrls: process.env.WITNESS_URLS?.split(",") || [
-            "https://william.witness.dryrun.vlei.dev/oobi",
-          ],
-          witnessIds: process.env.WITNESS_IDS?.split(",") || [
-            "BFEr4VPW1B2oWwlNG3rjwe2c-eyXbtqqJds88bDnFGNk",
-          ],
-          vleiServerUrl:
-            process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
-          apiBaseUrl:
-            process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
-          verifierBaseUrl:
-            process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-          roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
-          secrets: providedSecrets.split(","),
-        };
+    case "nordlei_dry":
+      env = {
+        preset: preset,
+        url: process.env.KERIA || "https://testbank.wallet.dryrun.vlei.dev",
+        bootUrl:
+          process.env.KERIA_BOOT ||
+          "https://testbank.wallet.dryrun.vlei.dev/boot",
+        witnessUrls: process.env.WITNESS_URLS?.split(",") || [
+          "https://william.witness.dryrun.vlei.dev/oobi",
+        ],
+        witnessIds: process.env.WITNESS_IDS?.split(",") || [
+          "BFEr4VPW1B2oWwlNG3rjwe2c-eyXbtqqJds88bDnFGNk",
+        ],
+        vleiServerUrl:
+          process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
+        apiBaseUrl:
+          process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        verifierBaseUrl:
+          process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
+        roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
+        secrets: providedSecrets.split(","),
+      };
       break;
     default:
       throw new Error(`Unknown test environment preset '${preset}'`);
