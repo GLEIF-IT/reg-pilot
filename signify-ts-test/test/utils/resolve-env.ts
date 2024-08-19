@@ -85,7 +85,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-dev.rootsid.cloud/doc#/",
+          "https://reg-api-dev.rootsid.cloud/docs/",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -109,7 +109,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-demoservice.rootsid.cloud/doc#/",
+          "https://reg-api-test.rootsid.cloud/docs/",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
