@@ -6,7 +6,8 @@ export type TestEnvironmentPreset =
   | "rootsid_dev"
   | "rootsid_test"
   | "nordlei_dev"
-  | "nordlei_demo";
+  | "nordlei_demo"
+  | "nordlei_dry";
 
 export interface TestEnvironment {
   preset: TestEnvironmentPreset;
@@ -85,7 +86,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-dev.rootsid.cloud/doc#/",
+          "https://reg-api-dev.rootsid.cloud/docs/",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -109,7 +110,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-demoservice.rootsid.cloud/doc#/",
+          "https://reg-api-test.rootsid.cloud/docs/",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -122,18 +123,18 @@ export function resolveEnvironment(
         url: process.env.KERIA || "https://demo.wallet.vlei.tech",
         bootUrl: process.env.KERIA_BOOT || "https://demo.wallet.vlei.tech/boot", // must request access
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [
-          "https://william.witness.vlei.io/oobi",
-          "https://wesley.witness.vlei.io/oobi",
-          "https://whitney.witness.vlei.io/oobi",
-          "https://wilma.witness.vlei.io/oobi",
-          "https://wilbur.witness.vlei.io/oobi",
+          "https://william.witness.vlei.tech/oobi",
+          "https://wesley.witness.vlei.tech/oobi",
+          "https://whitney.witness.vlei.tech/oobi",
+          "https://wilma.witness.vlei.tech/oobi",
+          "https://wilbur.witness.vlei.tech/oobi",
         ],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [
-          "BB6_wAm4rtFPRFg1qJHbC1RWNcRKMth2sFw6MgSqFKg_",
-          "BGJvFwob-UV5J1vSbuCroz27k4FGaZE992K4sc79cD54",
-          "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
-          "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
-          "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ",
+          "BMn9DacVHdgg66ukO0fYwQx1IV5hCchPd7Gb5zCCQYsv",
+          "BGNpoM1a8VMMJEZC8DKgiyEsTTviWkgQ6e4f6rRFkoxV",
+          "BLiMaTh2Mr540wD6FynMc3SaAtHhjOTJfO_j-1E7WwC2",
+          "BFX3CtauhMYyLOxX44q4yzQfwd4ekmBWF1oteXx8iiWn",
+          "BOwl2CUm-5nvVy8krTlSxzHkcQSBAXHYz412Cl-e20xS",
         ],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
@@ -163,6 +164,29 @@ export function resolveEnvironment(
           "BMMOAZ4Ujv0jP3VhCAHmx9yTSBoP1sAoDjFXas14JYG-",
           "BIrxc3loHN4kQ2HN8Ev-bisMBZzkdfXQdwl4KKdy2iZh",
           "BDTChgVW3pAxkYCYDVWV9DQYu_FTZ8laD-WhpFHvY9SQ",
+        ],
+        vleiServerUrl:
+          process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
+        apiBaseUrl:
+          process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        verifierBaseUrl:
+          process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
+        roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
+        secrets: providedSecrets.split(","),
+      };
+      break;
+    case "nordlei_dry":
+      env = {
+        preset: preset,
+        url: process.env.KERIA || "https://testbank.wallet.dryrun.vlei.dev",
+        bootUrl:
+          process.env.KERIA_BOOT ||
+          "https://testbank.wallet.dryrun.vlei.dev/boot",
+        witnessUrls: process.env.WITNESS_URLS?.split(",") || [
+          "https://william.witness.dryrun.vlei.dev/oobi",
+        ],
+        witnessIds: process.env.WITNESS_IDS?.split(",") || [
+          "BFEr4VPW1B2oWwlNG3rjwe2c-eyXbtqqJds88bDnFGNk",
         ],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",

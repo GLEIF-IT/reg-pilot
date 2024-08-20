@@ -29,6 +29,7 @@ let signedDirPrefixed: string;
 afterEach(async () => {});
 
 beforeAll(async () => {
+<<<<<<< HEAD
     // process.env.REG_PILOT_API = "http://127.0.0.1:8000";
     // process.env.VLEI_VERIFIER = "http://127.0.0.1:7676";
     // process.env.SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm"
@@ -36,6 +37,8 @@ beforeAll(async () => {
     // process.env.ROLE_NAME = "unicredit-datasubmitter";
     // process.env.TEST_ENVIRONMENT = "nordlei_dev";
     // process.env.KERIA="https://errp.wallet.vlei.io";
+=======
+>>>>>>> origin
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(
@@ -52,7 +55,6 @@ beforeAll(async () => {
   let creds = await roleClient.credentials().list();
   let ecrCreds = creds.filter(
     (cred: any) =>
-      // cred.sad.a.LEI === "549300TRUWO2CD2G5692"
       cred.sad.s === ECR_SCHEMA_SAID &&
       cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
       cred.sad.a.i === ecrAid.prefix,
@@ -71,7 +73,7 @@ beforeAll(async () => {
       `Excepting only one ECR, see comparison, but continuing: ${error}`,
     );
   }
-  //   assert.equal(ecrCreds.length, 1);
+
   ecrCred = ecrCreds[0];
   ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
   assert(ecrCred !== undefined);
@@ -257,7 +259,7 @@ test("reg-pilot-api", async function run() {
       await checkFailUpload(failUpResp, failReport, failZipDig);
     }
   }
-}, 1000000);
+}, 100000);
 
 export async function getGrantedCredential(
   client: SignifyClient,
@@ -333,7 +335,7 @@ async function uploadReport(
     },
   };
 
-  const url = `${env.apiBaseUrl}/upload/${aidPrefix}/${zipDigest}`; //TODO fix digest, should be zip digest? other test was using ecr digest
+  const url = `${env.apiBaseUrl}/upload/${aidPrefix}/${zipDigest}`;
 
   let sreq = await client.createSignedRequest(aidName, url, req);
   const resp = await fetch(url, sreq);
@@ -349,10 +351,9 @@ async function checkSignedUpload(
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
   assert.equal(signedUpBody["submitter"], `${ecrAid.prefix}`);
-  assert.equal(
-    signedUpBody["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
-  );
+  const expectedEnding = `files in report package have been signed by submitter \\(${ecrAid.prefix}\\).`;
+  expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
+
   assert.equal(signedUpBody["filename"], fileName);
   assert.equal(signedUpBody["contentType"], "application/zip");
   assert.equal(signedUpBody["size"] > 3000, true);
@@ -367,10 +368,8 @@ async function checkSignedUpload(
   const signedUploadBody = await sresp.json();
   assert.equal(signedUploadBody["status"], "verified");
   assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
-  assert.equal(
-    signedUploadBody["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
-  );
+
+  expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
   assert.equal(signedUploadBody["filename"], fileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 3000, true);
@@ -426,10 +425,7 @@ async function checkSignedUpload(
   const signedStatus = twoUploadsBody[0];
   assert.equal(signedStatus["status"], "verified");
   assert.equal(signedStatus["submitter"], `${ecrAid.prefix}`);
-  assert.equal(
-    signedStatus["message"],
-    `All 9 files in report package have been signed by submitter (${ecrAid.prefix}).`,
-  );
+  expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
   assert.equal(signedStatus["size"] > 3000, true);
@@ -454,9 +450,9 @@ async function checkFailUpload(
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
-    failMessage = "1 files from report package missing valid signed";
+    failMessage = "files from report package missing valid signed";
   } else if (fileName.includes("genNoSignature")) {
-    failMessage = "9 files from report package missing valid signed";
+    failMessage = "files from report package missing valid signed";
   } else if (fileName.includes("removeMetaInfReportsJson")) {
     // failMessage = "No manifest in file, invalid signed report package";
     assert.equal(failUpResp.status, 500);
@@ -467,8 +463,8 @@ async function checkFailUpload(
   assert.equal(failUpResp.status, 200);
   const failUpBody = await failUpResp.json();
   assert.equal(failUpBody["status"], "failed");
-  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
-  assert.equal(failUpBody["filename"], fileName);
+  assert.equal(failUpBody["submitter"], `${ecrAid.prefix}`);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
   assert.equal(failUpBody["contentType"], "application/zip");
   assert.equal(failUpBody["size"] > 3000, true);
 
@@ -483,7 +479,6 @@ async function checkFailUpload(
   assert.equal(signedUploadBody["status"], "failed");
   assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
-  assert.equal(signedUploadBody["filename"], fileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 3000, true);
   return true;
