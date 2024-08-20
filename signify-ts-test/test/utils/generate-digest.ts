@@ -2,7 +2,8 @@ import { createHash } from 'crypto';
 import JSZip from "jszip";
 
 
-export function generateFileDigest(buffer: Buffer, algo: string): string {
+export function generateFileDigest(buffer: Buffer): string {
+    const algo = 'sha256';
     const digest = Buffer.from(
         hash(buffer, algo),
     );  

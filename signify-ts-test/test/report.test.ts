@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
-import {generateFileDigest} from "./utils/generate-digest"
+import { generateFileDigest } from "./utils/generate-digest"
 import { getOrCreateClients } from "./utils/test-util";
 import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
@@ -71,6 +71,9 @@ test("report-generation-test", async function run() {
   if (signedSuccess) {
     deleteReportsDir(tempDir);
     createReportsDir(tempDir);
+    assert.equal(await updateUnknownReport(), true);
+    deleteReportsDir(tempDir);
+    createReportsDir(tempDir);
     deleteReportsDir(failDirPrefixed);
     assert.equal(await createFailReports(), true);
   }
@@ -97,13 +100,36 @@ async function createSignedReports(): Promise<boolean> {
     //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
 
     await signReport(fullTemp, roleClient);
-
+    await addDigestsToReport(fullTemp);
     const fileExtension = path.extname(file);
     const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
     const repPath = path.join(signedDirPrefixed, shortFileName);
     transferTempToZip(fullTemp, repPath);
   }
   // }
+  return true;
+}
+
+async function updateUnknownReport(): Promise<boolean> {
+  console.log("Updating unknown report");
+  
+  const unknownReportsDir = path.join(__dirname, "data", "unknown_reports");
+  const reports = fs.readdirSync(unknownReportsDir);
+  
+  const file = reports[0];
+  const filePath = path.join(unknownReportsDir, file);
+  const fileName = path.basename(file, path.extname(file));
+  if (fs.lstatSync(filePath).isFile()) {    
+    const zip = new AdmZip(filePath);
+    const fullTemp = path.join(__dirname, tempDir);
+
+    zip.extractAllTo(fullTemp, true);    
+    await addDigestsToReport(fullTemp);
+    const fileExtension = path.extname(file);
+    const shortFileName = `report.zip`;
+    const repPath = path.join(unknownReportsDir, shortFileName);
+    transferTempToZip(fullTemp, repPath);
+  }
   return true;
 }
 
@@ -127,7 +153,7 @@ async function createFailReports(): Promise<boolean> {
 
       for (const failFunc of failFuncs) {
         zip.extractAllTo(fullTemp, true);
-
+        await addDigestsToReport(fullTemp);
         const signedReps = fs.readdirSync(fullTemp);
 
         for (const signedRepDir of signedReps) {
@@ -314,6 +340,48 @@ async function signReport(
   throw new Error(`Failed to create signed reports in ${tempDir} ${dirs}`);
 }
 
+
+async function addDigestsToReport(
+  tempDir: string
+): Promise<boolean> {
+  const dirs: string[] = await listDirectories(tempDir);
+
+  for (const dir of dirs) {
+    const repDirPath = path.join(tempDir, dir);    
+    const repDirs: string[] = await listDirectories(repDirPath);
+    if (repDirs.includes("META-INF") && repDirs.includes("reports")) { 
+      const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
+      const data = await fs.promises.readFile(manifestPath, "utf-8");
+      let manifest = JSON.parse(data);
+      const digests: Digest[] = [];
+      const reportsDir = path.join(repDirPath, "reports");
+      const reportEntries = await fs.promises.readdir(reportsDir, {
+        withFileTypes: true,
+      });
+
+      for (const reportEntry of reportEntries) {
+        const reportPath = path.join(reportsDir, reportEntry.name);       
+        const buffer = await fs.promises.readFile(reportPath);            
+        const dig = generateFileDigest(buffer);
+        digests.push({
+          file: `../reports/${reportEntry.name}`,          
+          dig: dig,
+        });
+      }
+
+      manifest.documentInfo.digests = digests;
+      await fs.promises.writeFile(
+        manifestPath,
+        JSON.stringify(manifest, null, 2),
+      );
+      return true;
+    } else {
+      throw new Error("Missing META-INF and/or reports directory in " + dir);
+    }
+  }
+  throw new Error(`Failed to create signed reports in ${tempDir} ${dirs}`);
+}
+
 // Function to create a zip file from a temporary directory
 function transferTempToZip(tempDir: string, filePath: string) {
   const zip = new AdmZip();
@@ -353,4 +421,9 @@ interface DocumentInfo {
 
 interface Manifest {
   documentInfo: DocumentInfo;
+}
+
+interface Digest {
+  file: string;
+  dig: string;
 }

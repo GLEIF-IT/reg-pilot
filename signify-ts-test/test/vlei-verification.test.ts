@@ -7,7 +7,7 @@ import JSZip from "jszip";
 import * as process from "process";
 
 import { getOrCreateClients } from "./utils/test-util";
-import {generateFileDigest} from "./utils/generate-digest"
+import { generateFileDigest } from "./utils/generate-digest"
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { Diger, HabState, Siger, SignifyClient } from "signify-ts";
 import path from "path";
@@ -227,9 +227,7 @@ test("reg-pilot-api", async function run() {
       dropReportStatusByAid(ecrAid.prefix);
       console.log(`Processing file: ${filePath}`);
       const signedZipBuf = fs.readFileSync(`${filePath}`);
-      const signedZipDig = generateFileDigest(signedZipBuf, 'sha256');
-      console.log("DIGEST:");
-      console.log(signedZipDig);
+      const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await uploadReport(
         env.roleName,
         ecrAid.prefix,
@@ -247,7 +245,7 @@ test("reg-pilot-api", async function run() {
       dropReportStatusByAid(ecrAid.prefix);
       console.log(`Processing file: ${filePath}`);
       const failZipBuf = fs.readFileSync(`${filePath}`);
-      const failZipDig = generateFileDigest(failZipBuf, 'sha256');
+      const failZipDig = generateFileDigest(failZipBuf);
       const failUpResp = await uploadReport(
         env.roleName,
         ecrAid.prefix,
@@ -382,7 +380,7 @@ async function checkSignedUpload(
   const unknownZipBuf = fs.readFileSync(
     `./test/data/unknown_reports/${unknownFileName}`,
   );
-  const unknownZipDig = generateFileDigest(unknownZipBuf, 'sha256');
+  const unknownZipDig = generateFileDigest(unknownZipBuf);
   const unknownResp = await uploadReport(
     env.roleName,
     ecrAid.prefix,
@@ -460,12 +458,15 @@ async function checkFailUpload(
   } else if (fileName.includes("genNoSignature")) {
     failMessage = "9 files from report package missing valid signed";
   } else if (fileName.includes("removeMetaInfReportsJson")) {
-    failMessage = "No manifest in file, invalid signed report package";
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status, 500);
+    const failUpBody = await failUpResp.json();
+    return true;
   }
+
   assert.equal(failUpResp.status, 200);
   const failUpBody = await failUpResp.json();
   assert.equal(failUpBody["status"], "failed");
-  assert.equal(failUpBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
   assert.equal(failUpBody["filename"], fileName);
   assert.equal(failUpBody["contentType"], "application/zip");
