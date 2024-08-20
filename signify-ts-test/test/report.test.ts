@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
-import { generateFileDigest } from "./utils/generate-digest"
+import { generateFileDigest } from "./utils/generate-digest";
 import { getOrCreateClients } from "./utils/test-util";
 import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
@@ -112,18 +112,18 @@ async function createSignedReports(): Promise<boolean> {
 
 async function updateUnknownReport(): Promise<boolean> {
   console.log("Updating unknown report");
-  
+
   const unknownReportsDir = path.join(__dirname, "data", "unknown_reports");
   const reports = fs.readdirSync(unknownReportsDir);
-  
+
   const file = reports[0];
   const filePath = path.join(unknownReportsDir, file);
   const fileName = path.basename(file, path.extname(file));
-  if (fs.lstatSync(filePath).isFile()) {    
+  if (fs.lstatSync(filePath).isFile()) {
     const zip = new AdmZip(filePath);
     const fullTemp = path.join(__dirname, tempDir);
 
-    zip.extractAllTo(fullTemp, true);    
+    zip.extractAllTo(fullTemp, true);
     await addDigestsToReport(fullTemp);
     const fileExtension = path.extname(file);
     const shortFileName = `report.zip`;
@@ -340,16 +340,13 @@ async function signReport(
   throw new Error(`Failed to create signed reports in ${tempDir} ${dirs}`);
 }
 
-
-async function addDigestsToReport(
-  tempDir: string
-): Promise<boolean> {
+async function addDigestsToReport(tempDir: string): Promise<boolean> {
   const dirs: string[] = await listDirectories(tempDir);
 
   for (const dir of dirs) {
-    const repDirPath = path.join(tempDir, dir);    
+    const repDirPath = path.join(tempDir, dir);
     const repDirs: string[] = await listDirectories(repDirPath);
-    if (repDirs.includes("META-INF") && repDirs.includes("reports")) { 
+    if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
       const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
       const data = await fs.promises.readFile(manifestPath, "utf-8");
       let manifest = JSON.parse(data);
@@ -360,11 +357,11 @@ async function addDigestsToReport(
       });
 
       for (const reportEntry of reportEntries) {
-        const reportPath = path.join(reportsDir, reportEntry.name);       
-        const buffer = await fs.promises.readFile(reportPath);            
+        const reportPath = path.join(reportsDir, reportEntry.name);
+        const buffer = await fs.promises.readFile(reportPath);
         const dig = generateFileDigest(buffer);
         digests.push({
-          file: `../reports/${reportEntry.name}`,          
+          file: `../reports/${reportEntry.name}`,
           dig: dig,
         });
       }
