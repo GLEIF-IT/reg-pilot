@@ -292,7 +292,6 @@ test("reg-pilot-api", async function run() {
       await checkNonPrefixedDigestUpload(badDigestUpResp);
     }
   }
-
 }, 100000);
 
 export async function getGrantedCredential(
@@ -520,24 +519,20 @@ async function checkFailUpload(
 
 async function checkBadDigestUpload(
   badDigestUpResp: Response,
-): Promise<boolean> {  
-
+): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
   assert.equal(badDigestUpBody, "Report digest verification failed");
-  
-  
+
   return true;
 }
 
 async function checkNonPrefixedDigestUpload(
   badDigestUpResp: Response,
-): Promise<boolean> {  
-
+): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
   assert.equal(badDigestUpBody.includes("must start with prefix"), true);
-  
-  
+
   return true;
 }
