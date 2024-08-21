@@ -213,6 +213,7 @@ test("reg-pilot-api", async function run() {
   const reports = fs.readdirSync(signedDirPrefixed);
   const failReports = fs.readdirSync(failDirPrefixed);
 
+  // Check signed reports
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
@@ -231,6 +232,8 @@ test("reg-pilot-api", async function run() {
       await checkSignedUpload(signedUpResp, signedReport, signedZipDig);
     }
   }
+
+  // Check fail reports
   for (const failReport of failReports) {
     const filePath = path.join(failDirPrefixed, failReport);
     if (fs.lstatSync(filePath).isFile()) {
@@ -249,6 +252,47 @@ test("reg-pilot-api", async function run() {
       await checkFailUpload(failUpResp, failReport, failZipDig);
     }
   }
+
+  // Check reports with bad digest
+  for (const signedReport of reports) {
+    const filePath = path.join(signedDirPrefixed, signedReport);
+    if (fs.lstatSync(filePath).isFile()) {
+      dropReportStatusByAid(ecrAid.prefix);
+      console.log(`Processing file: ${filePath}`);
+      const badDigestZipBuf = fs.readFileSync(`${filePath}`);
+      const badDigestZipDig = "sha256_f5eg8fhaFybddaNOUHNU87Bdndfawf";
+      const badDigestUpResp = await uploadReport(
+        env.roleName,
+        ecrAid.prefix,
+        signedReport,
+        badDigestZipBuf,
+        badDigestZipDig,
+        roleClient,
+      );
+      await checkBadDigestUpload(badDigestUpResp);
+    }
+  }
+
+  // Check reports with not prefixed digest
+  for (const signedReport of reports) {
+    const filePath = path.join(signedDirPrefixed, signedReport);
+    if (fs.lstatSync(filePath).isFile()) {
+      dropReportStatusByAid(ecrAid.prefix);
+      console.log(`Processing file: ${filePath}`);
+      const badDigestZipBuf = fs.readFileSync(`${filePath}`);
+      const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
+      const badDigestUpResp = await uploadReport(
+        env.roleName,
+        ecrAid.prefix,
+        signedReport,
+        badDigestZipBuf,
+        badDigestZipDig,
+        roleClient,
+      );
+      await checkNonPrefixedDigestUpload(badDigestUpResp);
+    }
+  }
+
 }, 100000);
 
 export async function getGrantedCredential(
@@ -474,11 +518,26 @@ async function checkFailUpload(
   return true;
 }
 
-function getFileDigest(buffer: Buffer): string {
-  const digest = Buffer.from(
-    blake3.create({ dkLen: 32 }).update(buffer).digest(),
-  );
+async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {  
 
-  const diger = new Diger({ raw: digest });
-  return diger.qb64;
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+  
+  
+  return true;
+}
+
+async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {  
+
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+  
+  
+  return true;
 }
