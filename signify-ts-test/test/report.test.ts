@@ -296,15 +296,15 @@ async function signReport(
       } else {
         continue;
       }
-      
+
       const signatures: Signature[] = manifest.documentInfo.signatures || [];
       const reportsDir = path.join(repDirPath, "reports");
       const digests = manifest.documentInfo.digests;
 
-      for (const digest of digests) {       
+      for (const digest of digests) {
         const fileName = digest.file;
         const dig = digest.dig;
-        const nonPrefixedDigest = dig.split("_", 2)[1]
+        const nonPrefixedDigest = dig.split("_", 2)[1];
         console.log(nonPrefixedDigest);
         const sig = signer.sign(nonPrefixedDigest, 0);
         const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
