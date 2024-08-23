@@ -99,8 +99,8 @@ async function createSignedReports(): Promise<boolean> {
     //   const tempUnzipDir = path.join(tempDir,fileName);
     //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
 
-    await signReport(fullTemp, roleClient);
     await addDigestsToReport(fullTemp);
+    await signReport(fullTemp, roleClient);
     const fileExtension = path.extname(file);
     const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
     const repPath = path.join(signedDirPrefixed, shortFileName);
@@ -294,34 +294,25 @@ async function signReport(
         const data = await fs.promises.readFile(manifestPath, "utf-8");
         manifest = JSON.parse(data);
       } else {
-        manifest = { documentInfo: {} };
+        continue;
       }
 
       const signatures: Signature[] = manifest.documentInfo.signatures || [];
       const reportsDir = path.join(repDirPath, "reports");
-      const reportEntries = await fs.promises.readdir(reportsDir, {
-        withFileTypes: true,
-      });
+      const digests = manifest.documentInfo.digests;
 
-      for (const reportEntry of reportEntries) {
-        const reportPath = path.join(reportsDir, reportEntry.name);
-        // let contents = await fs.promises.readFile(reportPath, "utf-8");
-        // remove windows line endings
-        // const normContents = contents.replace(/\r\n/g, "\n");
-        // Convert the string content to Uint8Array
-        // const encoder = new TextEncoder();
-        // const ser = encoder.encode(contents);
-        const buffer = await fs.promises.readFile(reportPath);
-        // Convert the Buffer to a Uint8Array
-        const uint8Array = new Uint8Array(buffer);
-
-        const sig = signer.sign(uint8Array, 0);
-
-        const result = signer.verfer.verify(sig.raw, uint8Array);
+      for (const digest of digests) {
+        const fileName = digest.file;
+        const dig = digest.dig;
+        const nonPrefixedDigest = dig.split("_", 2)[1];
+        console.log(nonPrefixedDigest);
+        const sig = signer.sign(nonPrefixedDigest, 0);
+        const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
         assert.equal(result, true);
 
         signatures.push({
-          file: `../reports/${reportEntry.name}`,
+          file: fileName,
+          dig: dig,
           aid: ecrAid.prefix,
           sigs: [sig.qb64],
         });
@@ -406,6 +397,7 @@ function transferTempToZip(tempDir: string, filePath: string) {
 
 interface Signature {
   file: string;
+  dig: string;
   aid: string;
   sigs: string[];
 }
