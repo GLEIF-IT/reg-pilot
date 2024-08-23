@@ -39,9 +39,12 @@ export async function admitSinglesig(
 ) {
   const grantMsgSaid = await waitAndMarkNotification(client, "/exn/ipex/grant");
 
-  const [admit, sigs, aend] = await client
-    .ipex()
-    .admit(aidName, "", grantMsgSaid);
+  const [admit, sigs, aend] = await client.ipex().admit({
+    senderName: aidName,
+    message: '',
+    grantSaid: grantMsgSaid,
+    recipient: recipientAid.prefix,
+  });
 
   await client
     .ipex()
