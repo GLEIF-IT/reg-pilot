@@ -75,7 +75,7 @@ services:
       - 5644:5644
 
   reg-pilot-api:
-    image: 2byrds/reg-pilot-api:latest
+    image: gleif/reg-pilot-api:dev
     ports:
       - 8000:8000
     environment:
@@ -96,7 +96,7 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: 2byrds/vlei-verifier:latest
+    image: gleif/vlei-verifier:dev
     container_name: vlei-verifier
     hostname: vlei-verifier
     depends_on:
