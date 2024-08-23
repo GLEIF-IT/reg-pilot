@@ -75,7 +75,7 @@ services:
       - 5644:5644
 
   reg-pilot-api:
-    image: 2byrds/reg-pilot-api:latest
+    image: gleif/reg-pilot-api:dev
     ports:
       - 8000:8000
     environment:
@@ -85,18 +85,14 @@ services:
       - VERIFIER_REPORTS=http://vlei-verifier:7676/reports/
       - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:8000/ping
+      test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
       timeout: 3s
       retries: 5
       start_period: 2s
 
   vlei-verifier:
-    image: 2byrds/vlei-verifier:latest
+    image: gleif/vlei-verifier:dev
     container_name: vlei-verifier
     hostname: vlei-verifier
     depends_on:
@@ -105,11 +101,7 @@ services:
     ports:
       - 7676:7676
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:7676/health
+      test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
       interval: 2s
       timeout: 3s
       retries: 5

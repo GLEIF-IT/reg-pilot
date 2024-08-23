@@ -3,8 +3,8 @@ Reg-pilot related information, issues, discussions, and more.
 
 ## Development repos and docker images
 * [reg-webapp github](https://github.com/GLEIF-IT/reg-pilot-webapp) and [reg-webapp docker](https://hub.docker.com/r/2byrds/reg-webapp/tags) development images
-* [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and development [reg-pilot-api docker](https://hub.docker.com/r/2byrds/reg-pilot-api/tags) development images
-* [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and development [vlei-verifier docker](https://hub.docker.com/r/2byrds/vlei-verifier/tags) development images
+* [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and development [reg-pilot-api docker](https://hub.docker.com/r/gleif/reg-pilot-api/tags) development images
+* [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and development [vlei-verifier docker](https://hub.docker.com/r/gleif/vlei-verifier/tags) development images
 
 ## Demo test instances
 * Demo keria instance url = ```https://keria-dev.rootsid.cloud/admin``` and boot url = ```https://keria-dev.rootsid.cloud```
