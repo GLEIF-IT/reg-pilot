@@ -527,7 +527,7 @@ async function sendAdmitMessage(
 
   const [admit, sigs, aend] = await senderClient.ipex().admit({
     senderName: senderAid.name,
-    message: "",
+    message: '',
     grantSaid: grantNotification.a.d!,
     recipient: recipientAid.prefix,
     datetime: createTimestamp(),
