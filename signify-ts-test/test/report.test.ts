@@ -23,6 +23,11 @@ afterAll(async () => {
 });
 
 beforeAll(async () => {
+  // process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
+  // process.env.TEST_ENVIRONMENT = "nordlei_demo";
+  // process.env.ROLE_NAME = "unicredit-datasubmitter";
+  // process.env.REG_PILOT_API = "https://reg-api-dev.rootsid.cloud";
+
   env = resolveEnvironment();
 
   const clients = await getOrCreateClients(
@@ -94,17 +99,28 @@ async function createSignedReports(): Promise<boolean> {
     //   console.log(`Processing file: ${filePath}`);
     const zip = new AdmZip(filePath);
     const fullTemp = path.join(__dirname, tempDir);
-
+    fsExtra.removeSync(fullTemp);
     zip.extractAllTo(fullTemp, true);
     //   const tempUnzipDir = path.join(tempDir,fileName);
     //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
 
     await addDigestsToReport(fullTemp);
+
+    //generate foldered zip, like older xbrl spec
     await signReport(fullTemp, roleClient);
     const fileExtension = path.extname(file);
     const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
     const repPath = path.join(signedDirPrefixed, shortFileName);
-    transferTempToZip(fullTemp, repPath);
+    await transferTempToZip(fullTemp, repPath);
+
+    const unfolderedShortFileName = `unfoldered_signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
+    const unfolderedRepPath = path.join(
+      signedDirPrefixed,
+      unfolderedShortFileName,
+    );
+    await transferTempToZip(fullTemp, unfolderedRepPath, false);
+
+    fsExtra.removeSync(fullTemp);
   }
   // }
   return true;
@@ -122,13 +138,15 @@ async function updateUnknownReport(): Promise<boolean> {
   if (fs.lstatSync(filePath).isFile()) {
     const zip = new AdmZip(filePath);
     const fullTemp = path.join(__dirname, tempDir);
-
+    fsExtra.removeSync(fullTemp);
     zip.extractAllTo(fullTemp, true);
     await addDigestsToReport(fullTemp);
     const fileExtension = path.extname(file);
     const shortFileName = `report.zip`;
     const repPath = path.join(unknownReportsDir, shortFileName);
-    transferTempToZip(fullTemp, repPath);
+    await transferTempToZip(fullTemp, repPath);
+
+    fsExtra.removeSync(fullTemp);
   }
   return true;
 }
@@ -150,7 +168,7 @@ async function createFailReports(): Promise<boolean> {
       console.log(`Processing file: ${filePath}`);
       const zip = new AdmZip(filePath);
       const fullTemp = path.join(__dirname, tempDir);
-
+      fsExtra.removeSync(fullTemp);
       for (const failFunc of failFuncs) {
         zip.extractAllTo(fullTemp, true);
         await addDigestsToReport(fullTemp);
@@ -164,7 +182,8 @@ async function createFailReports(): Promise<boolean> {
           const fileExtension = path.extname(file);
           const shortFileName = `${failFunc.name}_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
           const repPath = path.join(failDirPrefixed, shortFileName);
-          transferTempToZip(fullTemp, repPath);
+          await transferTempToZip(fullTemp, repPath);
+          fsExtra.removeSync(fullTemp);
         }
       }
       return true;
@@ -371,11 +390,34 @@ async function addDigestsToReport(tempDir: string): Promise<boolean> {
 }
 
 // Function to create a zip file from a temporary directory
-function transferTempToZip(tempDir: string, filePath: string) {
-  const zip = new AdmZip();
+async function transferTempToZip(
+  tempDir: string,
+  filePath: string,
+  foldered: boolean = true,
+) {
+  const zipFoldered = new AdmZip();
 
   // Add the contents of the tempDir to the zip file
-  zip.addLocalFolder(tempDir);
+  if (foldered) {
+    zipFoldered.addLocalFolder(tempDir);
+  } else {
+    const dirs: string[] = await listDirectories(tempDir);
+    let found = false;
+    for (const dir of dirs) {
+      const repDirPath = path.join(tempDir, dir);
+      // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
+      const repDirs: string[] = await listDirectories(repDirPath);
+      if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
+        zipFoldered.addLocalFolder(repDirPath);
+        found = true;
+      }
+    }
+    if (!found) {
+      throw new Error(
+        "No sub-dir with META-INF and reports directory found in " + tempDir,
+      );
+    }
+  }
 
   // Ensure the output directory exists
   if (!fs.existsSync(path.dirname(filePath))) {
@@ -383,7 +425,7 @@ function transferTempToZip(tempDir: string, filePath: string) {
   }
 
   // Write the zip file to the desired file path
-  zip.writeZip(filePath);
+  zipFoldered.writeZip(filePath);
 
   // Assert that the filePath exists
   if (!fs.existsSync(filePath)) {
@@ -391,7 +433,7 @@ function transferTempToZip(tempDir: string, filePath: string) {
   }
 
   // Remove the temporary directory
-  fsExtra.removeSync(tempDir);
+  // fsExtra.removeSync(temp);
   //   console.log("Cleaning up temporary directory", tempDir);
 }
 
