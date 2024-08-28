@@ -11,6 +11,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 let env: TestEnvironment;
 let ecrAid: HabState;
 let roleClient: SignifyClient;
+let keeper: signify.Keeper;
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -36,8 +37,8 @@ beforeAll(async () => {
     true,
   );
   roleClient = clients[clients.length - 1];
-
   ecrAid = await roleClient.identifiers().get(env.roleName);
+  keeper = roleClient.manager!.get(ecrAid);
   failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
   signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
 });
@@ -91,38 +92,43 @@ async function createSignedReports(): Promise<boolean> {
   const origReportsDir = path.join(__dirname, "data", "orig_reports");
   const reports = fs.readdirSync(origReportsDir);
 
-  // for (const file of reports) {
-  const file = reports[0];
-  const filePath = path.join(origReportsDir, file);
-  const fileName = path.basename(file, path.extname(file));
-  if (fs.lstatSync(filePath).isFile()) {
-    //   console.log(`Processing file: ${filePath}`);
-    const zip = new AdmZip(filePath);
-    const fullTemp = path.join(__dirname, tempDir);
-    fsExtra.removeSync(fullTemp);
-    zip.extractAllTo(fullTemp, true);
-    //   const tempUnzipDir = path.join(tempDir,fileName);
-    //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
+  for (const file of reports) {
+    // const file = reports[0];
+    const filePath = path.join(origReportsDir, file);
+    const fileName = path.basename(file, path.extname(file));
+    if (fs.lstatSync(filePath).isFile()) {
+      //   console.log(`Processing file: ${filePath}`);
+      const zip = new AdmZip(filePath);
+      const fullTemp = path.join(__dirname, tempDir);
+      fsExtra.emptyDirSync(fullTemp);
+      zip.extractAllTo(fullTemp, true);
+      //   const tempUnzipDir = path.join(tempDir,fileName);
+      //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
 
-    await addDigestsToReport(fullTemp);
+      const repDirPath = await getRepPath(fullTemp)
 
-    //generate foldered zip, like older xbrl spec
-    await signReport(fullTemp, roleClient);
-    const fileExtension = path.extname(file);
-    const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
-    const repPath = path.join(signedDirPrefixed, shortFileName);
-    await transferTempToZip(fullTemp, repPath);
+      const digested: boolean = await addDigestsToReport(repDirPath);
+      if (digested) {
+        //generate foldered zip, like older xbrl spec
+        await signReport(repDirPath, keeper);
+        const fileExtension = path.extname(file);
+        const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
+        const repPath = path.join(signedDirPrefixed, shortFileName);
+        console.log("Creating unfoldered signed report " + repPath);
+        await transferTempToZip(fullTemp, repPath);
 
-    const unfolderedShortFileName = `unfoldered_signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
-    const unfolderedRepPath = path.join(
-      signedDirPrefixed,
-      unfolderedShortFileName,
-    );
-    await transferTempToZip(fullTemp, unfolderedRepPath, false);
+        const unfolderedShortFileName = `unfoldered_signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
+        const unfolderedRepPath = path.join(
+          signedDirPrefixed,
+          unfolderedShortFileName,
+        );
+        console.log("Creating unfoldered signed report " + unfolderedRepPath);
+        await transferTempToZip(fullTemp, unfolderedRepPath, false);
+      }
 
-    fsExtra.removeSync(fullTemp);
+      fsExtra.emptyDirSync(fullTemp);
+    }
   }
-  // }
   return true;
 }
 
@@ -137,16 +143,20 @@ async function updateUnknownReport(): Promise<boolean> {
   const fileName = path.basename(file, path.extname(file));
   if (fs.lstatSync(filePath).isFile()) {
     const zip = new AdmZip(filePath);
-    const fullTemp = path.join(__dirname, tempDir);
-    fsExtra.removeSync(fullTemp);
-    zip.extractAllTo(fullTemp, true);
-    await addDigestsToReport(fullTemp);
-    const fileExtension = path.extname(file);
-    const shortFileName = `report.zip`;
-    const repPath = path.join(unknownReportsDir, shortFileName);
-    await transferTempToZip(fullTemp, repPath);
 
-    fsExtra.removeSync(fullTemp);
+    const fullTemp = path.join(__dirname, tempDir);
+    fsExtra.emptyDirSync(fullTemp);
+    zip.extractAllTo(fullTemp, true);
+    
+    const repDirPath = await getRepPath(fullTemp)
+    const digested: boolean = await addDigestsToReport(repDirPath);
+    if (digested) {
+      const fileExtension = path.extname(file);
+      const shortFileName = `report.zip`;
+      const repPath = path.join(unknownReportsDir, shortFileName);
+      await transferTempToZip(fullTemp, repPath);
+    }
+    fsExtra.emptyDirSync(fullTemp);
   }
   return true;
 }
@@ -168,22 +178,26 @@ async function createFailReports(): Promise<boolean> {
       console.log(`Processing file: ${filePath}`);
       const zip = new AdmZip(filePath);
       const fullTemp = path.join(__dirname, tempDir);
-      fsExtra.removeSync(fullTemp);
+      fsExtra.emptyDirSync(fullTemp);
       for (const failFunc of failFuncs) {
         zip.extractAllTo(fullTemp, true);
-        await addDigestsToReport(fullTemp);
-        const signedReps = fs.readdirSync(fullTemp);
 
-        for (const signedRepDir of signedReps) {
-          const fullTempSigned = path.join(__dirname, tempDir, signedRepDir);
-          assert.equal(await failFunc(fullTempSigned), true);
-          // Extract the file name and extension
-          const fileName = path.basename(file, path.extname(file));
-          const fileExtension = path.extname(file);
-          const shortFileName = `${failFunc.name}_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
-          const repPath = path.join(failDirPrefixed, shortFileName);
-          await transferTempToZip(fullTemp, repPath);
-          fsExtra.removeSync(fullTemp);
+        const repDirPath = await getRepPath(fullTemp)
+        const digested: boolean = await addDigestsToReport(repDirPath);
+        if (digested) {
+          const signedReps = fs.readdirSync(fullTemp);
+
+          for (const signedRepDir of signedReps) {
+            const fullTempSigned = path.join(__dirname, tempDir, signedRepDir);
+            assert.equal(await failFunc(fullTempSigned), true);
+            // Extract the file name and extension
+            const fileName = path.basename(file, path.extname(file));
+            const fileExtension = path.extname(file);
+            const shortFileName = `${failFunc.name}_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
+            const repPath = path.join(failDirPrefixed, shortFileName);
+            await transferTempToZip(fullTemp, repPath);
+            fsExtra.emptyDirSync(fullTemp);
+          }
         }
       }
       return true;
@@ -292,101 +306,75 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
 }
 
 async function signReport(
-  tempDir: string,
-  roleClient: SignifyClient,
+  repDirPath: string,
+  keeper: signify.Keeper,
 ): Promise<boolean> {
-  const dirs: string[] = await listDirectories(tempDir);
 
-  for (const dir of dirs) {
-    const repDirPath = path.join(tempDir, dir);
-    // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
-    const repDirs: string[] = await listDirectories(repDirPath);
-    if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
-      // const aid = await roleClient.identifiers().get(env.roleName);
-      const keeper = roleClient.manager!.get(ecrAid);
-      const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+  const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
-      // console.log("Found META-INF and reports directories");
-      const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
-      let manifest;
-      if (fs.existsSync(manifestPath)) {
-        const data = await fs.promises.readFile(manifestPath, "utf-8");
-        manifest = JSON.parse(data);
-      } else {
-        continue;
-      }
-
-      const signatures: Signature[] = manifest.documentInfo.signatures || [];
-      const reportsDir = path.join(repDirPath, "reports");
-      const digests = manifest.documentInfo.digests;
-
-      for (const digest of digests) {
-        const fileName = digest.file;
-        const dig = digest.dig;
-        const nonPrefixedDigest = dig.split("_", 2)[1];
-        console.log(nonPrefixedDigest);
-        const sig = signer.sign(nonPrefixedDigest, 0);
-        const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
-        assert.equal(result, true);
-
-        signatures.push({
-          file: fileName,
-          dig: dig,
-          aid: ecrAid.prefix,
-          sigs: [sig.qb64],
-        });
-      }
-
-      manifest.documentInfo.signatures = signatures;
-      await fs.promises.writeFile(
-        manifestPath,
-        JSON.stringify(manifest, null, 2),
-      );
-      return true;
-    } else {
-      throw new Error("Missing META-INF and/or reports directory in " + dir);
-    }
+  // console.log("Found META-INF and reports directories");
+  const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
+  let manifest;
+  if (fs.existsSync(manifestPath)) {
+    const data = await fs.promises.readFile(manifestPath, "utf-8");
+    manifest = JSON.parse(data);
+  } else {
+    throw new Error("Missing META-INF/reports.json in " + repDirPath);
   }
-  throw new Error(`Failed to create signed reports in ${tempDir} ${dirs}`);
+
+  const signatures: Signature[] = manifest.documentInfo.signatures || [];
+  const reportsDir = path.join(repDirPath, "reports");
+  const digests = manifest.documentInfo.digests;
+
+  for (const digest of digests) {
+    const fileName = digest.file;
+    const dig = digest.dig;
+    const nonPrefixedDigest = dig.split("_", 2)[1];
+    console.log(nonPrefixedDigest);
+    const sig = signer.sign(nonPrefixedDigest, 0);
+    const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
+    assert.equal(result, true);
+
+    signatures.push({
+      file: fileName,
+      dig: dig,
+      aid: ecrAid.prefix,
+      sigs: [sig.qb64],
+    });
+  }
+
+  manifest.documentInfo.signatures = signatures;
+  await fs.promises.writeFile(
+    manifestPath,
+    JSON.stringify(manifest, null, 2),
+  );
+  return true;
 }
 
-async function addDigestsToReport(tempDir: string): Promise<boolean> {
-  const dirs: string[] = await listDirectories(tempDir);
+async function addDigestsToReport(repDirPath: string): Promise<boolean> {
 
-  for (const dir of dirs) {
-    const repDirPath = path.join(tempDir, dir);
-    const repDirs: string[] = await listDirectories(repDirPath);
-    if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
-      const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
-      const data = await fs.promises.readFile(manifestPath, "utf-8");
-      let manifest = JSON.parse(data);
-      const digests: Digest[] = [];
-      const reportsDir = path.join(repDirPath, "reports");
-      const reportEntries = await fs.promises.readdir(reportsDir, {
-        withFileTypes: true,
-      });
+  const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
+  const data = await fs.promises.readFile(manifestPath, "utf-8");
+  let manifest = JSON.parse(data);
+  const digests: Digest[] = [];
+  const reportsDir = path.join(repDirPath, "reports");
+  const reportEntries = await fs.promises.readdir(reportsDir, {
+    withFileTypes: true,
+  });
 
-      for (const reportEntry of reportEntries) {
-        const reportPath = path.join(reportsDir, reportEntry.name);
-        const buffer = await fs.promises.readFile(reportPath);
-        const dig = generateFileDigest(buffer);
-        digests.push({
-          file: `../reports/${reportEntry.name}`,
-          dig: dig,
-        });
-      }
-
-      manifest.documentInfo.digests = digests;
-      await fs.promises.writeFile(
-        manifestPath,
-        JSON.stringify(manifest, null, 2),
-      );
-      return true;
-    } else {
-      throw new Error("Missing META-INF and/or reports directory in " + dir);
-    }
+  for (const reportEntry of reportEntries) {
+    const reportPath = path.join(reportsDir, reportEntry.name);
+    const buffer = await fs.promises.readFile(reportPath);
+    const dig = generateFileDigest(buffer);
+    digests.push({
+      file: `../reports/${reportEntry.name}`,
+      dig: dig,
+    });
   }
-  throw new Error(`Failed to create signed reports in ${tempDir} ${dirs}`);
+
+  manifest.documentInfo.digests = digests;
+  await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  return true;
 }
 
 // Function to create a zip file from a temporary directory
@@ -395,11 +383,11 @@ async function transferTempToZip(
   filePath: string,
   foldered: boolean = true,
 ) {
-  const zipFoldered = new AdmZip();
+  const zip = new AdmZip();
 
   // Add the contents of the tempDir to the zip file
   if (foldered) {
-    zipFoldered.addLocalFolder(tempDir);
+    zip.addLocalFolder(tempDir);
   } else {
     const dirs: string[] = await listDirectories(tempDir);
     let found = false;
@@ -408,13 +396,13 @@ async function transferTempToZip(
       // const repDirEntries = await fs.promises.readdir(repDirPath, { withFileTypes: true });
       const repDirs: string[] = await listDirectories(repDirPath);
       if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
-        zipFoldered.addLocalFolder(repDirPath);
+        zip.addLocalFolder(repDirPath);
         found = true;
       }
     }
     if (!found) {
       throw new Error(
-        "No sub-dir with META-INF and reports directory found in " + tempDir,
+        "No sub-dir with META-INF and reports directory found in " + filePath,
       );
     }
   }
@@ -425,7 +413,7 @@ async function transferTempToZip(
   }
 
   // Write the zip file to the desired file path
-  zipFoldered.writeZip(filePath);
+  zip.writeZip(filePath);
 
   // Assert that the filePath exists
   if (!fs.existsSync(filePath)) {
@@ -457,4 +445,32 @@ interface Manifest {
 interface Digest {
   file: string;
   dig: string;
+}
+
+async function getRepPath(fullTemp: string): Promise<string> {
+  const dirs: string[] = await listDirectories(fullTemp);
+  let repDirPath: string = fullTemp;
+  if (dirs.includes("META-INF") && dirs.includes("reports")) {
+    console.log(
+      "Adding digest to non-foldered report, found META-INF and reports directories",
+    );
+  } else {
+    let found = false;
+    for (const dir of dirs) {
+      repDirPath = path.join(fullTemp, dir);
+      const repDirs = await listDirectories(repDirPath);
+      if (repDirs.includes("META-INF") && repDirs.includes("reports")) {
+        console.log(
+          "Adding digest to foldered report, found META-INF and reports directories",
+        );
+        found = true;
+        break;
+      }
+    }
+    assert(
+      found,
+      "Missing dir with META-INF and/or reports directory in " + fullTemp,
+    );
+  }
+  return repDirPath;
 }
