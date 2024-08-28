@@ -114,7 +114,10 @@ async function createSignedReports(): Promise<boolean> {
     await transferTempToZip(fullTemp, repPath);
 
     const unfolderedShortFileName = `unfoldered_signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
-    const unfolderedRepPath = path.join(signedDirPrefixed, unfolderedShortFileName);
+    const unfolderedRepPath = path.join(
+      signedDirPrefixed,
+      unfolderedShortFileName,
+    );
     await transferTempToZip(fullTemp, unfolderedRepPath, false);
 
     fsExtra.removeSync(fullTemp);
@@ -387,11 +390,15 @@ async function addDigestsToReport(tempDir: string): Promise<boolean> {
 }
 
 // Function to create a zip file from a temporary directory
-async function transferTempToZip(tempDir: string, filePath: string, foldered: boolean = true) {
+async function transferTempToZip(
+  tempDir: string,
+  filePath: string,
+  foldered: boolean = true,
+) {
   const zipFoldered = new AdmZip();
 
   // Add the contents of the tempDir to the zip file
-  if(foldered) {
+  if (foldered) {
     zipFoldered.addLocalFolder(tempDir);
   } else {
     const dirs: string[] = await listDirectories(tempDir);
@@ -405,11 +412,12 @@ async function transferTempToZip(tempDir: string, filePath: string, foldered: bo
         found = true;
       }
     }
-    if(!found) {
-      throw new Error("No sub-dir with META-INF and reports directory found in " + tempDir);
+    if (!found) {
+      throw new Error(
+        "No sub-dir with META-INF and reports directory found in " + tempDir,
+      );
     }
   }
-
 
   // Ensure the output directory exists
   if (!fs.existsSync(path.dirname(filePath))) {
