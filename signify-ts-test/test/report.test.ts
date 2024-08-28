@@ -105,7 +105,7 @@ async function createSignedReports(): Promise<boolean> {
       //   const tempUnzipDir = path.join(tempDir,fileName);
       //   assert(fs.existsSync(tempUnzipDir), `Failed to extract the zip file to ${tempUnzipDir}`);
 
-      const repDirPath = await getRepPath(fullTemp)
+      const repDirPath = await getRepPath(fullTemp);
 
       const digested: boolean = await addDigestsToReport(repDirPath);
       if (digested) {
@@ -147,8 +147,8 @@ async function updateUnknownReport(): Promise<boolean> {
     const fullTemp = path.join(__dirname, tempDir);
     fsExtra.emptyDirSync(fullTemp);
     zip.extractAllTo(fullTemp, true);
-    
-    const repDirPath = await getRepPath(fullTemp)
+
+    const repDirPath = await getRepPath(fullTemp);
     const digested: boolean = await addDigestsToReport(repDirPath);
     if (digested) {
       const fileExtension = path.extname(file);
@@ -182,7 +182,7 @@ async function createFailReports(): Promise<boolean> {
       for (const failFunc of failFuncs) {
         zip.extractAllTo(fullTemp, true);
 
-        const repDirPath = await getRepPath(fullTemp)
+        const repDirPath = await getRepPath(fullTemp);
         const digested: boolean = await addDigestsToReport(repDirPath);
         if (digested) {
           const signedReps = fs.readdirSync(fullTemp);
@@ -309,7 +309,6 @@ async function signReport(
   repDirPath: string,
   keeper: signify.Keeper,
 ): Promise<boolean> {
-
   const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
   // console.log("Found META-INF and reports directories");
@@ -344,15 +343,11 @@ async function signReport(
   }
 
   manifest.documentInfo.signatures = signatures;
-  await fs.promises.writeFile(
-    manifestPath,
-    JSON.stringify(manifest, null, 2),
-  );
+  await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   return true;
 }
 
 async function addDigestsToReport(repDirPath: string): Promise<boolean> {
-
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
   const data = await fs.promises.readFile(manifestPath, "utf-8");
   let manifest = JSON.parse(data);
