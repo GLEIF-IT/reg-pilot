@@ -2,7 +2,7 @@
 .DS_Store
 node_modules
 dist
-
+*report.zip
 
 # IntelliJ Project Files
 .idea
