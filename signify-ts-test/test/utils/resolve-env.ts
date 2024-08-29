@@ -92,7 +92,7 @@ export function resolveEnvironment(
           "https://reg-api-dev.rootsid.cloud/docs/",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
-        roleName: process.env.ROLE_NAME || "EBADataSubmitter",
+        roleName: process.env.ROLE_NAME || "role",
         secrets: providedSecrets.split(","),
         lei: process.env.LEI || "875500ELOZEL05BVXV37",
       };
