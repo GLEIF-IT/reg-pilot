@@ -1,0 +1,58 @@
+name: Run Multi User Tests
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+  workflow_dispatch:
+jobs: 
+  test-multiple-aids:
+    name: Run multi user integration test using keria:${{ matrix.keria-version }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: signify-ts-test/
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        keria-version: ["0.2.0-dev3"]
+        node-version: ["20"]
+    env:
+      KERIA_IMAGE_TAG: ${{ matrix.keria-version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}       
+      - name: install deps
+        run: |
+          npm cache clean --force
+          npm set registry https://registry.npmjs.org/
+          npm ci    
+      - name: Build
+        run: npm run build      
+      - name: Start dependencies
+        run: |
+          docker compose down
+          docker compose up verify -d --pull always
+      - name: Run the vlei issuance test
+        run: |
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
+          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
+      - name: Run the generate reports test
+        run: |
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
+          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
+      - name: Run the vlei verification test
+        run: SIGNIFY_SECRETS_MULTI_AID="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7;D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm;D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./multi-user-api-permissions.test.ts -t "reg-pilot-api"
+      
+
+      # - name: Print logs
+      #   run: docker compose logs
+      #   if: always()

@@ -20,3 +20,5 @@ See the README.md in this dir for more information on how to run the tests and s
 - Example to run all defaults via docker:
 - Run the test.sh script:
   `./test.sh --all`
+- Run the test-multiple-aids.sh script in order to run integration test on multiple AIDs:
+  `./test-multiple-aids.sh --all`

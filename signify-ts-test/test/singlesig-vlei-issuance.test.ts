@@ -34,13 +34,14 @@ const ECR_AUTH_SCHEMA_URL = `${vLEIServerHostUrl}/${ECR_AUTH_SCHEMA_SAID}`;
 const ECR_SCHEMA_URL = `${vLEIServerHostUrl}/${ECR_SCHEMA_SAID}`;
 const OOR_AUTH_SCHEMA_URL = `${vLEIServerHostUrl}/${OOR_AUTH_SCHEMA_SAID}`;
 const OOR_SCHEMA_URL = `${vLEIServerHostUrl}/${OOR_SCHEMA_SAID}`;
+const { lei } = resolveEnvironment();
 
 const qviData = {
   LEI: "254900OPPU84GM83MG36",
 };
 
 const leData = {
-  LEI: "875500ELOZEL05BVXV37",
+  LEI: lei,
 };
 
 const ecrData = {

@@ -24,7 +24,8 @@ afterAll(async () => {
 
 beforeAll(async () => {
   env = resolveEnvironment();
-
+  console.log("SECRETS!!!!!!!!!!!!!!!!: ");
+  console.log(env.secrets);
   const clients = await getOrCreateClients(
     env.secrets.length,
     env.secrets,

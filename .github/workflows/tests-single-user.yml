@@ -1,4 +1,4 @@
-name: Run Tests
+name: Run Single User Tests
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    name: Run integration test using keria:${{ matrix.keria-version }}
+    name: Run single user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -47,6 +47,8 @@ jobs:
         run: SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
       - name: Run the vlei verification test
         run: SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./vlei-verification.test.ts
+
+  
 
       # - name: Print logs
       #   run: docker compose logs
