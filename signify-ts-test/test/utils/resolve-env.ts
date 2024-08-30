@@ -33,17 +33,18 @@ export function resolveEnvironment(
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
   let providedSecrets;
   let envSecrets;
-  if(process.env.SIGNIFY_SECRETS_MULTI_AID){
+  if (process.env.SIGNIFY_SECRETS_MULTI_AID) {
     envSecrets =
-    process.env.SIGNIFY_SECRETS_MULTI_AID || "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm"; 
-    providedSecrets = envSecrets.split(';');
-  }
-  else{
+      process.env.SIGNIFY_SECRETS_MULTI_AID ||
+      "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    providedSecrets = envSecrets.split(";");
+  } else {
     envSecrets =
-    process.env.SIGNIFY_SECRETS || "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";    
-    providedSecrets = envSecrets.split(',');
+      process.env.SIGNIFY_SECRETS ||
+      "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+    providedSecrets = envSecrets.split(",");
   }
-  
+
   let env;
   switch (preset) {
     case "docker":
@@ -222,4 +223,3 @@ export function resolveEnvironment(
   console.log("Test environment preset: ", JSON.stringify(env));
   return env;
 }
-

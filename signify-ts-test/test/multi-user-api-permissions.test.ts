@@ -8,10 +8,7 @@ import * as process from "process";
 
 import { getOrCreateClients } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
-import {
-  resolveEnvironment,
-  TestEnvironment,
-} from "./utils/resolve-env";
+import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { Diger, HabState, Siger, SignifyClient } from "signify-ts";
 import path from "path";
 
