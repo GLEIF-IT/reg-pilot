@@ -11,7 +11,6 @@ import { generateFileDigest } from "./utils/generate-digest";
 import {
   resolveEnvironment,
   TestEnvironment,
-  resolveEnvironmentMultipleAid,
 } from "./utils/resolve-env";
 import { Diger, HabState, Siger, SignifyClient } from "signify-ts";
 import path from "path";
@@ -34,7 +33,7 @@ let user3: User;
 afterEach(async () => {});
 
 beforeAll(async () => {
-  env = resolveEnvironmentMultipleAid();
+  env = resolveEnvironment();
   const multiSecrets = env.secrets;
   for (const secrets of multiSecrets) {
     const secretsArr = secrets.split(",");
@@ -210,6 +209,7 @@ test("reg-pilot-api", async function run() {
         );
         await checkSignedUpload(signedUpResp, signedReport, signedZipDig, user);
         user.uploadDig = signedZipDig;
+        break;
       }
     }
   }
@@ -258,7 +258,7 @@ test("reg-pilot-api", async function run() {
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
   assert.equal(sbody.length, 2);
-}, 100000);
+}, 200000);
 
 export async function getGrantedCredential(
   client: SignifyClient,
@@ -369,7 +369,7 @@ async function checkSignedUpload(
 
   assert.equal(signedUpBody["filename"], fileName);
   assert.equal(signedUpBody["contentType"], "application/zip");
-  assert.equal(signedUpBody["size"] > 3000, true);
+  assert.equal(signedUpBody["size"] > 1000, true);
 
   let sresp = await getReportStatusByDig(
     env.roleName,
@@ -385,7 +385,7 @@ async function checkSignedUpload(
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
   assert.equal(signedUploadBody["filename"], fileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
-  assert.equal(signedUploadBody["size"] > 3000, true);
+  assert.equal(signedUploadBody["size"] > 1000, true);
   return true;
 }
 

@@ -41,16 +41,16 @@ jobs:
           docker compose up verify -d --pull always
       - name: Run the vlei issuance test
         run: |
-          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
           LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
-          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
+          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
       - name: Run the generate reports test
         run: |
-          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
+          LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
           LEI="875500ELOZEL05BVXV37" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
-          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
+          LEI="875500ELOZNFID93NF83" SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
       - name: Run the vlei verification test
-        run: SIGNIFY_SECRETS_MULTI_AID="D_PbQb0ESFGQgK-kDWd3f,BTaq43FG3G34GGSQJp6mb,BRFHnuf98vnih8hfinf4g,nf98hUHUy8Vt5tvdyaYV7;D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm;D_PbQfw4fvFEf4-fesefF,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./multi-user-api-permissions.test.ts -t "reg-pilot-api"
+        run: SIGNIFY_SECRETS_MULTI_AID="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7;D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm;D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f" TEST_ENVIRONMENT="docker" npx jest ./multi-user-api-permissions.test.ts -t "reg-pilot-api"
       
 
       # - name: Print logs
