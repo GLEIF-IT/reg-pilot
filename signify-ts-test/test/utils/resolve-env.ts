@@ -115,7 +115,8 @@ export function resolveEnvironment(
         apiBaseUrl:
           process.env.REG_PILOT_API ||
           "https://reg-api-test.rootsid.cloud/docs/",
-        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -175,7 +176,8 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
-        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
@@ -199,7 +201,8 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
-        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",

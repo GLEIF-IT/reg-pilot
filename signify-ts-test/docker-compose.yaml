@@ -121,14 +121,6 @@ services:
       timeout: 3s
       retries: 5
 
-    # image: nginx:latest
-    # ports:
-    #   - 8080:80
-    # volumes:
-    #   - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    # depends_on:
-    #   - reg-pilot-api
-
   deps:
     image: alpine
     command: ["echo", "Dependencies running"]
