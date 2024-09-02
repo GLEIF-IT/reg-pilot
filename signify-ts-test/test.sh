@@ -12,6 +12,7 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
     : "${TEST_ENVIRONMENT:=docker}"
     : "${ROLE_NAME:=EBADataSubmitter}"
     : "${REG_PILOT_API:=http://127.0.0.1:8000}"
+    : "${REG_PILOT_PROXY:=http://127.0.0.1:3434}"
     : "${VLEI_VERIFIER:=http://127.0.0.1:7676}"
     : "${KERIA:=http://127.0.0.1:3901}"
     : "${KERIA_BOOT:=http://127.0.0.1:3903}"
@@ -21,13 +22,14 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
 fi
 
 # Export environment variables
-export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER
+export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER
 
 # Print environment variable values
 echo "SIGNIFY_SECRETS=$SIGNIFY_SECRETS"
 echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
 echo "ROLE_NAME=$ROLE_NAME"
 echo "REG_PILOT_API=$REG_PILOT_API"
+echo "REG_PILOT_PROXY=$REG_PILOT_PROXY"
 echo "VLEI_VERIFIER=$VLEI_VERIFIER"
 echo "KERIA=$KERIA"
 echo "KERIA_BOOT=$KERIA_BOOT"
@@ -37,7 +39,11 @@ echo "VLEI_SERVER=$VLEI_SERVER"
 
 # Check if the only argument is --all
 if [[ $# -eq 1 && $1 == "--all" ]]; then
-    set -- --docker=verify --build --data --report --verify
+    set -- --docker=verify --build --data --report --verify --proxy
+fi
+
+if [[ $# -eq 2 && $1 == "--all" && $2 == "proxy" ]]; then
+    set -- --docker=proxy-verify --build --data --report --proxy
 fi
 
 # Parse arguments
@@ -46,7 +52,7 @@ while [[ $# -gt 0 ]]; do
         --docker=*)
             docker_action="${1#*=}"
             case $docker_action in
-                deps | verify)
+                deps | verify | proxy-verify)
                     docker compose down -v
                     docker compose up $docker_action -d
                     ;;
@@ -70,6 +76,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --verify)
             npx jest ./vlei-verification.test.ts -t "reg-pilot-api"
+            shift # past argument
+            ;;
+        --proxy)
+            npx jest ./proxy-verify.test.ts -t "reg-pilot-proxy"
             shift # past argument
             ;;
         *)
