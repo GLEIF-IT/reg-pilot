@@ -174,15 +174,19 @@ test("reg-pilot-api", async function run() {
   sresp = await fetch(env.apiBaseUrl + spath, sreq);
   assert.equal(sresp.status, 422); // no signed headers provided
 
-  const dresp = await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
-  if(dresp.status < 300) {
+  const dresp = await dropReportStatusByAid(
+    env.roleName,
+    ecrAid.prefix,
+    roleClient,
+  );
+  if (dresp.status < 300) {
     // succeeds to query report status
     sresp = await getReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
     assert.equal(sbody.length, 0);
   } else {
-    fail("Failed to drop report status")
+    fail("Failed to drop report status");
   }
 
   // Get the current working directory
@@ -340,7 +344,11 @@ async function getReportStatusByDig(
   return sresp;
 }
 
-async function dropReportStatusByAid(aidName: string, aidPrefix: string, client: SignifyClient, ): Promise<Response> {
+async function dropReportStatusByAid(
+  aidName: string,
+  aidPrefix: string,
+  client: SignifyClient,
+): Promise<Response> {
   const heads = new Headers();
   const dreq = { headers: heads, method: "POST", body: null };
   const durl = `${env.apiBaseUrl}/status/${aidPrefix}/drop`;
