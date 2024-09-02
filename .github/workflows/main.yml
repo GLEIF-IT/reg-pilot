@@ -39,6 +39,8 @@ jobs:
         run: npm run build
       - name: Print docker compose config
         run: docker compose config
+      - name: docker compose down
+        run: docker compose down;docker compose down
       - name: Start dependencies
         run: docker compose up proxy-verify -d --pull always
       - name: Run the vlei issuance test
