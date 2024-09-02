@@ -39,11 +39,7 @@ echo "VLEI_SERVER=$VLEI_SERVER"
 
 # Check if the only argument is --all
 if [[ $# -eq 1 && $1 == "--all" ]]; then
-    set -- --docker=verify --build --data --report --verify --proxy
-fi
-
-if [[ $# -eq 2 && $1 == "--all" && $2 == "proxy" ]]; then
-    set -- --docker=proxy-verify --build --data --report --proxy
+    set -- --docker=proxy-verify --build --data --report --verify --proxy
 fi
 
 # Parse arguments
