@@ -107,6 +107,20 @@ services:
       retries: 5
       start_period: 2s
 
+  proxy-server:
+    build:
+      context: ../proxy-server
+      dockerfile: Dockerfile
+    ports:
+      - 3434:3434
+    depends_on:
+      - reg-pilot-api
+    healthcheck:
+      test: ["CMD", "wget", "http://proxy-server:3434/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+
   deps:
     image: alpine
     command: ["echo", "Dependencies running"]
@@ -123,6 +137,19 @@ services:
     command: ["echo", "Dependencies running"]
     depends_on:
       keria:
+        condition: service_healthy
+      reg-pilot-api:
+        condition: service_healthy
+      vlei-verifier:
+        condition: service_healthy
+
+  proxy-verify:
+    image: alpine
+    command: ["echo", "Dependencies running"]
+    depends_on:
+      keria:
+        condition: service_healthy
+      proxy-server:
         condition: service_healthy
       reg-pilot-api:
         condition: service_healthy

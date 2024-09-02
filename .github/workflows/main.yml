@@ -35,19 +35,5 @@ jobs:
           npm ci     
       - name: Check formatting
         run: npm run pretty:check
-      - name: Build
-        run: npm run build
-      - name: Print docker compose config
-        run: docker compose config
-      - name: Start dependencies
-        run: docker compose up verify -d --pull always
-      - name: Run the vlei issuance test
-        run: SIGNIFY_SECRETS="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./singlesig-vlei-issuance.test.ts
-      - name: Run the generate reports test
-        run: SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./report.test.ts
-      - name: Run the vlei verification test
-        run: SIGNIFY_SECRETS="CbII3tno87wn3uGBP12qm" TEST_ENVIRONMENT="docker" npx jest ./vlei-verification.test.ts
-
-      # - name: Print logs
-      #   run: docker compose logs
-      #   if: always()
+      - name: Build, Run docker, run tests
+        run: ./test.sh --all
