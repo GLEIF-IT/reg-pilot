@@ -13,8 +13,9 @@ Reg-pilot related information, issues, discussions, and more.
 ## Demo test instances
 * Demo keria instance url = ```https://keria-dev.rootsid.cloud/admin``` and boot url = ```https://keria-dev.rootsid.cloud```
 * Demo signify passcode = ```Ap31Xt-FGcNXpkxmBYMQn```
-* [Demo reg-webapp](https://reg-pilot-webapp-test.rootsid.cloud/) currently requires the [signify-browser-extension](https://github.com/WebOfTrust/signify-browser-extension) to be installed
-* [Demo reg-pilot-api](https://reg-api-test.rootsid.cloud/doc#/) - [ping it](https://reg-api-test.rootsid.cloud/ping)
+* Demo reg-webapp: [Test](https://reg-pilot-webapp-test.rootsid.cloud/) | [Dev](https://reg-pilot-webapp-dev.rootsid.cloud/)  currently requires the [signify-browser-extension](https://github.com/WebOfTrust/signify-browser-extension) to be installed
+* Demo reg-pilot-api:
+  [Test](https://reg-api-test.rootsid.cloud/docs/) - [ping it](https://reg-api-test.rootsid.cloud/ping) | [Dev](https://reg-api-dev.rootsid.cloud/docs/) - [ping it](https://reg-api-dev.rootsid.cloud/ping)
 * Demo witness urls: ```"https://witness-dev01.rootsid.cloud", 
                     "https://witness-dev02.rootsid.cloud",
                     "https://witness-dev03.rootsid.cloud"```
@@ -26,3 +27,6 @@ At a high-level idea, each file has a digest computed on it and the file and sig
 ### Test reports
 You can find a variety of test report files here.
 * [Demo reports](https://github.com/GLEIF-IT/vlei-verifier/tree/main/tests/data/report)
+
+## Deployment Logs
+For deployment history and version details of the reg-pilot-api and vlei-verifier services, see the [`DEPLOYMENTS.md`](./DEPLOYMENTS.md) file.
