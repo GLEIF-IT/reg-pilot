@@ -174,12 +174,20 @@ test("reg-pilot-api", async function run() {
   sresp = await fetch(env.apiBaseUrl + spath, sreq);
   assert.equal(sresp.status, 422); // no signed headers provided
 
-  dropReportStatusByAid(ecrAid.prefix);
-  // succeeds to query report status
-  sresp = await getReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
-  assert.equal(sresp.status, 202);
-  const sbody = await sresp.json();
-  assert.equal(sbody.length, 0);
+  const dresp = await dropReportStatusByAid(
+    env.roleName,
+    ecrAid.prefix,
+    roleClient,
+  );
+  if (dresp.status < 300) {
+    // succeeds to query report status
+    sresp = await getReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
+    assert.equal(sresp.status, 202);
+    const sbody = await sresp.json();
+    assert.equal(sbody.length, 0);
+  } else {
+    fail("Failed to drop report status");
+  }
 
   // Get the current working directory
   const currentDirectory = process.cwd();
@@ -217,7 +225,7 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      dropReportStatusByAid(ecrAid.prefix);
+      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
       console.log(`Processing file: ${filePath}`);
       const signedZipBuf = fs.readFileSync(`${filePath}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
@@ -237,7 +245,7 @@ test("reg-pilot-api", async function run() {
   for (const failReport of failReports) {
     const filePath = path.join(failDirPrefixed, failReport);
     if (fs.lstatSync(filePath).isFile()) {
-      dropReportStatusByAid(ecrAid.prefix);
+      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
       console.log(`Processing file: ${filePath}`);
       const failZipBuf = fs.readFileSync(`${filePath}`);
       const failZipDig = generateFileDigest(failZipBuf);
@@ -257,7 +265,7 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      dropReportStatusByAid(ecrAid.prefix);
+      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = "sha256_f5eg8fhaFybddaNOUHNU87Bdndfawf";
@@ -277,7 +285,7 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      dropReportStatusByAid(ecrAid.prefix);
+      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient);
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
@@ -336,11 +344,16 @@ async function getReportStatusByDig(
   return sresp;
 }
 
-async function dropReportStatusByAid(aidPrefix: string): Promise<Response> {
+async function dropReportStatusByAid(
+  aidName: string,
+  aidPrefix: string,
+  client: SignifyClient,
+): Promise<Response> {
   const heads = new Headers();
-  const sreq = { headers: heads, method: "POST", body: null };
-  const surl = `${env.apiBaseUrl}/status/${aidPrefix}/drop`;
-  const sresp = await fetch(surl, sreq);
+  const dreq = { headers: heads, method: "POST", body: null };
+  const durl = `${env.apiBaseUrl}/status/${aidPrefix}/drop`;
+  let sdreq = await client.createSignedRequest(aidName, durl, dreq);
+  const sresp = await fetch(durl, sdreq);
   return sresp;
 }
 

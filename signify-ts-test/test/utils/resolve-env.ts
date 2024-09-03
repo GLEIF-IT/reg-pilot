@@ -17,6 +17,7 @@ export interface TestEnvironment {
   witnessUrls: string[];
   witnessIds: string[];
   apiBaseUrl: string;
+  proxyBaseUrl: string;
   verifierBaseUrl: string;
   roleName: string;
   secrets: string[];
@@ -60,6 +61,7 @@ export function resolveEnvironment(
         witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         vleiServerUrl: process.env.VLEI_SERVER || "http://vlei-server:7723",
         apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secrets: providedSecrets,
@@ -79,6 +81,7 @@ export function resolveEnvironment(
         ],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secrets: providedSecrets,
@@ -101,6 +104,7 @@ export function resolveEnvironment(
         apiBaseUrl:
           process.env.REG_PILOT_API ||
           "https://reg-api-dev.rootsid.cloud/docs/",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
         roleName: process.env.ROLE_NAME || "role",
@@ -126,6 +130,8 @@ export function resolveEnvironment(
         apiBaseUrl:
           process.env.REG_PILOT_API ||
           "https://reg-api-test.rootsid.cloud/docs/",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -156,6 +162,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI dev reg-pilot-api not set",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
@@ -186,6 +193,8 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
@@ -210,6 +219,8 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        proxyBaseUrl:
+          process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",

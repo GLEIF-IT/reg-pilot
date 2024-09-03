@@ -1,6 +1,10 @@
 # reg-pilot
 Reg-pilot related information, issues, discussions, and more.
 
+# Project sub-modules
+* signify-ts-test: integration scripts and tests to simulate use cases for the whole reg-pilot.
+* proxy-server: simulates a scenario when a proxy service sits between the client and reg-pilot-api.
+
 ## Development repos and docker images
 * [reg-webapp github](https://github.com/GLEIF-IT/reg-pilot-webapp) and [reg-webapp docker](https://hub.docker.com/r/2byrds/reg-webapp/tags) development images
 * [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and development [reg-pilot-api docker](https://hub.docker.com/r/gleif/reg-pilot-api/tags) development images
@@ -20,5 +24,5 @@ Reg-pilot related information, issues, discussions, and more.
 At a high-level idea, each file has a digest computed on it and the file and signature are added to the zip file. The vlei-verifier will validate each signatures vs. the digest of each file.
 
 ### Test reports
-You can find a variety of test report files here. We need to add signed reports for the latest test data.
-* [Demo reports - We still need properly signed files by the test data AIDs](https://github.com/GLEIF-IT/vlei-verifier/tree/main/tests/data/report)
+You can find a variety of test report files here.
+* [Demo reports](https://github.com/GLEIF-IT/vlei-verifier/tree/main/tests/data/report)
