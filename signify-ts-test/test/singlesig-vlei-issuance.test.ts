@@ -25,8 +25,6 @@ import { retry } from "./utils/retry";
 // process.env.LEI = "875500ELOZEL05BVXV37";
 const { vleiServerUrl } = resolveEnvironment();
 
-
-
 const QVI_SCHEMA_SAID = "EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao";
 const LE_SCHEMA_SAID = "ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY";
 const ECR_AUTH_SCHEMA_SAID = "EH6ekLjSr8V32WyFbGe1zXjTzFs9PkTYmupJ9H65O14g";
@@ -489,8 +487,10 @@ async function getOrCreateRegistry(
   aid: Aid,
   registryName: string,
 ): Promise<{ name: string; regk: string }> {
-  let registries = await client.registries().list(aid.name);  
-  registries = registries.filter((reg: { name: string }) => (reg.name == registryName));
+  let registries = await client.registries().list(aid.name);
+  registries = registries.filter(
+    (reg: { name: string }) => reg.name == registryName,
+  );
   if (registries.length > 0) {
     assert.equal(registries.length, 1);
   } else {
@@ -499,10 +499,12 @@ async function getOrCreateRegistry(
       .create({ name: aid.name, registryName: registryName });
     await waitOperation(client, await regResult.op());
     registries = await client.registries().list(aid.name);
-    registries = registries.filter((reg: { name: string }) => (reg.name == registryName));
+    registries = registries.filter(
+      (reg: { name: string }) => reg.name == registryName,
+    );
   }
   console.log(registries);
-  
+
   return registries[0];
 }
 

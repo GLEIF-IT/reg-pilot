@@ -357,7 +357,7 @@ export async function getOrIssueAuthCredential(
         cred.sad.s === schema &&
         cred.sad.i === issuerAid.prefix &&
         cred.sad.a.i === recipientAid.prefix &&
-        cred.sad.a.AID === roleAid.prefix
+        cred.sad.a.AID === roleAid.prefix,
     );
     if (credential) return credential;
   }
