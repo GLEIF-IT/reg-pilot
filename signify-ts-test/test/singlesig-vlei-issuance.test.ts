@@ -9,6 +9,7 @@ import {
   getOrCreateContact,
   getOrCreateIdentifier,
   getOrIssueCredential,
+  getOrIssueAuthCredential,
   getReceivedCredential,
   markAndRemoveNotification,
   resolveOobi,
@@ -17,8 +18,14 @@ import {
   warnNotifications,
 } from "./utils/test-util";
 import { retry } from "./utils/retry";
-
+// process.env.SIGNIFY_SECRETS = "D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm";
+// process.env.TEST_ENVIRONMENT = "docker";
+// process.env.ROLE_NAME = "unicredit-datasubmitter";
+// process.env.REG_PILOT_API = "https://reg-api-dev.rootsid.cloud";
+// process.env.LEI = "875500ELOZEL05BVXV37";
 const { vleiServerUrl } = resolveEnvironment();
+
+
 
 const QVI_SCHEMA_SAID = "EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao";
 const LE_SCHEMA_SAID = "ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY";
@@ -179,7 +186,7 @@ test("singlesig-vlei-issuance", async function run() {
   const [gleifRegistry, qviRegistry, leRegistry] = await Promise.all([
     getOrCreateRegistry(gleifClient, gleifAid, "gleifRegistry"),
     getOrCreateRegistry(qviClient, qviAid, "qviRegistry"),
-    getOrCreateRegistry(leClient, leAid, "leRegistry"),
+    getOrCreateRegistry(leClient, leAid, `leRegistry${roleAid.prefix}`),
   ]);
 
   console.log("Issuing QVI vLEI Credential");
@@ -305,10 +312,12 @@ test("singlesig-vlei-issuance", async function run() {
     },
   })[1];
 
-  const ecrAuthCred = await getOrIssueCredential(
+  const qviAidPrefix = qviAid.prefix + roleAid.prefix;
+  const ecrAuthCred = await getOrIssueAuthCredential(
     leClient,
     leAid,
     qviAid,
+    roleAid,
     leRegistry,
     ecrAuthData,
     ECR_AUTH_SCHEMA_SAID,
@@ -393,10 +402,11 @@ test("singlesig-vlei-issuance", async function run() {
     },
   })[1];
 
-  const oorAuthCred = await getOrIssueCredential(
+  const oorAuthCred = await getOrIssueAuthCredential(
     leClient,
     leAid,
     qviAid,
+    roleAid,
     leRegistry,
     oorAuthData,
     OOR_AUTH_SCHEMA_SAID,
@@ -479,7 +489,8 @@ async function getOrCreateRegistry(
   aid: Aid,
   registryName: string,
 ): Promise<{ name: string; regk: string }> {
-  let registries = await client.registries().list(aid.name);
+  let registries = await client.registries().list(aid.name);  
+  registries = registries.filter((reg: { name: string }) => (reg.name == registryName));
   if (registries.length > 0) {
     assert.equal(registries.length, 1);
   } else {
@@ -488,7 +499,10 @@ async function getOrCreateRegistry(
       .create({ name: aid.name, registryName: registryName });
     await waitOperation(client, await regResult.op());
     registries = await client.registries().list(aid.name);
+    registries = registries.filter((reg: { name: string }) => (reg.name == registryName));
   }
+  console.log(registries);
+  
   return registries[0];
 }
 

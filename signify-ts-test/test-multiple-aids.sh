@@ -60,13 +60,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --data)
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,nf98hUHUy8Vt5tvdyaYV7
             npx jest ./singlesig-vlei-issuance.test.ts
-            shift # past argument
             export LEI=875500ELOZEL05BVXV37
             export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm
             npx jest ./singlesig-vlei-issuance.test.ts
-            shift # past argument
             export LEI=875500ELOZNFID93NF83
             export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f
             npx jest ./singlesig-vlei-issuance.test.ts
@@ -74,20 +72,18 @@ while [[ $# -gt 0 ]]; do
             ;;
         --report)
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,nf98hUHUy8Vt5tvdyaYV7
             npx jest ./report.test.ts
-            shift # past argument
             export LEI=875500ELOZEL05BVXV37
             export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm
             npx jest ./report.test.ts
-            shift # past argument
             export LEI=875500ELOZNFID93NF83
             export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f
             npx jest ./report.test.ts
             shift # past argument
             ;;     
         --verify)
-            export SIGNIFY_SECRETS_MULTI_AID="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,nuuUBIFb9bfUB98bfkj8f,nf98hUHUy8Vt5tvdyaYV7;D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm;D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f"
+            export SIGNIFY_SECRETS_MULTI_AID="D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,nf98hUHUy8Vt5tvdyaYV7;D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm;D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f"
             npx jest ./multi-user-api-permissions.test.ts -t "reg-pilot-api"
             shift # past argument
             ;;
