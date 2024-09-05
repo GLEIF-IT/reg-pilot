@@ -106,7 +106,7 @@ test("reg-pilot-api", async function run() {
   let ljson = await lresp.json();
   const credJson = JSON.parse(ljson["creds"]);
   assert.equal(credJson.length, 1);
-  assert.equal(credJson[0].sad.a.i, `ecrAid.prefix`);
+  assert.equal(credJson[0].sad.a.i, `${ecrAid.prefix}`);
 
   heads = new Headers();
   heads.set("Content-Type", "application/json");
