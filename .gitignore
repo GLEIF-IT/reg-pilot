@@ -2,8 +2,6 @@
 .DS_Store
 node_modules
 dist
-test/data/fail_reports/
-test/data/signed_reports/
 # *report.zip
 
 # IntelliJ Project Files
@@ -11,3 +9,5 @@ test/data/signed_reports/
 coverage/*
 
 examples/signify-react-ts/.cache
+/signify-ts-test/test/data/fail_reports/
+/signify-ts-test/test/data/signed_reports/
