@@ -7,13 +7,12 @@ import {
   createAid,
   getOrCreateClients,
   getOrCreateContact,
-  getOrCreateIdentifier,
+  getOrCreateRegistry,
   getOrIssueCredential,
   getReceivedCredential,
-  markAndRemoveNotification,
   resolveOobi,
-  waitForNotifications,
-  waitOperation,
+  sendAdmitMessage,
+  sendGrantMessage,
   warnNotifications,
 } from "./utils/test-util";
 import { retry } from "./utils/retry";
@@ -472,71 +471,3 @@ test("singlesig-vlei-issuance", async function run() {
   await assertOperations(gleifClient, qviClient, leClient, roleClient);
   await warnNotifications(gleifClient, qviClient, leClient, roleClient);
 }, 360000);
-
-async function getOrCreateRegistry(
-  client: SignifyClient,
-  aid: Aid,
-  registryName: string,
-): Promise<{ name: string; regk: string }> {
-  let registries = await client.registries().list(aid.name);
-  if (registries.length > 0) {
-    assert.equal(registries.length, 1);
-  } else {
-    const regResult = await client
-      .registries()
-      .create({ name: aid.name, registryName: registryName });
-    await waitOperation(client, await regResult.op());
-    registries = await client.registries().list(aid.name);
-  }
-  return registries[0];
-}
-
-async function sendGrantMessage(
-  senderClient: SignifyClient,
-  senderAid: Aid,
-  recipientAid: Aid,
-  credential: any,
-) {
-  const [grant, gsigs, gend] = await senderClient.ipex().grant({
-    senderName: senderAid.name,
-    acdc: new Serder(credential.sad),
-    anc: new Serder(credential.anc),
-    iss: new Serder(credential.iss),
-    ancAttachment: credential.ancAttachment,
-    recipient: recipientAid.prefix,
-    datetime: createTimestamp(),
-  });
-
-  let op = await senderClient
-    .ipex()
-    .submitGrant(senderAid.name, grant, gsigs, gend, [recipientAid.prefix]);
-  op = await waitOperation(senderClient, op);
-}
-
-async function sendAdmitMessage(
-  senderClient: SignifyClient,
-  senderAid: Aid,
-  recipientAid: Aid,
-) {
-  const notifications = await waitForNotifications(
-    senderClient,
-    "/exn/ipex/grant",
-  );
-  assert.equal(notifications.length, 1);
-  const grantNotification = notifications[0];
-
-  const [admit, sigs, aend] = await senderClient.ipex().admit({
-    senderName: senderAid.name,
-    message: "",
-    grantSaid: grantNotification.a.d!,
-    recipient: recipientAid.prefix,
-    datetime: createTimestamp(),
-  });
-
-  let op = await senderClient
-    .ipex()
-    .submitAdmit(senderAid.name, admit, sigs, aend, [recipientAid.prefix]);
-  op = await waitOperation(senderClient, op);
-
-  await markAndRemoveNotification(senderClient, grantNotification);
-}

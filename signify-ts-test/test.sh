@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
             case $docker_action in
                 deps | verify | proxy-verify)
                     docker compose down -v
-                    docker compose up $docker_action -d --pull always
+                    docker compose up "$docker_action" -d --pull always
                     ;;
                 *)
                     echo "Unknown docker action: $docker_action"
@@ -71,7 +71,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --verify)
-            npx jest ./vlei-verification.test.ts -t "reg-pilot-api"
+            npx jest ./reg-pilot-api.test.ts -t "reg-pilot-api"
             shift # past argument
             ;;
         --proxy)
