@@ -9,3 +9,5 @@ dist
 coverage/*
 
 examples/signify-react-ts/.cache
+/signify-ts-test/test/data/fail_reports/
+/signify-ts-test/test/data/signed_reports/
