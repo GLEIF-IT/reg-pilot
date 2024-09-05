@@ -2,7 +2,17 @@ import { strict as assert } from "assert";
 import fs from "fs";
 import * as process from "process";
 
-import { checkBadDigestUpload, checkFailUpload, checkNonPrefixedDigestUpload, dropReportStatusByAid, getGrantedCredential, getOrCreateClients, getReportStatusByAid, getReportStatusByDig, uploadReport } from "./utils/test-util";
+import {
+  checkBadDigestUpload,
+  checkFailUpload,
+  checkNonPrefixedDigestUpload,
+  dropReportStatusByAid,
+  getGrantedCredential,
+  getOrCreateClients,
+  getReportStatusByAid,
+  getReportStatusByDig,
+  uploadReport,
+} from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
@@ -134,7 +144,12 @@ test("reg-pilot-api", async function run() {
   );
   if (dresp.status < 300) {
     // succeeds to query report status
-    sresp = await getReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+    sresp = await getReportStatusByAid(
+      env.roleName,
+      ecrAid.prefix,
+      roleClient,
+      env.apiBaseUrl,
+    );
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
     assert.equal(sbody.length, 0);
@@ -178,7 +193,12 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+      await dropReportStatusByAid(
+        env.roleName,
+        ecrAid.prefix,
+        roleClient,
+        env.apiBaseUrl,
+      );
       console.log(`Processing file: ${filePath}`);
       const signedZipBuf = fs.readFileSync(`${filePath}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
@@ -191,7 +211,12 @@ test("reg-pilot-api", async function run() {
         roleClient,
         env.apiBaseUrl,
       );
-      await checkSignedUpload(signedUpResp, signedReport, signedZipDig, env.apiBaseUrl,);
+      await checkSignedUpload(
+        signedUpResp,
+        signedReport,
+        signedZipDig,
+        env.apiBaseUrl,
+      );
     }
   }
 
@@ -199,7 +224,12 @@ test("reg-pilot-api", async function run() {
   for (const failReport of failReports) {
     const filePath = path.join(failDirPrefixed, failReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+      await dropReportStatusByAid(
+        env.roleName,
+        ecrAid.prefix,
+        roleClient,
+        env.apiBaseUrl,
+      );
       console.log(`Processing file: ${filePath}`);
       const failZipBuf = fs.readFileSync(`${filePath}`);
       const failZipDig = generateFileDigest(failZipBuf);
@@ -212,7 +242,14 @@ test("reg-pilot-api", async function run() {
         roleClient,
         env.apiBaseUrl,
       );
-      await checkFailUpload(roleClient, failUpResp, failReport, failZipDig, ecrAid, env.apiBaseUrl,);
+      await checkFailUpload(
+        roleClient,
+        failUpResp,
+        failReport,
+        failZipDig,
+        ecrAid,
+        env.apiBaseUrl,
+      );
     }
   }
 
@@ -220,7 +257,12 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+      await dropReportStatusByAid(
+        env.roleName,
+        ecrAid.prefix,
+        roleClient,
+        env.apiBaseUrl,
+      );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = "sha256_f5eg8fhaFybddaNOUHNU87Bdndfawf";
@@ -241,7 +283,12 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of reports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+      await dropReportStatusByAid(
+        env.roleName,
+        ecrAid.prefix,
+        roleClient,
+        env.apiBaseUrl,
+      );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
@@ -339,7 +386,12 @@ export async function checkSignedUpload(
   assert.equal(unknownUploadBody["contentType"], "application/zip");
   assert.equal(unknownUploadBody["size"] > 1000, true);
 
-  sresp = await getReportStatusByAid(env.roleName, ecrAid.prefix, roleClient, env.apiBaseUrl,);
+  sresp = await getReportStatusByAid(
+    env.roleName,
+    ecrAid.prefix,
+    roleClient,
+    env.apiBaseUrl,
+  );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
   assert.equal(twoUploadsBody.length, 2);
