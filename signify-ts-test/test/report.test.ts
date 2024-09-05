@@ -30,7 +30,8 @@ beforeAll(async () => {
   // process.env.REG_PILOT_API = "https://reg-api-dev.rootsid.cloud";
 
   env = resolveEnvironment();
-
+  console.log("SECRETS!!!!!!!!!!!!!!!!: ");
+  console.log(env.secrets);
   const clients = await getOrCreateClients(
     env.secrets.length,
     env.secrets,

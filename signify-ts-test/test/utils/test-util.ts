@@ -365,6 +365,50 @@ export async function getOrIssueCredential(
   return credential;
 }
 
+export async function getOrIssueAuthCredential(
+  issuerClient: SignifyClient,
+  issuerAid: Aid,
+  recipientAid: Aid,
+  roleAid: Aid,
+  issuerRegistry: { regk: string },
+  credData: any,
+  schema: string,
+  rules?: any,
+  source?: any,
+  privacy = false,
+): Promise<any> {
+  const credentialList = await issuerClient.credentials().list();
+
+  if (credentialList.length > 0) {
+    const credential = credentialList.find(
+      (cred: any) =>
+        cred.sad.s === schema &&
+        cred.sad.i === issuerAid.prefix &&
+        cred.sad.a.i === recipientAid.prefix &&
+        cred.sad.a.AID === roleAid.prefix,
+    );
+    if (credential) return credential;
+  }
+
+  const issResult = await issuerClient.credentials().issue(issuerAid.name, {
+    ri: issuerRegistry.regk,
+    s: schema,
+    u: privacy ? new Salter({}).qb64 : undefined,
+    a: {
+      i: recipientAid.prefix,
+      u: privacy ? new Salter({}).qb64 : undefined,
+      ...credData,
+    },
+    r: rules,
+    e: source,
+  });
+
+  await waitOperation(issuerClient, issResult.op);
+  const credential = await issuerClient.credentials().get(issResult.acdc.ked.d);
+
+  return credential;
+}
+
 export async function getStates(client: SignifyClient, prefixes: string[]) {
   const participantStates = await Promise.all(
     prefixes.map((p) => client.keyStates().get(p)),
@@ -572,12 +616,15 @@ export async function waitOperation<T = any>(
   return op;
 }
 
-export async function getOrCreateRegistry(
+async function getOrCreateRegistry(
   client: SignifyClient,
   aid: Aid,
   registryName: string,
 ): Promise<{ name: string; regk: string }> {
   let registries = await client.registries().list(aid.name);
+  registries = registries.filter(
+    (reg: { name: string }) => reg.name == registryName,
+  );
   if (registries.length > 0) {
     assert.equal(registries.length, 1);
   } else {
@@ -586,7 +633,12 @@ export async function getOrCreateRegistry(
       .create({ name: aid.name, registryName: registryName });
     await waitOperation(client, await regResult.op());
     registries = await client.registries().list(aid.name);
+    registries = registries.filter(
+      (reg: { name: string }) => reg.name == registryName,
+    );
   }
+  console.log(registries);
+
   return registries[0];
 }
 
