@@ -616,7 +616,7 @@ export async function waitOperation<T = any>(
   return op;
 }
 
-async function getOrCreateRegistry(
+export async function getOrCreateRegistry(
   client: SignifyClient,
   aid: Aid,
   registryName: string,
