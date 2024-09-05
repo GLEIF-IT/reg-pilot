@@ -1,3 +1,4 @@
+import FormData from "form-data";
 import signify, {
   CreateIdentiferArgs,
   EventResult,
@@ -6,6 +7,7 @@ import signify, {
   randomPasscode,
   ready,
   Salter,
+  Serder,
   SignifyClient,
   Tier,
 } from "signify-ts";
@@ -100,6 +102,20 @@ export function createTimestamp() {
   return new Date().toISOString().replace("Z", "000+00:00");
 }
 
+export async function dropReportStatusByAid(
+  aidName: string,
+  aidPrefix: string,
+  client: SignifyClient,
+  baseUrl: string,
+): Promise<Response> {
+  const heads = new Headers();
+  const dreq = { headers: heads, method: "POST", body: null };
+  const durl = `${baseUrl}/status/${aidPrefix}/drop`;
+  let sdreq = await client.createSignedRequest(aidName, durl, dreq);
+  const sresp = await fetch(durl, sdreq);
+  return sresp;
+}
+
 /**
  * Get list of end role authorizations for a Keri idenfitier
  */
@@ -117,6 +133,21 @@ export async function getEndRoles(
   const result = await response.json();
   // console.log("getEndRoles", result);
   return result;
+}
+
+export async function getGrantedCredential(
+  client: SignifyClient,
+  credId: string,
+): Promise<any> {
+  const credentialList = await client.credentials().list({
+    filter: { "-d": credId },
+  });
+  let credential: any;
+  if (credentialList.length > 0) {
+    assert.equal(credentialList.length, 1);
+    credential = credentialList[0];
+  }
+  return credential;
 }
 
 export async function getIssuedCredential(
@@ -385,7 +416,36 @@ export async function getStates(client: SignifyClient, prefixes: string[]) {
   const participantStates = await Promise.all(
     prefixes.map((p) => client.keyStates().get(p)),
   );
-  return participantStates.map((s) => s[0]);
+  return participantStates.map((s: any[]) => s[0]);
+}
+
+export async function getReportStatusByAid(
+  aidName: string,
+  aidPrefix: string,
+  client: SignifyClient,
+  baseUrl: string,
+): Promise<Response> {
+  const heads = new Headers();
+  const sreq = { headers: heads, method: "GET", body: null };
+  const surl = `${baseUrl}/status/${aidPrefix}`;
+  let shreq = await client.createSignedRequest(aidName, surl, sreq);
+  const sresp = await fetch(surl, shreq);
+  return sresp;
+}
+
+export async function getReportStatusByDig(
+  aidName: string,
+  aidPrefix: string,
+  dig: string,
+  client: SignifyClient,
+  baseUrl: string,
+): Promise<Response> {
+  const heads = new Headers();
+  const sreq = { headers: heads, method: "GET", body: null };
+  const surl = `${baseUrl}/upload/${aidPrefix}/${dig}`;
+  let shreq = await client.createSignedRequest(aidName, surl, sreq);
+  const sresp = await fetch(surl, shreq);
+  return sresp;
 }
 
 /**
@@ -426,7 +486,7 @@ export async function warnNotifications(
   expect(count).toBeGreaterThan(0); // replace warnNotifications with assertNotifications
 }
 
-async function deleteOperations<T = any>(
+export async function deleteOperations<T = any>(
   client: SignifyClient,
   op: Operation<T>,
 ) {
@@ -504,7 +564,10 @@ export async function waitForCredential(
   throw Error("Credential SAID: " + credSAID + " has not been received");
 }
 
-async function waitAndMarkNotification(client: SignifyClient, route: string) {
+export async function waitAndMarkNotification(
+  client: SignifyClient,
+  route: string,
+) {
   const notes = await waitForNotifications(client, route);
 
   await Promise.all(
@@ -557,4 +620,177 @@ export async function waitOperation<T = any>(
   await deleteOperations(client, op);
 
   return op;
+}
+
+export async function getOrCreateRegistry(
+  client: SignifyClient,
+  aid: Aid,
+  registryName: string,
+): Promise<{ name: string; regk: string }> {
+  let registries = await client.registries().list(aid.name);
+  registries = registries.filter(
+    (reg: { name: string }) => reg.name == registryName,
+  );
+  if (registries.length > 0) {
+    assert.equal(registries.length, 1);
+  } else {
+    const regResult = await client
+      .registries()
+      .create({ name: aid.name, registryName: registryName });
+    await waitOperation(client, await regResult.op());
+    registries = await client.registries().list(aid.name);
+    registries = registries.filter(
+      (reg: { name: string }) => reg.name == registryName,
+    );
+  }
+  console.log(registries);
+
+  return registries[0];
+}
+
+export async function sendGrantMessage(
+  senderClient: SignifyClient,
+  senderAid: Aid,
+  recipientAid: Aid,
+  credential: any,
+) {
+  const [grant, gsigs, gend] = await senderClient.ipex().grant({
+    senderName: senderAid.name,
+    acdc: new Serder(credential.sad),
+    anc: new Serder(credential.anc),
+    iss: new Serder(credential.iss),
+    ancAttachment: credential.ancAttachment,
+    recipient: recipientAid.prefix,
+    datetime: createTimestamp(),
+  });
+
+  let op = await senderClient
+    .ipex()
+    .submitGrant(senderAid.name, grant, gsigs, gend, [recipientAid.prefix]);
+  op = await waitOperation(senderClient, op);
+}
+
+export async function sendAdmitMessage(
+  senderClient: SignifyClient,
+  senderAid: Aid,
+  recipientAid: Aid,
+) {
+  const notifications = await waitForNotifications(
+    senderClient,
+    "/exn/ipex/grant",
+  );
+  assert.equal(notifications.length, 1);
+  const grantNotification = notifications[0];
+
+  const [admit, sigs, aend] = await senderClient.ipex().admit({
+    senderName: senderAid.name,
+    message: "",
+    grantSaid: grantNotification.a.d!,
+    recipient: recipientAid.prefix,
+    datetime: createTimestamp(),
+  });
+
+  let op = await senderClient
+    .ipex()
+    .submitAdmit(senderAid.name, admit, sigs, aend, [recipientAid.prefix]);
+  op = await waitOperation(senderClient, op);
+
+  await markAndRemoveNotification(senderClient, grantNotification);
+}
+
+export async function checkFailUpload(
+  roleClient: SignifyClient,
+  failUpResp: Response,
+  fileName: string,
+  failZipDig: string,
+  ecrAid: HabState,
+  baseUrl: string,
+): Promise<boolean> {
+  let failMessage = "";
+  if (fileName.includes("genMissingSignature")) {
+    failMessage = "files from report package missing valid signed";
+  } else if (fileName.includes("genNoSignature")) {
+    failMessage = "files from report package missing valid signed";
+  } else if (fileName.includes("removeMetaInfReportsJson")) {
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status, 500);
+    const failUpBody = await failUpResp.json();
+    return true;
+  }
+
+  assert.equal(failUpResp.status, 200);
+  const failUpBody = await failUpResp.json();
+  assert.equal(failUpBody["status"], "failed");
+  assert.equal(failUpBody["submitter"], ecrAid.prefix);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
+  assert.equal(failUpBody["contentType"], "application/zip");
+  assert.equal(failUpBody["size"] > 1000, true);
+
+  const sresp = await getReportStatusByDig(
+    ecrAid.name,
+    ecrAid.prefix,
+    failZipDig,
+    roleClient,
+    baseUrl,
+  );
+  assert.equal(sresp.status, 200);
+  const signedUploadBody = await sresp.json();
+  assert.equal(signedUploadBody["status"], "failed");
+  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
+  assert.equal(signedUploadBody["contentType"], "application/zip");
+  assert.equal(signedUploadBody["size"] > 1000, true);
+  return true;
+}
+
+export async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+
+  return true;
+}
+
+export async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+
+  return true;
+}
+
+export async function uploadReport(
+  aidName: string,
+  aidPrefix: string,
+  fileName: string,
+  zipBuffer: Buffer,
+  zipDigest: string,
+  client: SignifyClient,
+  baseUrl: string,
+): Promise<Response> {
+  let formData = new FormData();
+  let ctype = "application/zip";
+  formData.append("upload", zipBuffer, {
+    filename: `${fileName}`,
+    contentType: `${ctype}`,
+  });
+  let formBuffer = formData.getBuffer();
+  let req: RequestInit = {
+    method: "POST",
+    body: formBuffer,
+    headers: {
+      ...formData.getHeaders(),
+      "Content-Length": formBuffer.length.toString(),
+    },
+  };
+
+  const url = `${baseUrl}/upload/${aidPrefix}/${zipDigest}`;
+
+  let sreq = await client.createSignedRequest(aidName, url, req);
+  const resp = await fetch(url, sreq);
+  return resp;
 }
