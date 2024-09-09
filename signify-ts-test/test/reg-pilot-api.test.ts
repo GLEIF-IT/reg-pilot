@@ -304,7 +304,7 @@ test("reg-pilot-api", async function run() {
       await checkNonPrefixedDigestUpload(badDigestUpResp);
     }
   }
-}, 100000);
+}, 300000);
 
 export async function checkSignedUpload(
   signedUpResp: Response,

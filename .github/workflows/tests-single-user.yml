@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    name: Run single user integration test using keria:${{ matrix.keria-version }}
+    name: Run singlesig single user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -36,4 +36,4 @@ jobs:
       - name: Check formatting
         run: npm run pretty:check
       - name: Build, Run docker, run tests
-        run: ./test.sh --all
+        run: ./test-single-aid.sh --all

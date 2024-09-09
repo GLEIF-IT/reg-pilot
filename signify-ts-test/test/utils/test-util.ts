@@ -616,7 +616,7 @@ export async function waitOperation<T = any>(
 
   op = await client
     .operations()
-    .wait(op, { signal: signal ?? AbortSignal.timeout(30000) });
+    .wait(op, { signal: signal ?? AbortSignal.timeout(60000) });
   await deleteOperations(client, op);
 
   return op;

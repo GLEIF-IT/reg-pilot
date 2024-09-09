@@ -60,25 +60,25 @@ while [[ $# -gt 0 ]]; do
             ;;
         --data)
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,nf98hUHUy8Vt5tvdyaYV7
-            npx jest ./singlesig-vlei-issuance.test.ts
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Akv4TFoiYeHNqzj3N8gEg,moe8hBbe7bvcRaeveHU83,NKby7gcbYNcha8cba8ca3,nf98hUHUy8Vt5tvdyaYV7
+            npx jest ./multisig-vlei-issuance.test.ts
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm
-            npx jest ./singlesig-vlei-issuance.test.ts
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Akv4TFoiYeHNqzj3N8gEg,moe8hBbe7bvcRaeveHU83,NKby7gcbYNcha8cba8ca3,CbII3tno87wn3uGBP12qm
+            npx jest ./multisig-vlei-issuance.test.ts
             export LEI=875500ELOZNFID93NF83
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f
-            npx jest ./singlesig-vlei-issuance.test.ts
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Lf8nafHfan8fnafnnnfad,k90ncBBbdHbnfah8h93jf,Mcijfia8hN8hbVyf6dda8,defh7b7g7gfaBuf83bf0f
+            npx jest ./multisig-vlei-issuance.test.ts
             shift # past argument
             ;;
         --report)
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,nf98hUHUy8Vt5tvdyaYV7
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Akv4TFoiYeHNqzj3N8gEg,moe8hBbe7bvcRaeveHU83,NKby7gcbYNcha8cba8ca3,nf98hUHUy8Vt5tvdyaYV7
             npx jest ./report.test.ts
             export LEI=875500ELOZEL05BVXV37
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Akv4TFoiYeHNqzj3N8gEg,moe8hBbe7bvcRaeveHU83,NKby7gcbYNcha8cba8ca3,CbII3tno87wn3uGBP12qm
             npx jest ./report.test.ts
             export LEI=875500ELOZNFID93NF83
-            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,NUH98hbsuhd8hdua8hnfa,ANud8hnahdaNUnfsanofN,defh7b7g7gfaBuf83bf0f
+            export SIGNIFY_SECRETS=D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu,BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3,Lf8nafHfan8fnafnnnfad,k90ncBBbdHbnfah8h93jf,Mcijfia8hN8hbVyf6dda8,defh7b7g7gfaBuf83bf0f
             npx jest ./report.test.ts
             shift # past argument
             ;;     

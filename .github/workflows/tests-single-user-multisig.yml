@@ -1,4 +1,4 @@
-name: Run Multi User Tests
+name: Run Single User Tests
 on:
   push:
     branches:
@@ -7,9 +7,9 @@ on:
     branches:
       - "main"
   workflow_dispatch:
-jobs: 
-  test-multiple-aids:
-    name: Run singlesig multi user integration test using keria:${{ matrix.keria-version }}
+jobs:
+  test-multisig:
+    name: Run multisig single user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -32,7 +32,8 @@ jobs:
         run: |
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
-          npm ci    
+          npm ci     
+      - name: Check formatting
+        run: npm run pretty:check
       - name: Build, Run docker, run tests
-        run: ./test-multiple-aids.sh --all
-  
+        run: ./test-single-aid-multisig.sh --all

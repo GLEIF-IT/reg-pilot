@@ -8,8 +8,8 @@ on:
       - "main"
   workflow_dispatch:
 jobs: 
-  test-multiple-aids:
-    name: Run singlesig multi user integration test using keria:${{ matrix.keria-version }}
+  test-multiple-aids-multisig:
+    name: Run multisig multi user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -34,5 +34,5 @@ jobs:
           npm set registry https://registry.npmjs.org/
           npm ci    
       - name: Build, Run docker, run tests
-        run: ./test-multiple-aids.sh --all
+        run: ./test-multiple-aids-multisig.sh --all
   
