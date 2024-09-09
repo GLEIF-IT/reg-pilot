@@ -81,6 +81,9 @@ const ECR_RULES = Saider.saidify({
   },
 })[1];
 
+const QVI_INTERNAL_NAME = "QVI";
+const LE_INTERNAL_NAME = "LE";
+
 test("multisig-vlei-issuance", async function run() {
   /**
    * The abbreviations used in this script follows GLEIF vLEI
@@ -304,9 +307,9 @@ test("multisig-vlei-issuance", async function run() {
   // Skip if a QVI AID has already been incepted.
   let aidQVIbyQAR1, aidQVIbyQAR2, aidQVIbyQAR3: HabState;
   try {
-    aidQVIbyQAR1 = await clientQAR1.identifiers().get("QVI");
-    aidQVIbyQAR2 = await clientQAR2.identifiers().get("QVI");
-    aidQVIbyQAR3 = await clientQAR3.identifiers().get("QVI");
+    aidQVIbyQAR1 = await clientQAR1.identifiers().get(QVI_INTERNAL_NAME);
+    aidQVIbyQAR2 = await clientQAR2.identifiers().get(QVI_INTERNAL_NAME);
+    aidQVIbyQAR3 = await clientQAR3.identifiers().get(QVI_INTERNAL_NAME);
   } catch {
     const rstates = [aidQAR1.state, aidQAR2.state, aidQAR3.state];
     const states = rstates;
@@ -327,7 +330,7 @@ test("multisig-vlei-issuance", async function run() {
       clientQAR1,
       aidQAR1,
       [aidQAR2, aidQAR3],
-      "QVI",
+      QVI_INTERNAL_NAME,
       kargsMultisigAID,
       true,
     );
@@ -336,7 +339,7 @@ test("multisig-vlei-issuance", async function run() {
       clientQAR2,
       aidQAR2,
       [aidQAR1, aidQAR3],
-      "QVI",
+      QVI_INTERNAL_NAME,
       kargsMultisigAID,
     );
     kargsMultisigAID.mhab = aidQAR3;
@@ -344,7 +347,7 @@ test("multisig-vlei-issuance", async function run() {
       clientQAR3,
       aidQAR3,
       [aidQAR1, aidQAR2],
-      "QVI",
+      QVI_INTERNAL_NAME,
       kargsMultisigAID,
     );
 
@@ -396,9 +399,9 @@ test("multisig-vlei-issuance", async function run() {
 
     await waitAndMarkNotification(clientQAR1, "/multisig/icp");
 
-    aidQVIbyQAR1 = await clientQAR1.identifiers().get("QVI");
-    aidQVIbyQAR2 = await clientQAR2.identifiers().get("QVI");
-    aidQVIbyQAR3 = await clientQAR3.identifiers().get("QVI");
+    aidQVIbyQAR1 = await clientQAR1.identifiers().get(QVI_INTERNAL_NAME);
+    aidQVIbyQAR2 = await clientQAR2.identifiers().get(QVI_INTERNAL_NAME);
+    aidQVIbyQAR3 = await clientQAR3.identifiers().get(QVI_INTERNAL_NAME);
   }
   assert.equal(aidQVIbyQAR1.prefix, aidQVIbyQAR2.prefix);
   assert.equal(aidQVIbyQAR1.prefix, aidQVIbyQAR3.prefix);
@@ -665,9 +668,9 @@ test("multisig-vlei-issuance", async function run() {
   // Skip if a LE AID has already been incepted.
   let aidLEbyLAR1, aidLEbyLAR2, aidLEbyLAR3: HabState;
   try {
-    aidLEbyLAR1 = await clientLAR1.identifiers().get("LE");
-    aidLEbyLAR2 = await clientLAR2.identifiers().get("LE");
-    aidLEbyLAR3 = await clientLAR3.identifiers().get("LE");
+    aidLEbyLAR1 = await clientLAR1.identifiers().get(LE_INTERNAL_NAME);
+    aidLEbyLAR2 = await clientLAR2.identifiers().get(LE_INTERNAL_NAME);
+    aidLEbyLAR3 = await clientLAR3.identifiers().get(LE_INTERNAL_NAME);
   } catch {
     const rstates = [aidLAR1.state, aidLAR2.state, aidLAR3.state];
     const states = rstates;
@@ -687,7 +690,7 @@ test("multisig-vlei-issuance", async function run() {
       clientLAR1,
       aidLAR1,
       [aidLAR2, aidLAR3],
-      "LE",
+      LE_INTERNAL_NAME,
       kargsMultisigAID,
       true,
     );
@@ -696,7 +699,7 @@ test("multisig-vlei-issuance", async function run() {
       clientLAR2,
       aidLAR2,
       [aidLAR1, aidLAR3],
-      "LE",
+      LE_INTERNAL_NAME,
       kargsMultisigAID,
     );
     kargsMultisigAID.mhab = aidLAR3;
@@ -704,7 +707,7 @@ test("multisig-vlei-issuance", async function run() {
       clientLAR3,
       aidLAR3,
       [aidLAR1, aidLAR2],
-      "LE",
+      LE_INTERNAL_NAME,
       kargsMultisigAID,
     );
 
@@ -716,9 +719,9 @@ test("multisig-vlei-issuance", async function run() {
 
     await waitAndMarkNotification(clientLAR1, "/multisig/icp");
 
-    aidLEbyLAR1 = await clientLAR1.identifiers().get("LE");
-    aidLEbyLAR2 = await clientLAR2.identifiers().get("LE");
-    aidLEbyLAR3 = await clientLAR3.identifiers().get("LE");
+    aidLEbyLAR1 = await clientLAR1.identifiers().get(LE_INTERNAL_NAME);
+    aidLEbyLAR2 = await clientLAR2.identifiers().get(LE_INTERNAL_NAME);
+    aidLEbyLAR3 = await clientLAR3.identifiers().get(LE_INTERNAL_NAME);
   }
   assert.equal(aidLEbyLAR1.prefix, aidLEbyLAR2.prefix);
   assert.equal(aidLEbyLAR1.prefix, aidLEbyLAR3.prefix);
@@ -800,6 +803,15 @@ test("multisig-vlei-issuance", async function run() {
       clientQAR2.registries().list(aidQVI.name),
       clientQAR3.registries().list(aidQVI.name),
     ]);
+  qviRegistrybyQAR1 = qviRegistrybyQAR1.filter(
+    (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
+  );
+  qviRegistrybyQAR2 = qviRegistrybyQAR2.filter(
+    (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
+  );
+  qviRegistrybyQAR3 = qviRegistrybyQAR3.filter(
+    (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
+  );
   if (
     qviRegistrybyQAR1.length == 0 &&
     qviRegistrybyQAR2.length == 0 &&
@@ -811,7 +823,7 @@ test("multisig-vlei-issuance", async function run() {
       aidQAR1,
       [aidQAR2, aidQAR3],
       aidQVI,
-      "qviRegistry",
+      `qviRegistry${aidLE.prefix}`,
       nonce,
       true,
     );
@@ -820,7 +832,7 @@ test("multisig-vlei-issuance", async function run() {
       aidQAR2,
       [aidQAR1, aidQAR3],
       aidQVI,
-      "qviRegistry",
+      `qviRegistry${aidLE.prefix}`,
       nonce,
     );
     const registryOp3 = await createRegistryMultisig(
@@ -828,7 +840,7 @@ test("multisig-vlei-issuance", async function run() {
       aidQAR3,
       [aidQAR1, aidQAR2],
       aidQVI,
-      "qviRegistry",
+      `qviRegistry${aidLE.prefix}`,
       nonce,
     );
 
