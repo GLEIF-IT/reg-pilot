@@ -14,6 +14,8 @@ let ecrAid: HabState;
 let roleClient: SignifyClient;
 let keeper: signify.Keeper;
 
+export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
+
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
@@ -110,7 +112,7 @@ async function createSignedReports(): Promise<boolean> {
 
       const repDirPath = await getRepPath(fullTemp);
 
-      const digested: boolean = await addDigestsToReport(repDirPath);
+      const digested: boolean = await addDigestsToReport(repDirPath, ecrAid.prefix);
       if (digested) {
         //generate foldered zip, like older xbrl spec
         await signReport(repDirPath, keeper);
@@ -136,9 +138,9 @@ async function createSignedReports(): Promise<boolean> {
 }
 
 async function updateUnknownReport(): Promise<boolean> {
-  console.log("Updating unknown report");
-
   const unknownReportsDir = path.join(__dirname, "data", "unknown_reports");
+  console.log(`Updating unknown report ${unknownReportsDir}`);
+
   const reports = fs.readdirSync(unknownReportsDir);
 
   const file = reports[0];
@@ -152,7 +154,7 @@ async function updateUnknownReport(): Promise<boolean> {
     zip.extractAllTo(fullTemp, true);
 
     const repDirPath = await getRepPath(fullTemp);
-    const digested: boolean = await addDigestsToReport(repDirPath);
+    const digested: boolean = await addDigestsToReport(repDirPath, unknownPrefix);
     if (digested) {
       const fileExtension = path.extname(file);
       const shortFileName = `report.zip`;
@@ -186,7 +188,7 @@ async function createFailReports(): Promise<boolean> {
         zip.extractAllTo(fullTemp, true);
 
         const repDirPath = await getRepPath(fullTemp);
-        const digested: boolean = await addDigestsToReport(repDirPath);
+        const digested: boolean = await addDigestsToReport(repDirPath,ecrAid.prefix);
         if (digested) {
           const signedReps = fs.readdirSync(fullTemp);
 
@@ -344,7 +346,7 @@ async function signReport(
   return true;
 }
 
-async function addDigestsToReport(repDirPath: string): Promise<boolean> {
+async function addDigestsToReport(repDirPath: string, prefix: string): Promise<boolean> {
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
   const data = await fs.promises.readFile(manifestPath, "utf-8");
   let manifest = JSON.parse(data);
@@ -363,7 +365,7 @@ async function addDigestsToReport(repDirPath: string): Promise<boolean> {
     signatures.push({
       file: `../reports/${reportEntry.name}`,
       digest: dig,
-      aid: ecrAid.prefix,
+      aid: prefix,
       sigs: [],
     });
   }

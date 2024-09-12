@@ -15,6 +15,7 @@ import {
 } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import { unknownPrefix } from "./report.test"
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
 
@@ -360,7 +361,7 @@ export async function checkSignedUpload(
   assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     unknownBody["message"],
-    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
+    `signature from unknown AID ${unknownPrefix}`,
   );
   assert.equal(unknownBody["filename"], unknownFileName);
   assert.equal(unknownBody["status"], "failed");
@@ -379,7 +380,7 @@ export async function checkSignedUpload(
   assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
   assert.equal(
     unknownUploadBody["message"],
-    `signature from unknown AID EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk`,
+    `signature from unknown AID ${unknownPrefix}`,
   );
   assert.equal(unknownUploadBody["filename"], unknownFileName);
   assert.equal(unknownUploadBody["status"], "failed");
