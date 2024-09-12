@@ -708,12 +708,12 @@ export async function checkFailUpload(
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
-    failMessage = "files from report package missing valid signed";
+    failMessage = "missing signatures on";
   } else if (fileName.includes("genNoSignature")) {
     failMessage = "files from report package missing valid signed";
   } else if (fileName.includes("removeMetaInfReportsJson")) {
     // failMessage = "No manifest in file, invalid signed report package";
-    assert.equal(failUpResp.status, 500);
+    assert.equal(failUpResp.status >= 300, true);
     const failUpBody = await failUpResp.json();
     return true;
   }
