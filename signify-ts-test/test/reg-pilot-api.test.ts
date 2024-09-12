@@ -15,7 +15,7 @@ import {
 } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { unknownPrefix } from "./report.test"
+import { unknownPrefix } from "./report.test";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
 

@@ -112,7 +112,10 @@ async function createSignedReports(): Promise<boolean> {
 
       const repDirPath = await getRepPath(fullTemp);
 
-      const digested: boolean = await addDigestsToReport(repDirPath, ecrAid.prefix);
+      const digested: boolean = await addDigestsToReport(
+        repDirPath,
+        ecrAid.prefix,
+      );
       if (digested) {
         //generate foldered zip, like older xbrl spec
         await signReport(repDirPath, keeper);
@@ -154,7 +157,10 @@ async function updateUnknownReport(): Promise<boolean> {
     zip.extractAllTo(fullTemp, true);
 
     const repDirPath = await getRepPath(fullTemp);
-    const digested: boolean = await addDigestsToReport(repDirPath, unknownPrefix);
+    const digested: boolean = await addDigestsToReport(
+      repDirPath,
+      unknownPrefix,
+    );
     if (digested) {
       const fileExtension = path.extname(file);
       const shortFileName = `report.zip`;
@@ -188,7 +194,10 @@ async function createFailReports(): Promise<boolean> {
         zip.extractAllTo(fullTemp, true);
 
         const repDirPath = await getRepPath(fullTemp);
-        const digested: boolean = await addDigestsToReport(repDirPath,ecrAid.prefix);
+        const digested: boolean = await addDigestsToReport(
+          repDirPath,
+          ecrAid.prefix,
+        );
         if (digested) {
           const signedReps = fs.readdirSync(fullTemp);
 
@@ -313,7 +322,6 @@ async function signReport(
   repDirPath: string,
   keeper: signify.Keeper,
 ): Promise<boolean> {
-
   // console.log("Found META-INF and reports directories");
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
   let manifest;
@@ -346,7 +354,10 @@ async function signReport(
   return true;
 }
 
-async function addDigestsToReport(repDirPath: string, prefix: string): Promise<boolean> {
+async function addDigestsToReport(
+  repDirPath: string,
+  prefix: string,
+): Promise<boolean> {
   const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
   const data = await fs.promises.readFile(manifestPath, "utf-8");
   let manifest = JSON.parse(data);
