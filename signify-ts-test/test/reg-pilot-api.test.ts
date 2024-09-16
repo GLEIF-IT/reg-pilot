@@ -266,7 +266,7 @@ test("reg-pilot-api", async function run() {
       );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
-      const badDigestZipDig = "sha256_f5eg8fhaFybddaNOUHNU87Bdndfawf";
+      const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await uploadReport(
         env.roleName,
         ecrAid.prefix,

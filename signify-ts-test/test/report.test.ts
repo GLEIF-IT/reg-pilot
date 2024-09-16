@@ -389,7 +389,7 @@ async function signReport(
   for (const signature of manifest.documentInfo.signatures) {
     const fileName = signature.file;
     const dig = signature.digest;
-    const nonPrefixedDigest = dig.split("_", 2)[1];
+    const nonPrefixedDigest = dig.split("-", 2)[1];
     console.log("Non prefixed digest is " + nonPrefixedDigest);
     const sigs = [] as string[];
     for (const signer of keeper.signers as Signer[]) {

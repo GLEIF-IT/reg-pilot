@@ -4,7 +4,7 @@ import JSZip from "jszip";
 export function generateFileDigest(buffer: Buffer): string {
   const algo = "sha256";
   const digest = Buffer.from(hash(buffer, algo));
-  const prefixeDigest = `${algo}_${digest}`;
+  const prefixeDigest = `${algo}-${digest}`;
   return prefixeDigest;
 }
 
