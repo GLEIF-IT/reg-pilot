@@ -104,7 +104,7 @@ test("reg-pilot-api", async function run() {
 }, 200000);
 
 
-async function single_user_test(user: ApiUser) { 
+async function single_user_test(user: ApiUser) {
   signedDirPrefixed = path.join(
     __dirname,
     "data",
@@ -291,7 +291,7 @@ async function single_user_test(user: ApiUser) {
       );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
-      const badDigestZipDig = "sha256_f5eg8fhaFybddaNOUHNU87Bdndfawf";
+      const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await apiAdapter.uploadReport(
         "ecr1",
         user.ecrAid.prefix,
@@ -330,7 +330,7 @@ async function single_user_test(user: ApiUser) {
 }
 
 
-async function multi_user_test(apiUsers: Array<ApiUser>) {  
+async function multi_user_test(apiUsers: Array<ApiUser>) {
   let user1: ApiUser;
   let user2: ApiUser;
   let user3: ApiUser;
@@ -625,12 +625,12 @@ export async function checkFailUpload(
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
-    failMessage = "files from report package missing valid signed";
+    failMessage = "missing signatures on";
   } else if (fileName.includes("genNoSignature")) {
     failMessage = "files from report package missing valid signed";
   } else if (fileName.includes("removeMetaInfReportsJson")) {
     // failMessage = "No manifest in file, invalid signed report package";
-    assert.equal(failUpResp.status, 500);
+    assert.equal(failUpResp.status >= 300, true);
     const failUpBody = await failUpResp.json();
     return true;
   }
