@@ -714,7 +714,7 @@ export async function checkFailUpload(
   } else if (fileName.includes("removeMetaInfReportsJson")) {
     assert.equal(failUpResp.status >= 300, true);
     const failUpBody = await failUpResp.json();
-    failMessage = "No manifest in file, invalid signed report package"
+    failMessage = "No manifest in file, invalid signed report package";
     return true;
   }
 
