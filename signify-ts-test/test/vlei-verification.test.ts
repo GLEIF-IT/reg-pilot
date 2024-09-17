@@ -4,8 +4,7 @@ import { getGrantedCredential, getOrCreateClients } from "./utils/test-util";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
-import {buildUserData, User} from "../src/utils/handle-json-config";
-
+import { buildUserData, User } from "../src/utils/handle-json-config";
 
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 
@@ -16,15 +15,20 @@ let ecrCredHolder: any;
 let env: TestEnvironment;
 let roleClient: SignifyClient;
 
-const secretsJsonPath = "../src/config/"
+const secretsJsonPath = "../src/config/";
 let users: Array<User>;
 
 afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
-  const secretsJson = JSON.parse(fs.readFileSync(path.join(__dirname, secretsJsonPath + env.secretsJsonConfig), 'utf-8'));  
-  users = await buildUserData(secretsJson);  
+  const secretsJson = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
+      "utf-8",
+    ),
+  );
+  users = await buildUserData(secretsJson);
 });
 
 // This test assumes you have run a vlei test that sets up the
@@ -32,13 +36,13 @@ beforeAll(async () => {
 // It also assumes you have generated the different report files
 // from the report test
 test("vlei-verification", async function run() {
-  for (const user of users){
+  for (const user of users) {
     const clients = await getOrCreateClients(
       1,
       [user.secrets.get("ecr")!],
       true,
     );
-    roleClient = clients[clients.length - 1]; 
+    roleClient = clients[clients.length - 1];
     ecrAid = await roleClient.identifiers().get("ecr1");
 
     let creds = await roleClient.credentials().list();
@@ -75,7 +79,12 @@ test("vlei-verification", async function run() {
   }
 }, 100000);
 
-async function vlei_verification(ecrAid: HabState, roleClient: SignifyClient, ecrCred: any, ecrCredCesr: any) {
+async function vlei_verification(
+  ecrAid: HabState,
+  roleClient: SignifyClient,
+  ecrCred: any,
+  ecrCredCesr: any,
+) {
   let hpath = "/health";
   let hreq = { method: "GET", body: null };
   let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);

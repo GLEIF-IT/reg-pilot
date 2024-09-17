@@ -102,8 +102,6 @@ export function createTimestamp() {
   return new Date().toISOString().replace("Z", "000+00:00");
 }
 
-
-
 /**
  * Get list of end role authorizations for a Keri idenfitier
  */
@@ -407,8 +405,6 @@ export async function getStates(client: SignifyClient, prefixes: string[]) {
   return participantStates.map((s: any[]) => s[0]);
 }
 
-
-
 /**
  * Test if end role is authorized for a Keri identifier
  */
@@ -658,6 +654,3 @@ export async function sendAdmitMessage(
 
   await markAndRemoveNotification(senderClient, grantNotification);
 }
-
-
-

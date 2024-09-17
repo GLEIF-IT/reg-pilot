@@ -63,8 +63,7 @@ while [[ $# -gt 0 ]]; do
             npm run build
             shift # past argument
             ;;
-        --data)
-            
+        --data)            
             export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./vlei-issuance.test.ts
             shift # past argument
