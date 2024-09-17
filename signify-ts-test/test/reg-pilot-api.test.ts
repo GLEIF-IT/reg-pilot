@@ -6,6 +6,7 @@ import * as process from "process";
 import { getOrCreateClients } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import { unknownPrefix } from "./report.test";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
 import { buildUserData, User } from "../src/utils/handle-json-config";
@@ -274,8 +275,7 @@ async function single_user_test(user: ApiUser) {
         failUpResp,
         failReport,
         failZipDig,
-        user.ecrAid,
-        env.apiBaseUrl,
+        user.ecrAid
       );
     }
   }
@@ -514,11 +514,11 @@ export async function getGrantedCredential(
 }
 
 
-async function checkSignedUpload(
+export async function checkSignedUpload(
   signedUpResp: Response,
   fileName: string,
   signedZipDig: string,
-  user: ApiUser,
+  user: ApiUser
 ): Promise<boolean> {
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
@@ -546,16 +546,73 @@ async function checkSignedUpload(
   assert.equal(signedUploadBody["filename"], fileName);
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 1000, true);
-  return true;
-}
 
-interface ApiUser {
-  roleClient: any;
-  ecrAid: any;
-  ecrCred: any;
-  ecrCredCesr: any;
-  lei: string;
-  uploadDig: string;
+  // Try unknown aid signed report upload
+  const unknownFileName = `report.zip`;
+  const unknownZipBuf = fs.readFileSync(
+    `./test/data/unknown_reports/${unknownFileName}`,
+  );
+  const unknownZipDig = generateFileDigest(unknownZipBuf);
+  const unknownResp = await apiAdapter.uploadReport(
+    "ecr1",
+    user.ecrAid.prefix,
+    unknownFileName,
+    unknownZipBuf,
+    unknownZipDig,
+    user.roleClient,
+  );
+  let unknownBody = await unknownResp.json();
+  assert.equal(unknownResp.status, 200);
+  assert.equal(unknownBody["submitter"], `${user.ecrAid.prefix}`);
+  assert.equal(
+    unknownBody["message"],
+    `signature from unknown AID ${unknownPrefix}`,
+  );
+  assert.equal(unknownBody["filename"], unknownFileName);
+  assert.equal(unknownBody["status"], "failed");
+  assert.equal(unknownBody["contentType"], "application/zip");
+  assert.equal(unknownBody["size"] > 1000, true);
+
+  sresp = await apiAdapter.getReportStatusByDig(
+    "ecr1",
+    user.ecrAid.prefix,
+    unknownZipDig,
+    user.roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  const unknownUploadBody = await sresp.json();
+  assert.equal(unknownUploadBody["submitter"], `${user.ecrAid.prefix}`);
+  assert.equal(
+    unknownUploadBody["message"],
+    `signature from unknown AID ${unknownPrefix}`,
+  );
+  assert.equal(unknownUploadBody["filename"], unknownFileName);
+  assert.equal(unknownUploadBody["status"], "failed");
+  assert.equal(unknownUploadBody["contentType"], "application/zip");
+  assert.equal(unknownUploadBody["size"] > 1000, true);
+
+  sresp = await apiAdapter.getReportStatusByAid(
+    "ecr1",
+    user.ecrAid.prefix,
+    user.roleClient
+  );
+  assert.equal(sresp.status, 202);
+  const twoUploadsBody = await sresp.json();
+  assert.equal(twoUploadsBody.length, 2);
+  const signedStatus = twoUploadsBody[0];
+  assert.equal(signedStatus["status"], "verified");
+  assert.equal(signedStatus["submitter"], `${user.ecrAid.prefix}`);
+  expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
+  assert.equal(signedStatus["filename"], fileName);
+  assert.equal(signedStatus["contentType"], "application/zip");
+  assert.equal(signedStatus["size"] > 1000, true);
+  const unknownStatus = twoUploadsBody[1];
+  assert.equal(unknownStatus["submitter"], `${user.ecrAid.prefix}`);
+  assert.equal(unknownStatus["status"], "failed");
+  assert.equal(unknownStatus["contentType"], "application/zip");
+  assert.equal(signedUpBody["size"] > 1000, true);
+
+  return true;
 }
 
 
@@ -565,7 +622,6 @@ export async function checkFailUpload(
   fileName: string,
   failZipDig: string,
   ecrAid: HabState,
-  baseUrl: string,
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
@@ -603,6 +659,7 @@ export async function checkFailUpload(
   return true;
 }
 
+
 export async function checkBadDigestUpload(
   badDigestUpResp: Response,
 ): Promise<boolean> {
@@ -621,4 +678,13 @@ export async function checkNonPrefixedDigestUpload(
   assert.equal(badDigestUpBody.includes("must start with prefix"), true);
 
   return true;
+}
+
+interface ApiUser {
+  roleClient: any;
+  ecrAid: any;
+  ecrCred: any;
+  ecrCredCesr: any;
+  lei: string;
+  uploadDig: string;
 }
