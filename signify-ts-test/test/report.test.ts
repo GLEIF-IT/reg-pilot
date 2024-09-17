@@ -4,9 +4,11 @@ import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
 import { generateFileDigest } from "./utils/generate-digest";
-import { getOrCreateClients } from "./utils/test-util";
+import { Aid, getOrCreateClients } from "./utils/test-util";
 import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import {buildUserData, User} from "../src/utils/handle-json-config";
+
 
 let env: TestEnvironment;
 let ecrAid: HabState;
@@ -18,30 +20,17 @@ let failDirPrefixed: string;
 const signedDir = "signed_reports";
 let signedDirPrefixed: string;
 const tempDir = "temp_reports";
+const secretsJsonPath = "../src/config/"
+let users: Array<User>;
 
 afterAll(async () => {
   deleteReportsDir(tempDir);
 });
 
 beforeAll(async () => {
-  // process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-  // process.env.TEST_ENVIRONMENT = "nordlei_demo";
-  // process.env.ROLE_NAME = "unicredit-datasubmitter";
-  // process.env.REG_PILOT_API = "https://reg-api-dev.rootsid.cloud";
-
   env = resolveEnvironment();
-  console.log("SECRETS!!!!!!!!!!!!!!!!: ");
-  console.log(env.secrets);
-  const clients = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-    true,
-  );
-  roleClient = clients[clients.length - 1];
-  ecrAid = await roleClient.identifiers().get(env.roleName);
-  keeper = roleClient.manager!.get(ecrAid);
-  failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-  signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
+  const secretsJson = JSON.parse(fs.readFileSync(path.join(__dirname, secretsJsonPath + env.secretsJsonConfig), 'utf-8'));  
+  users = await buildUserData(secretsJson);      
 });
 
 // Function to create a report dir
@@ -69,10 +58,28 @@ function deleteReportsDir(repDir: string): void {
 // This test assumes you have run a vlei-issuance test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
 test("report-generation-test", async function run() {
+  for (const user of users){
+    const clients = await getOrCreateClients(
+      1,
+      [user.secrets.get("ecr")!],
+      true,
+    );
+    roleClient = clients[clients.length - 1];
+    ecrAid = await roleClient.identifiers().get("ecr1");
+    keeper = roleClient.manager!.get(ecrAid);
+    failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
+    signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
+    await generate_reports(ecrAid, keeper, signedDirPrefixed);
+  }
+  
+}, 100000);
+
+
+async function generate_reports(ecrAid: HabState, keeper: signify.Keeper, signedDirPrefixed: string) {
   deleteReportsDir(tempDir);
   createReportsDir(tempDir);
   deleteReportsDir(signedDirPrefixed);
-  const signedSuccess = await createSignedReports();
+  const signedSuccess = await createSignedReports(ecrAid, keeper);
   assert.equal(signedSuccess, true);
 
   if (signedSuccess) {
@@ -84,9 +91,9 @@ test("report-generation-test", async function run() {
     deleteReportsDir(failDirPrefixed);
     assert.equal(await createFailReports(), true);
   }
-}, 100000);
+}
 
-async function createSignedReports(): Promise<boolean> {
+async function createSignedReports(ecrAid: HabState, keeper: signify.Keeper): Promise<boolean> {
   console.log("Signing reports");
 
   // Loop over the files in the ./data/orig_reports directory
@@ -111,7 +118,7 @@ async function createSignedReports(): Promise<boolean> {
       const digested: boolean = await addDigestsToReport(repDirPath);
       if (digested) {
         //generate foldered zip, like older xbrl spec
-        await signReport(repDirPath, keeper);
+        await signReport(repDirPath, keeper, ecrAid);
         const fileExtension = path.extname(file);
         const shortFileName = `signed_${fileName.substring(Math.max(0, fileName.length - 50), fileName.length)}${fileExtension}`;
         const repPath = path.join(signedDirPrefixed, shortFileName);
@@ -309,6 +316,7 @@ async function removeMetaInfReportsJson(repDirPath: string): Promise<boolean> {
 async function signReport(
   repDirPath: string,
   keeper: signify.Keeper,
+  ecrAid: HabState
 ): Promise<boolean> {
   const signer: Signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 

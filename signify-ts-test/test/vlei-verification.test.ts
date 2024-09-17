@@ -1,9 +1,11 @@
 import { strict as assert } from "assert";
-
+import * as fs from "fs";
 import { getGrantedCredential, getOrCreateClients } from "./utils/test-util";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
+import {buildUserData, User} from "../src/utils/handle-json-config";
+
 
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 
@@ -14,57 +16,15 @@ let ecrCredHolder: any;
 let env: TestEnvironment;
 let roleClient: SignifyClient;
 
-const failDir = "fail_reports";
-let failDirPrefixed: string;
-const signedDir = "signed_reports";
-let signedDirPrefixed: string;
+const secretsJsonPath = "../src/config/"
+let users: Array<User>;
 
 afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
-
-  const clients = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-    true,
-  );
-  roleClient = clients.pop()!;
-
-  ecrAid = await roleClient.identifiers().get(env.roleName);
-  failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-  signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
-
-  let creds = await roleClient.credentials().list();
-  let ecrCreds = creds.filter(
-    (cred: any) =>
-      cred.sad.s === ECR_SCHEMA_SAID &&
-      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
-      cred.sad.a.i === ecrAid.prefix,
-  );
-  // generally expecting one ECR credential but compare them and take the first
-  try {
-    if (ecrCreds.length > 1) {
-      assert.equal(
-        ecrCreds[0].sad.a,
-        ecrCreds[1].sad.a,
-        "Expected one ECR credential the comparison of ecr sad attirbutes",
-      );
-    }
-  } catch (error) {
-    console.log(
-      `Excepting only one ECR, see comparison, but continuing: ${error}`,
-    );
-  }
-
-  ecrCred = ecrCreds[0];
-  ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-  assert(ecrCred !== undefined);
-  assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
-  assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
-  assert.equal(ecrCredHolder.status.s, "0");
-  assert(ecrCredHolder.atc !== undefined);
-  ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+  const secretsJson = JSON.parse(fs.readFileSync(path.join(__dirname, secretsJsonPath + env.secretsJsonConfig), 'utf-8'));  
+  users = await buildUserData(secretsJson);  
 });
 
 // This test assumes you have run a vlei test that sets up the
@@ -72,6 +32,50 @@ beforeAll(async () => {
 // It also assumes you have generated the different report files
 // from the report test
 test("vlei-verification", async function run() {
+  for (const user of users){
+    const clients = await getOrCreateClients(
+      1,
+      [user.secrets.get("ecr")!],
+      true,
+    );
+    roleClient = clients[clients.length - 1]; 
+    ecrAid = await roleClient.identifiers().get("ecr1");
+
+    let creds = await roleClient.credentials().list();
+    let ecrCreds = creds.filter(
+      (cred: any) =>
+        cred.sad.s === ECR_SCHEMA_SAID &&
+        cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
+        cred.sad.a.i === ecrAid.prefix,
+    );
+    // generally expecting one ECR credential but compare them and take the first
+    try {
+      if (ecrCreds.length > 1) {
+        assert.equal(
+          ecrCreds[0].sad.a,
+          ecrCreds[1].sad.a,
+          "Expected one ECR credential the comparison of ecr sad attirbutes",
+        );
+      }
+    } catch (error) {
+      console.log(
+        `Excepting only one ECR, see comparison, but continuing: ${error}`,
+      );
+    }
+
+    ecrCred = ecrCreds[0];
+    ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
+    assert(ecrCred !== undefined);
+    assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
+    assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
+    assert.equal(ecrCredHolder.status.s, "0");
+    assert(ecrCredHolder.atc !== undefined);
+    ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+    await vlei_verification(ecrAid, roleClient, ecrCred, ecrCredCesr);
+  }
+}, 100000);
+
+async function vlei_verification(ecrAid: HabState, roleClient: SignifyClient, ecrCred: any, ecrCredCesr: any) {
   let hpath = "/health";
   let hreq = { method: "GET", body: null };
   let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
@@ -101,17 +105,17 @@ test("vlei-verification", async function run() {
   heads.set("method", "POST");
   let vreqInit = { headers: heads, method: "POST", body: null };
   let vurl = `${env.verifierBaseUrl}/request/verify/${ecrAid.prefix}?${params}`;
-  let vreq = await roleClient.createSignedRequest(env.roleName, vurl, vreqInit);
+  let vreq = await roleClient.createSignedRequest("ecr1", vurl, vreqInit);
   let vresp = await fetch(vreq);
   assert.equal(202, vresp.status);
 
   heads.set("Content-Type", "application/json");
   let areqInit = { headers: heads, method: "GET", body: null };
   let aurl = `${env.verifierBaseUrl}/authorizations/${ecrAid.prefix}`;
-  let areq = await roleClient.createSignedRequest(env.roleName, aurl, areqInit);
+  let areq = await roleClient.createSignedRequest("ecr1", aurl, areqInit);
   let aresp = await fetch(areq);
   assert.equal(200, aresp.status);
   let body = await aresp.json();
   assert.equal(body["aid"], `${ecrAid.prefix}`);
   assert.equal(body["said"], `${ecrCred.sad.d}`);
-}, 100000);
+}
