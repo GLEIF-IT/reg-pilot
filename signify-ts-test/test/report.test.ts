@@ -19,6 +19,9 @@ let keeper: signify.Keeper;
 export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
 // export const unknownPrefix = "unknown_aid_1234567890abcdefghijklmnopqrstuv";
 
+export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
+// export const unknownPrefix = "unknown_aid_1234567890abcdefghijklmnopqrstuv";
+
 const origDir = "orig_reports";
 let unsignedReports: string[];
 const failDir = "fail_reports";
@@ -146,6 +149,7 @@ async function createSignedReports(filePaths: string[], simple: boolean = true):
         console.log(`Processing detailed file signature: ${filePath}`);
         // extract the zip so we can produce digests/signatures for each file
         zip.extractAllTo(fullTemp, true);
+
         const foundPath = findReportsDir(fullTemp);
         if (!foundPath) {
           throw new Error(`No reports directory found in ${fullTemp}`);
@@ -194,20 +198,19 @@ async function createSignedReports(filePaths: string[], simple: boolean = true):
         console.log("Creating complex packaged signed report " + signedRepPath);
         await createExternalManifestZip(signedRepPath, filePath, manJson);
 
+
         // generate unzipped foldered signed report
         shortFileName = `unzipped${fileName}_signed${fileExtension}`;
         const repPath = path.join(signedDirPrefixed, shortFileName);
-        console.log("Creating unzipped foldered signed report " + repPath);
-        
+        console.log("Creating unzipped foldered signed report " + repPath);        
         const manPath = await writeReportsJson(fullTemp, manJson);
+
         const sfZip = await transferTempToZip(fullTemp, repPath);
         validateReport(new AdmZip(sfZip));
         console.log("Creating foldered signed report " + repPath);
         const sfZip = await transferTempToZip(fullTemp, repPath);
         validateReport(new AdmZip(sfZip));
 
-        //generate unfoldered zip, like older xbrl spec
-        const unfolderedShortFileName = `unzipped_unfoldered${fileName}_signed${fileExtension}`;
         //generate unfoldered zip, like older xbrl spec
         const unfolderedShortFileName = `unzipped_unfoldered${fileName}_signed${fileExtension}`;
         const unfolderedRepPath = path.join(
@@ -328,10 +331,8 @@ async function createFailReports(
       console.log(`Processing file: ${filePath}`);
       const zip = new AdmZip(filePath);
       let fullTemp = path.join(__dirname, tempDir);
-      let fullTemp = path.join(__dirname, tempDir);
       fsExtra.emptyDirSync(fullTemp);
       for (const failFunc of failFuncs) {
-        validateReport(zip);
         validateReport(zip);
         zip.extractAllTo(fullTemp, true);
 
@@ -374,8 +375,6 @@ async function createFailReports(
   return true;
 }
 
-async function genMissingSignature(manifestPath: string): Promise<boolean> {
-  console.log(`Generating missing signature case for manifest ${manifestPath}`);
 async function genMissingSignature(manifestPath: string): Promise<boolean> {
   console.log(`Generating missing signature case for manifest ${manifestPath}`);
 
@@ -422,29 +421,6 @@ async function wrongAid(manifestPath: string): Promise<boolean> {
 
   throw new Error("No signatures to add unknown aid to " + manifestPath);
 }
-
-
-async function wrongAid(manifestPath: string): Promise<boolean> {
-  console.log(`Generating wrong AID case for manifest ${manifestPath}`);
-
-  assert.equal(fs.existsSync(manifestPath), true);
-  const data = await fs.promises.readFile(manifestPath, "utf-8");
-  let manifest: Manifest = JSON.parse(data);
-  const signatures: Signature[] = manifest.documentInfo.signatures;
-
-  // Remove one signature entry from the manifest
-  if (manifest.documentInfo && manifest.documentInfo.signatures) {
-    for(const sig of manifest.documentInfo.signatures) {
-      sig.aid = unknownPrefix;
-    }
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-    return true;
-  }
-
-  throw new Error("No signatures to add unknown aid to " + manifestPath);
-}
-
-
 async function genNoSignature(manifestPath: string): Promise<boolean> {
   assert.equal(fs.existsSync(manifestPath), true);
   const data = await fs.promises.readFile(manifestPath, "utf-8");
@@ -552,7 +528,10 @@ async function addDigestToReport(
   if(simple) {
     relativeFilePath = `${reportName}`;
   } else {
+
     relativeFilePath = `${path.basename(path.dirname(reportPath))}/${reportName}`;
+    
+
   }
   signatureBlock.file = relativeFilePath;
   signatureBlock.digest = dig;
@@ -566,8 +545,6 @@ async function transferTempToZip(
   filePath: string,
   allowSubDir: boolean = true,
 ): Promise<string> {
-  allowSubDir: boolean = true,
-): Promise<string> {
   const zip = new AdmZip();
   if(allowSubDir) {
     zip.addLocalFolder(tempDir);
@@ -576,7 +553,6 @@ async function transferTempToZip(
     let found = false;
     for (const dir of dirs) {
       const repDirPath = path.join(tempDir, dir);
-      zip.addLocalFolder(repDirPath);
       zip.addLocalFolder(repDirPath);
     }
   }
@@ -597,7 +573,6 @@ async function transferTempToZip(
     console.log(`Zip file contains: ${zip.getEntries().map((entry) => entry.entryName)}`);
   }
 
-  return filePath;
   return filePath;
 }
 
@@ -620,7 +595,6 @@ interface Manifest {
 
 async function getRepPath(fullTemp: string): Promise<string> {
   const dirs: string[] = await listDirectories(fullTemp);
-  const repZip: string[] = await listReportZips(fullTemp);
   const repZip: string[] = await listReportZips(fullTemp);
   let repDirPath: string = fullTemp;
   if (dirs.includes("META-INF")) {
@@ -730,9 +704,12 @@ function validateReport(zip: AdmZip) {
     throw new Error('Neither reports directory nor zip file found in the zip file');
   }
 
-  console.log('Validation passed: META-INF directory with report.json and either reports directory or zip file found.');
+  console.log(
+    "Validation passed: META-INF directory with report.json and either reports directory or zip file found.",
+  );
 }
 
+<<<<<<< HEAD
 
 function findReportsDir(dirPath: string): string | null {
   const files = fs.readdirSync(dirPath);
@@ -779,13 +756,7 @@ function findReportsDir(dirPath: string): string | null {
     }
   }
 
-  return null;
+
+  throw new Error(`No "reports" directory found in ${dirPath}`);
 }
 
-async function writeReportsJson(fullTemp: string, manJson: string): Promise<string>{
-  const dirPath = await getRepPath(fullTemp);
-  const manifestPath = path.join(dirPath, "META-INF", "reports.json");
-  fs.writeFileSync(manifestPath, manJson, 'utf8');
-  console.log(`Manifest written to path ${manifestPath}: ${manJson}`);
-  return manifestPath
-}
