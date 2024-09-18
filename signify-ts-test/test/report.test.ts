@@ -709,8 +709,6 @@ function validateReport(zip: AdmZip) {
   );
 }
 
-<<<<<<< HEAD
-
 function findReportsDir(dirPath: string): string | null {
   const files = fs.readdirSync(dirPath);
 
@@ -757,6 +755,13 @@ function findReportsDir(dirPath: string): string | null {
   }
 
 
-  throw new Error(`No "reports" directory found in ${dirPath}`);
+  return null;
 }
 
+async function writeReportsJson(fullTemp: string, manJson: string): Promise<string>{
+  const dirPath = await getRepPath(fullTemp);
+  const manifestPath = path.join(dirPath, "META-INF", "reports.json");
+  fs.writeFileSync(manifestPath, manJson, 'utf8');
+  console.log(`Manifest written to path ${manifestPath}: ${manJson}`);
+  return manifestPath
+}
