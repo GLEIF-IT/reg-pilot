@@ -605,11 +605,7 @@ export async function checkSignedUpload(
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
   assert.equal(signedStatus["size"] > 1000, true);
-  // const unknownStatus = twoUploadsBody[1];
-  // assert.equal(unknownStatus["submitter"], `${ecrAid.prefix}`);
-  // assert.equal(unknownStatus["status"], "failed");
-  // assert.equal(unknownStatus["contentType"], "application/zip");
-  // assert.equal(signedUpBody["size"] > 1000, true);
+
 
   return true;
 }
@@ -655,6 +651,7 @@ export async function checkFailUpload(
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 1000, true);
   return true;
+  
 }
 
 export async function checkBadDigestUpload(
@@ -751,6 +748,69 @@ export async function checkNonPrefixedDigestUpload(
   return true;
 }
 
+export async function checkFailUpload(
+  roleClient: SignifyClient,
+  failUpResp: Response,
+  fileName: string,
+  failZipDig: string,
+  ecrAid: HabState,
+): Promise<boolean> {
+  let failMessage = "";
+  if (fileName.includes("genMissingSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("genNoSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("removeMetaInfReportsJson")) {
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status >= 300, true);
+    const failUpBody = await failUpResp.json();
+    return true;
+  }
+
+  assert.equal(failUpResp.status, 200);
+  const failUpBody = await failUpResp.json();
+  assert.equal(failUpBody["status"], "failed");
+  assert.equal(failUpBody["submitter"], ecrAid.prefix);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
+  assert.equal(failUpBody["contentType"], "application/zip");
+  assert.equal(failUpBody["size"] > 1000, true);
+
+  const sresp = await apiAdapter.getReportStatusByDig(
+    ecrAid.name,
+    ecrAid.prefix,
+    failZipDig,
+    roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  const signedUploadBody = await sresp.json();
+  assert.equal(signedUploadBody["status"], "failed");
+  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
+  assert.equal(signedUploadBody["contentType"], "application/zip");
+  assert.equal(signedUploadBody["size"] > 1000, true);
+  return true;
+}
+
+export async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+
+  return true;
+}
+
+export async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+
+  return true;
+}
+
 interface ApiUser {
   roleClient: any;
   ecrAid: any;
@@ -760,9 +820,75 @@ interface ApiUser {
   uploadDig: string;
 }
 
+export async function checkFailUpload(
+  roleClient: SignifyClient,
+  failUpResp: Response,
+  fileName: string,
+  failZipDig: string,
+  ecrAid: HabState,
+): Promise<boolean> {
+  let failMessage = "";
+  if (fileName.includes("genMissingSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("genNoSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("removeMetaInfReportsJson")) {
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status >= 300, true);
+    const failUpBody = await failUpResp.json();
+    return true;
+  }
 
-export function getDefaultSignedReports(): string[] {
-  return fs.readdirSync(signedDirPrefixed);
+  assert.equal(failUpResp.status, 200);
+  const failUpBody = await failUpResp.json();
+  assert.equal(failUpBody["status"], "failed");
+  assert.equal(failUpBody["submitter"], ecrAid.prefix);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
+  assert.equal(failUpBody["contentType"], "application/zip");
+  assert.equal(failUpBody["size"] > 1000, true);
+
+  const sresp = await apiAdapter.getReportStatusByDig(
+    ecrAid.name,
+    ecrAid.prefix,
+    failZipDig,
+    roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  const signedUploadBody = await sresp.json();
+  assert.equal(signedUploadBody["status"], "failed");
+  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
+  assert.equal(signedUploadBody["contentType"], "application/zip");
+  assert.equal(signedUploadBody["size"] > 1000, true);
+  return true;
+}
+
+export async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+
+  return true;
+}
+
+export async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+
+  return true;
+}
+interface ApiUser {
+  roleClient: any;
+  ecrAid: any;
+  ecrCred: any;
+  ecrCredCesr: any;
+  lei: string;
+  uploadDig: string;
 }
 
 export function getDefaultSignedReports(): string[] {

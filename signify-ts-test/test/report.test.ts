@@ -1,3 +1,4 @@
+
 import { strict as assert } from "assert";
 import * as fs from "fs";
 import * as path from "path";
@@ -15,12 +16,6 @@ let env: TestEnvironment;
 let ecrAid: HabState;
 let roleClient: SignifyClient;
 let keeper: signify.Keeper;
-
-export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
-// export const unknownPrefix = "unknown_aid_1234567890abcdefghijklmnopqrstuv";
-
-export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
-// export const unknownPrefix = "unknown_aid_1234567890abcdefghijklmnopqrstuv";
 
 const origDir = "orig_reports";
 let unsignedReports: string[];
@@ -53,6 +48,16 @@ beforeAll(async () => {
   signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
 
   unsignedReports = process.env.UNSIGNED_REPORTS ? process.env.UNSIGNED_REPORTS.split(",") : getDefaultOrigReports();
+  const secretsJson = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
+      "utf-8",
+    ),
+  );
+  users = await buildUserData(secretsJson);
+  unsignedReports = process.env.UNSIGNED_REPORTS
+    ? process.env.UNSIGNED_REPORTS.split(",")
+    : getDefaultOrigReports();
 });
 
 // Function to create a report dir
@@ -204,10 +209,6 @@ async function createSignedReports(filePaths: string[], simple: boolean = true):
         const repPath = path.join(signedDirPrefixed, shortFileName);
         console.log("Creating unzipped foldered signed report " + repPath);        
         const manPath = await writeReportsJson(fullTemp, manJson);
-
-        const sfZip = await transferTempToZip(fullTemp, repPath);
-        validateReport(new AdmZip(sfZip));
-        console.log("Creating foldered signed report " + repPath);
         const sfZip = await transferTempToZip(fullTemp, repPath);
         validateReport(new AdmZip(sfZip));
 
@@ -374,7 +375,6 @@ async function createFailReports(
   return true;
   return true;
 }
-
 async function genMissingSignature(manifestPath: string): Promise<boolean> {
   console.log(`Generating missing signature case for manifest ${manifestPath}`);
 
@@ -485,7 +485,6 @@ async function listReportZips(dir: string): Promise<string[]> {
 async function removeMetaInfReportsJson(manifestPath: string): Promise<boolean> {
   if (fs.existsSync(manifestPath)) {
     console.log(`Removing ${manifestPath}`);
-    console.log(`Removing ${manifestPath}`);
     fs.unlinkSync(manifestPath);
     assert.equal(fs.existsSync(manifestPath), false);
     return true;
@@ -543,8 +542,7 @@ async function addDigestToReport(
 async function transferTempToZip(
   tempDir: string,
   filePath: string,
-  allowSubDir: boolean = true,
-): Promise<string> {
+  allowSubDir: boolean = true,): Promise<string> {
   const zip = new AdmZip();
   if(allowSubDir) {
     zip.addLocalFolder(tempDir);
@@ -595,6 +593,7 @@ interface Manifest {
 
 async function getRepPath(fullTemp: string): Promise<string> {
   const dirs: string[] = await listDirectories(fullTemp);
+  
   const repZip: string[] = await listReportZips(fullTemp);
   let repDirPath: string = fullTemp;
   if (dirs.includes("META-INF")) {
@@ -703,7 +702,7 @@ function validateReport(zip: AdmZip) {
   if (!reportsEntry && !reportsZipEntry) {
     throw new Error('Neither reports directory nor zip file found in the zip file');
   }
-
+  
   console.log(
     "Validation passed: META-INF directory with report.json and either reports directory or zip file found.",
   );
@@ -737,31 +736,3 @@ async function writeReportsJson(fullTemp: string, manJson: string): Promise<stri
   return manifestPath
 }
 
-function findReportsDir(dirPath: string): string | null {
-  const files = fs.readdirSync(dirPath);
-
-  for (const file of files) {
-    const fullPath = path.join(dirPath, file);
-    if (fs.lstatSync(fullPath).isDirectory()) {
-      if (file === 'reports') {
-        return fullPath;
-      } else {
-        const found = findReportsDir(fullPath);
-        if (found) {
-          return found;
-        }
-      }
-    }
-  }
-
-
-  return null;
-}
-
-async function writeReportsJson(fullTemp: string, manJson: string): Promise<string>{
-  const dirPath = await getRepPath(fullTemp);
-  const manifestPath = path.join(dirPath, "META-INF", "reports.json");
-  fs.writeFileSync(manifestPath, manJson, 'utf8');
-  console.log(`Manifest written to path ${manifestPath}: ${manJson}`);
-  return manifestPath
-}
