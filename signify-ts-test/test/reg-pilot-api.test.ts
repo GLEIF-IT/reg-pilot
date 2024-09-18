@@ -18,6 +18,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { unknownPrefix } from "./report.test";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
+import { sign } from "crypto";
 
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 
@@ -32,6 +33,7 @@ const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
 let signedDirPrefixed: string;
+let signedReports: string[];
 
 afterEach(async () => {});
 
@@ -79,6 +81,8 @@ beforeAll(async () => {
   assert.equal(ecrCredHolder.status.s, "0");
   assert(ecrCredHolder.atc !== undefined);
   ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+
+  signedReports = process.env.SIGNED_REPORTS ? process.env.SIGNED_REPORTS.split(",") : getDefaultSignedReports();
 });
 
 test("reg-pilot-api", async function run() {
@@ -187,21 +191,18 @@ test("reg-pilot-api", async function run() {
   //   const ecrOobi = await roleClient.oobis().get(env.roleName, "agent");
   //   console.log("Verifier must have already seen the login", ecrOobi);
   // Loop over the reports directory
-  const reports = fs.readdirSync(signedDirPrefixed);
-  const failReports = fs.readdirSync(failDirPrefixed);
 
   // Check signed reports
-  for (const signedReport of reports) {
-    const filePath = path.join(signedDirPrefixed, signedReport);
-    if (fs.lstatSync(filePath).isFile()) {
+  for (const signedReport of signedReports) {
+    if (fs.lstatSync(signedReport).isFile()) {
       await dropReportStatusByAid(
         env.roleName,
         ecrAid.prefix,
         roleClient,
         env.apiBaseUrl,
       );
-      console.log(`Processing file: ${filePath}`);
-      const signedZipBuf = fs.readFileSync(`${filePath}`);
+      console.log(`Processing file: ${signedReport}`);
+      const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await uploadReport(
         env.roleName,
@@ -214,12 +215,14 @@ test("reg-pilot-api", async function run() {
       );
       await checkSignedUpload(
         signedUpResp,
-        signedReport,
+        path.basename(signedReport),
         signedZipDig,
         env.apiBaseUrl,
       );
     }
   }
+
+  const failReports = fs.readdirSync(failDirPrefixed);
 
   // Check fail reports
   for (const failReport of failReports) {
@@ -255,7 +258,7 @@ test("reg-pilot-api", async function run() {
   }
 
   // Check reports with bad digest
-  for (const signedReport of reports) {
+  for (const signedReport of signedReports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
       await dropReportStatusByAid(
@@ -281,7 +284,7 @@ test("reg-pilot-api", async function run() {
   }
 
   // Check reports with not prefixed digest
-  for (const signedReport of reports) {
+  for (const signedReport of signedReports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
       await dropReportStatusByAid(
@@ -410,4 +413,8 @@ export async function checkSignedUpload(
   // assert.equal(signedUpBody["size"] > 1000, true);
 
   return true;
+}
+
+export function getDefaultSignedReports(): string[] {
+  return fs.readdirSync(signedDirPrefixed);
 }

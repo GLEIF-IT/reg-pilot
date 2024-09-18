@@ -82,7 +82,7 @@ test("signed-report-generation-test", async function run() {
   createReportsDir(tempDir);
   deleteReportsDir(signedDirPrefixed);
   assert.equal(await createSignedReports(unsignedReports, true), true);
-  assert.equal(await createSignedReports(unsignedReports), true);
+  assert.equal(await createSignedReports(unsignedReports, false), true);
 }, 100000);
 
 // test("unknown-report-generation-test", async function run() {
@@ -126,7 +126,12 @@ async function createSignedReports(filePaths: string[], simple: boolean = true):
         console.log(`Processing detailed file signature: ${filePath}`);
         // extract the zip so we can produce digests/signatures for each file
         zip.extractAllTo(fullTemp, true);
-        repDirPath = findReportsDir(fullTemp);
+        const foundPath = findReportsDir(fullTemp);
+        if (!foundPath) {
+          throw new Error(`No reports directory found in ${fullTemp}`);
+        } else {
+          repDirPath = foundPath;
+        }
       }
 
       const reportEntries = await fs.promises.readdir(repDirPath, {
@@ -167,20 +172,13 @@ async function createSignedReports(filePaths: string[], simple: boolean = true):
         let shortFileName = `${fileName}_complex_signed${fileExtension}`;
         const signedRepPath = path.join(signedDirPrefixed, shortFileName);
         console.log("Creating complex packaged signed report " + signedRepPath);
-        const tempManDir = path.join(__dirname, tempExtManifestDir);
-        fsExtra.ensureDirSync(tempManDir);
-        const tempMetaDir = path.join(tempExtManifestDir, "META-INF");
-        fsExtra.ensureDirSync(tempMetaDir);
-        const tempManifest = path.join(tempMetaDir, "reports.json");
-        await createExternalManifestZip(signedRepPath, filePath, tempManifest);
+        await createExternalManifestZip(signedRepPath, filePath, manJson);
 
         // generate unzipped foldered signed report
         shortFileName = `unzipped${fileName}_signed${fileExtension}`;
         const repPath = path.join(signedDirPrefixed, shortFileName);
         console.log("Creating unzipped foldered signed report " + repPath);
-        const sfZip = await transferTempToZip(fullTemp, repPath);
-        validateReport(new AdmZip(sfZip));
-        console.log("Creating foldered signed report " + repPath);
+        const manPath = await writeReportsJson(fullTemp, manJson);
         const sfZip = await transferTempToZip(fullTemp, repPath);
         validateReport(new AdmZip(sfZip));
 
@@ -499,7 +497,7 @@ async function addDigestToReport(
   if(simple) {
     relativeFilePath = `${reportName}`;
   } else {
-    relativeFilePath = `${path.dirname(reportName)}/${reportName}`;
+    relativeFilePath = `${path.basename(path.dirname(reportPath))}/${reportName}`;
   }
   signatureBlock.file = relativeFilePath;
   signatureBlock.digest = dig;
@@ -621,7 +619,7 @@ function getDefaultOrigReports(): string[] {
   return unsignedReps;
 }
 
-async function createExternalManifestZip(signedRepPath: string, origZipFilePath: string, newManifestPath: string): Promise<void> {
+async function createExternalManifestZip(signedRepPath: string, origZipFilePath: string, manJson: string): Promise<void> {
   // Create a temporary directory
   const tempDir = path.join(__dirname, 'tempZipDir');
   fsExtra.emptyDirSync(tempDir);
@@ -636,10 +634,9 @@ async function createExternalManifestZip(signedRepPath: string, origZipFilePath:
     fs.mkdirSync(metaInfDir);
   }
 
-  // Copy the new manifest file to the META-INF directory
-  const manifestFileName = path.basename(newManifestPath);
-  const destManifestPath = path.join(metaInfDir, manifestFileName);
-  fs.copyFileSync(newManifestPath, destManifestPath);
+  const destManifestPath = path.join(metaInfDir, 'reports.json');
+  fs.writeFileSync(destManifestPath, manJson, 'utf8');
+  console.log(`Manifest written to path ${destManifestPath}: ${manJson}`);
 
   // Create a new zip file that includes the contents of the temporary directory
   const newZip = new AdmZip();
@@ -678,7 +675,7 @@ function validateReport(zip: AdmZip) {
   );
 }
 
-function findReportsDir(dirPath: string): string {
+function findReportsDir(dirPath: string): string | null {
   const files = fs.readdirSync(dirPath);
 
   for (const file of files) {
@@ -695,5 +692,13 @@ function findReportsDir(dirPath: string): string {
     }
   }
 
-  throw new Error(`No "reports" directory found in ${dirPath}`);
+  return null;
+}
+
+async function writeReportsJson(fullTemp: string, manJson: string): Promise<string>{
+  const dirPath = await getRepPath(fullTemp);
+  const manifestPath = path.join(dirPath, "META-INF", "reports.json");
+  fs.writeFileSync(manifestPath, manJson, 'utf8');
+  console.log(`Manifest written to path ${manifestPath}: ${manJson}`);
+  return manifestPath
 }
