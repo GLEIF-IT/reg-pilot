@@ -36,4 +36,4 @@ jobs:
       - name: Check formatting
         run: npm run pretty:check
       - name: Build, Run docker, run tests
-        run: ./test-single-aid.sh --all
+        run: SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --all

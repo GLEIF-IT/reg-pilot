@@ -1,92 +1,121 @@
 import { strict as assert } from "assert";
+
 import fs from "fs";
 import * as process from "process";
 
-import {
-  checkBadDigestUpload,
-  checkFailUpload,
-  checkNonPrefixedDigestUpload,
-  dropReportStatusByAid,
-  getGrantedCredential,
-  getOrCreateClients,
-  getReportStatusByAid,
-  getReportStatusByDig,
-  uploadReport,
-} from "./utils/test-util";
+import { getOrCreateClients } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { unknownPrefix } from "./report.test";
+import { unknownPrefix } from "../src/constants";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
-import { sign } from "crypto";
+import { buildUserData, User } from "../src/utils/handle-json-config";
+import { ApiAdapter } from "../src/api-adapter";
 
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
+const secretsJsonPath = "../src/config/";
 
-let ecrAid: HabState;
-let ecrCred: any;
-let ecrCredCesr: any;
-let ecrCredHolder: any;
-let env: TestEnvironment;
 let roleClient: SignifyClient;
+let users: Array<User> = [];
+let apiUsers: Array<ApiUser> = [];
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
 let signedDirPrefixed: string;
-let signedReports: string[];
+let env: TestEnvironment;
+let apiAdapter: ApiAdapter;
 
 afterEach(async () => {});
 
 beforeAll(async () => {
+  let ecrAid: HabState;
+  let ecrCred: any;
+  let ecrCredCesr: any;
+  let ecrCredHolder: any;
   env = resolveEnvironment();
-
-  const clients = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-    true,
+  const secretsJson = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
+      "utf-8",
+    ),
   );
-  roleClient = clients.pop()!;
-
-  ecrAid = await roleClient.identifiers().get(env.roleName);
-  failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-  signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
-
-  let creds = await roleClient.credentials().list();
-  let ecrCreds = creds.filter(
-    (cred: any) =>
-      cred.sad.s === ECR_SCHEMA_SAID &&
-      cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
-      cred.sad.a.i === ecrAid.prefix,
-  );
-  // generally expecting one ECR credential but compare them and take the first
-  try {
-    if (ecrCreds.length > 1) {
-      assert.equal(
-        ecrCreds[0].sad.a,
-        ecrCreds[1].sad.a,
-        "Expected one ECR credential the comparison of ecr sad attirbutes",
+  users = await buildUserData(secretsJson);
+  apiAdapter = new ApiAdapter(env.apiBaseUrl);
+  for (const user of users) {
+    const clients = await getOrCreateClients(
+      1,
+      [user.secrets.get("ecr")!],
+      true,
+    );
+    roleClient = clients[clients.length - 1];
+    let apiUser: ApiUser = {
+      ecrAid: null,
+      ecrCred: null,
+      ecrCredCesr: {},
+      roleClient: null,
+      lei: "",
+      uploadDig: "",
+    };
+    apiUser.roleClient = roleClient;
+    ecrAid = await roleClient.identifiers().get("ecr1");
+    apiUser.ecrAid = ecrAid;
+    let creds = await roleClient.credentials().list();
+    let ecrCreds = creds.filter(
+      (cred: any) =>
+        cred.sad.s === ECR_SCHEMA_SAID &&
+        cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
+        cred.sad.a.i === ecrAid.prefix,
+    );
+    // generally expecting one ECR credential but compare them and take the first
+    try {
+      if (ecrCreds.length > 1) {
+        assert.equal(
+          ecrCreds[0].sad.a,
+          ecrCreds[1].sad.a,
+          "Expected one ECR credential the comparison of ecr sad attirbutes",
+        );
+      }
+    } catch (error) {
+      console.log(
+        `Excepting only one ECR, see comparison, but continuing: ${error}`,
       );
     }
-  } catch (error) {
-    console.log(
-      `Excepting only one ECR, see comparison, but continuing: ${error}`,
-    );
-  }
 
-  ecrCred = ecrCreds[0];
-  ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-  assert(ecrCred !== undefined);
-  assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
-  assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
-  assert.equal(ecrCredHolder.status.s, "0");
-  assert(ecrCredHolder.atc !== undefined);
-  ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+    ecrCred = ecrCreds[0];
+    apiUser.ecrCred = ecrCred;
+    ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
+    assert(ecrCred !== undefined);
+    assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
+    assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
+    assert.equal(ecrCredHolder.status.s, "0");
+    assert(ecrCredHolder.atc !== undefined);
+    ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+    apiUser.ecrCredCesr = ecrCredCesr;
+    apiUser.lei = ecrCred.sad.a.LEI;
+    apiUsers.push(apiUser);
+  }
 
   signedReports = process.env.SIGNED_REPORTS ? process.env.SIGNED_REPORTS.split(",") : getDefaultSignedReports();
 });
 
+// This test assumes you have run a vlei test that sets up the
+// role identifiers and Credentials.
+// It also assumes you have generated the different report files
+// from the report test
 test("reg-pilot-api", async function run() {
-  // try to ping the api
+  if (apiUsers.length > 1) await multi_user_test(apiUsers);
+  else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
+}, 200000);
+
+async function single_user_test(user: ApiUser) {
+  signedDirPrefixed = path.join(
+    __dirname,
+    "data",
+    signedDir,
+    user.ecrAid.prefix,
+  );
+  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -94,19 +123,18 @@ test("reg-pilot-api", async function run() {
   assert.equal(presp.status, 200);
 
   // fails to query report status because not logged in with ecr yet
-  let sresp = await getReportStatusByAid(
-    env.roleName,
-    ecrAid.prefix,
-    roleClient,
-    env.apiBaseUrl,
+  let sresp = await apiAdapter.getReportStatusByAid(
+    "ecr1",
+    user.ecrAid.prefix,
+    user.roleClient,
   );
 
   // login with the ecr credential
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   let lbody = {
-    vlei: ecrCredCesr,
-    said: ecrCred.sad.d,
+    vlei: user.ecrCredCesr,
+    said: user.ecrCred.sad.d,
   };
   let lreq = {
     headers: heads,
@@ -121,39 +149,37 @@ test("reg-pilot-api", async function run() {
   let ljson = await lresp.json();
   const credJson = JSON.parse(ljson["creds"]);
   assert.equal(credJson.length, 1);
-  assert.equal(credJson[0].sad.a.i, `${ecrAid.prefix}`);
+  assert.equal(credJson[0].sad.a.i, `${user.ecrAid.prefix}`);
 
   heads = new Headers();
   heads.set("Content-Type", "application/json");
   let creq = { headers: heads, method: "GET", body: null };
-  let cpath = `/checklogin/${ecrAid.prefix}`;
+  let cpath = `/checklogin/${user.ecrAid.prefix}`;
   let cresp = await fetch(env.apiBaseUrl + cpath, creq);
   assert.equal(cresp.status, 200);
   let cbody = await cresp.json();
-  assert.equal(cbody["aid"], `${ecrAid.prefix}`);
+  assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
   assert.equal(cbody["msg"], "AID presented valid credential");
-  assert.equal(cbody["said"], ecrCred.sad.d);
+  assert.equal(cbody["said"], user.ecrCred.sad.d);
 
   // try to get status without signed headers provided
   heads = new Headers();
   let sreq = { headers: heads, method: "GET", body: null };
-  let spath = `/status/${ecrAid.prefix}`;
+  let spath = `/status/${user.ecrAid.prefix}`;
   sresp = await fetch(env.apiBaseUrl + spath, sreq);
   assert.equal(sresp.status, 422); // no signed headers provided
 
-  const dresp = await dropReportStatusByAid(
-    env.roleName,
-    ecrAid.prefix,
-    roleClient,
-    env.apiBaseUrl,
+  const dresp = await apiAdapter.dropReportStatusByAid(
+    "ecr1",
+    user.ecrAid.prefix,
+    user.roleClient,
   );
   if (dresp.status < 300) {
     // succeeds to query report status
-    sresp = await getReportStatusByAid(
-      env.roleName,
-      ecrAid.prefix,
-      roleClient,
-      env.apiBaseUrl,
+    sresp = await apiAdapter.getReportStatusByAid(
+      "ecr1",
+      user.ecrAid.prefix,
+      user.roleClient,
     );
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
@@ -168,7 +194,7 @@ test("reg-pilot-api", async function run() {
   console.log("Current Directory:", currentDirectory);
 
   // sanity check that the report verifies
-  const keeper = roleClient.manager!.get(ecrAid);
+  const keeper = roleClient.manager!.get(user.ecrAid);
   const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
   // sanity check with expected sig and contents that the verifier will verify
@@ -188,37 +214,30 @@ test("reg-pilot-api", async function run() {
   // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
 
   //Try known aid signed report upload
-  //   const ecrOobi = await roleClient.oobis().get(env.roleName, "agent");
+  //   const ecrOobi = await roleClient.oobis().get("ecr1", "agent");
   //   console.log("Verifier must have already seen the login", ecrOobi);
   // Loop over the reports directory
 
   // Check signed reports
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
-      await dropReportStatusByAid(
-        env.roleName,
-        ecrAid.prefix,
-        roleClient,
-        env.apiBaseUrl,
+      await apiAdapter.dropReportStatusByAid(
+        "ecr1",
+        user.ecrAid.prefix,
+        user.roleClient,
       );
       console.log(`Processing file: ${signedReport}`);
       const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
-      const signedUpResp = await uploadReport(
-        env.roleName,
-        ecrAid.prefix,
+      const signedUpResp = await apiAdapter.uploadReport(
+        "ecr1",
+        user.ecrAid.prefix,
         signedReport,
         signedZipBuf,
         signedZipDig,
-        roleClient,
-        env.apiBaseUrl,
+        user.roleClient,
       );
-      await checkSignedUpload(
-        signedUpResp,
-        path.basename(signedReport),
-        signedZipDig,
-        env.apiBaseUrl,
-      );
+      await checkSignedUpload(signedUpResp, path.basename(signedReport), signedZipDig, user);
     }
   }
 
@@ -228,31 +247,28 @@ test("reg-pilot-api", async function run() {
   for (const failReport of failReports) {
     const filePath = path.join(failDirPrefixed, failReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(
-        env.roleName,
-        ecrAid.prefix,
-        roleClient,
-        env.apiBaseUrl,
+      await apiAdapter.dropReportStatusByAid(
+        "ecr1",
+        user.ecrAid.prefix,
+        user.roleClient,
       );
       console.log(`Processing file: ${filePath}`);
       const failZipBuf = fs.readFileSync(`${filePath}`);
       const failZipDig = generateFileDigest(failZipBuf);
-      const failUpResp = await uploadReport(
-        env.roleName,
-        ecrAid.prefix,
+      const failUpResp = await apiAdapter.uploadReport(
+        "ecr1",
+        user.ecrAid.prefix,
         failReport,
         failZipBuf,
         failZipDig,
-        roleClient,
-        env.apiBaseUrl,
+        user.roleClient,
       );
       await checkFailUpload(
-        roleClient,
+        user.roleClient,
         failUpResp,
         failReport,
         failZipDig,
-        ecrAid,
-        env.apiBaseUrl,
+        user.ecrAid,
       );
     }
   }
@@ -261,23 +277,21 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of signedReports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(
-        env.roleName,
-        ecrAid.prefix,
-        roleClient,
-        env.apiBaseUrl,
+      await apiAdapter.dropReportStatusByAid(
+        "ecr1",
+        user.ecrAid.prefix,
+        user.roleClient,
       );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
-      const badDigestUpResp = await uploadReport(
-        env.roleName,
-        ecrAid.prefix,
+      const badDigestUpResp = await apiAdapter.uploadReport(
+        "ecr1",
+        user.ecrAid.prefix,
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        roleClient,
-        env.apiBaseUrl,
+        user.roleClient,
       );
       await checkBadDigestUpload(badDigestUpResp);
     }
@@ -287,57 +301,242 @@ test("reg-pilot-api", async function run() {
   for (const signedReport of signedReports) {
     const filePath = path.join(signedDirPrefixed, signedReport);
     if (fs.lstatSync(filePath).isFile()) {
-      await dropReportStatusByAid(
-        env.roleName,
-        ecrAid.prefix,
-        roleClient,
-        env.apiBaseUrl,
+      await apiAdapter.dropReportStatusByAid(
+        "ecr1",
+        user.ecrAid.prefix,
+        user.roleClient,
       );
       console.log(`Processing file: ${filePath}`);
       const badDigestZipBuf = fs.readFileSync(`${filePath}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
-      const badDigestUpResp = await uploadReport(
-        env.roleName,
-        ecrAid.prefix,
+      const badDigestUpResp = await apiAdapter.uploadReport(
+        "ecr1",
+        user.ecrAid.prefix,
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        roleClient,
-        env.apiBaseUrl,
+        user.roleClient,
       );
       await checkNonPrefixedDigestUpload(badDigestUpResp);
     }
   }
-}, 300000);
+}
+
+async function multi_user_test(apiUsers: Array<ApiUser>) {
+  let user1: ApiUser;
+  let user2: ApiUser;
+  let user3: ApiUser;
+  assert.equal(apiUsers.length, 3);
+  if (apiUsers[0].lei == apiUsers[1].lei) {
+    user1 = apiUsers[0];
+    user2 = apiUsers[1];
+    user3 = apiUsers[2];
+  } else if (apiUsers[0].lei == apiUsers[2].lei) {
+    user1 = apiUsers[0];
+    user2 = apiUsers[2];
+    user3 = apiUsers[1];
+  } else {
+    user1 = apiUsers[1];
+    user2 = apiUsers[2];
+    user3 = apiUsers[0];
+  }
+
+  for (const user of apiUsers) {
+    signedDirPrefixed = path.join(
+      __dirname,
+      "data",
+      signedDir,
+      user.ecrAid.prefix,
+    );
+    // try to ping the api
+    let ppath = "/ping";
+    let preq = { method: "GET", body: null };
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
+    console.log("ping response", presp);
+    assert.equal(presp.status, 200);
+
+    // fails to query report status because not logged in with ecr yet
+    let sresp = await apiAdapter.getReportStatusByAid(
+      "ecr1",
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+
+    // login with the ecr credential
+    let heads = new Headers();
+    heads.set("Content-Type", "application/json");
+    let lbody = {
+      vlei: user.ecrCredCesr,
+      said: user.ecrCred.sad.d,
+    };
+    let lreq = {
+      headers: heads,
+      method: "POST",
+      body: JSON.stringify(lbody),
+    };
+
+    let lpath = `/login`;
+    let lresp = await fetch(env.apiBaseUrl + lpath, lreq);
+    console.log("login response", lresp);
+    assert.equal(lresp.status, 202);
+
+    heads = new Headers();
+    heads.set("Content-Type", "application/json");
+    let creq = { headers: heads, method: "GET", body: null };
+    let cpath = `/checklogin/${user.ecrAid.prefix}`;
+    let cresp = await fetch(env.apiBaseUrl + cpath, creq);
+    assert.equal(cresp.status, 200);
+    let cbody = await cresp.json();
+    assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
+    assert.equal(cbody["msg"], "AID presented valid credential");
+    assert.equal(cbody["said"], user.ecrCred.sad.d);
+
+    // try to get status without signed headers provided
+    heads = new Headers();
+    let sreq = { headers: heads, method: "GET", body: null };
+    let spath = `/status/${user.ecrAid.prefix}`;
+    sresp = await fetch(env.apiBaseUrl + spath, sreq);
+    assert.equal(sresp.status, 422); // no signed headers provided
+
+    apiAdapter.dropReportStatusByAid(
+      "ecr1",
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+    // succeeds to query report status
+    sresp = await apiAdapter.getReportStatusByAid(
+      "ecr1",
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+    assert.equal(sresp.status, 202);
+    const sbody = await sresp.json();
+    assert.equal(sbody.length, 0);
+
+    // Get the current working directory
+    const currentDirectory = process.cwd();
+    // Print the current working directory
+    console.log("Current Directory:", currentDirectory);
+
+    // sanity check that the report verifies
+    const keeper = user.roleClient.manager!.get(user.ecrAid);
+    const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+
+    const reports = fs.readdirSync(signedDirPrefixed);
+
+    // Check signed reports
+    for (const signedReport of reports) {
+      const filePath = path.join(signedDirPrefixed, signedReport);
+      if (fs.lstatSync(filePath).isFile()) {
+        apiAdapter.dropReportStatusByAid(
+          "ecr1",
+          user.ecrAid.prefix,
+          user.roleClient,
+        );
+        console.log(`Processing file: ${filePath}`);
+        const signedZipBuf = fs.readFileSync(`${filePath}`);
+        const signedZipDig = generateFileDigest(signedZipBuf);
+        const signedUpResp = await apiAdapter.uploadReport(
+          "ecr1",
+          user.ecrAid.prefix,
+          signedReport,
+          signedZipBuf,
+          signedZipDig,
+          user.roleClient,
+        );
+        await checkSignedUpload(signedUpResp, signedReport, signedZipDig, user);
+        user.uploadDig = signedZipDig;
+        break;
+      }
+    }
+  }
+  // check upload by aid
+  let sresp = await apiAdapter.getReportStatusByAid(
+    "ecr1",
+    user1.ecrAid.prefix,
+    user1.roleClient,
+  );
+  assert.equal(sresp.status, 202);
+  let sbody = await sresp.json();
+
+  // check upload by aid from different lei
+  sresp = await apiAdapter.getReportStatusByAid(
+    "ecr1",
+    user3.ecrAid.prefix,
+    user1.roleClient,
+  );
+  assert.equal(sresp.status, 401);
+
+  // check upload by dig from different lei
+  sresp = await apiAdapter.getReportStatusByDig(
+    "ecr1",
+    user3.ecrAid.prefix,
+    user3.uploadDig,
+    user1.roleClient,
+  );
+  assert.equal(sresp.status, 401);
+
+  // check upload by dig from the same lei
+  sresp = await apiAdapter.getReportStatusByDig(
+    "ecr1",
+    user1.ecrAid.prefix,
+    user2.uploadDig,
+    user1.roleClient,
+  );
+  assert.equal(sresp.status, 200);
+
+  // check LEI upload statuses by aid
+  sresp = await apiAdapter.getLeiReportStatusesByAid(
+    "ecr1",
+    user1.ecrAid.prefix,
+    user1.roleClient,
+  );
+  assert.equal(sresp.status, 202);
+  sbody = await sresp.json();
+}
+
+export async function getGrantedCredential(
+  client: SignifyClient,
+  credId: string,
+): Promise<any> {
+  const credentialList = await client.credentials().list({
+    filter: { "-d": credId },
+  });
+  let credential: any;
+  if (credentialList.length > 0) {
+    assert.equal(credentialList.length, 1);
+    credential = credentialList[0];
+  }
+  return credential;
+}
 
 export async function checkSignedUpload(
   signedUpResp: Response,
   fileName: string,
   signedZipDig: string,
-  baseUrl: string,
+  user: ApiUser,
 ): Promise<boolean> {
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
-  assert.equal(signedUpBody["submitter"], `${ecrAid.prefix}`);
-  const expectedEnding = `files in report package have been signed by submitter \\(${ecrAid.prefix}\\).`;
+  assert.equal(signedUpBody["submitter"], `${user.ecrAid.prefix}`);
+  const expectedEnding = `files in report package have been signed by submitter \\(${user.ecrAid.prefix}\\).`;
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
 
   assert.equal(signedUpBody["filename"], fileName);
   assert.equal(signedUpBody["contentType"], "application/zip");
   assert.equal(signedUpBody["size"] > 1000, true);
 
-  let sresp = await getReportStatusByDig(
-    env.roleName,
-    ecrAid.prefix,
+  let sresp = await apiAdapter.getReportStatusByDig(
+    "ecr1",
+    user.ecrAid.prefix,
     signedZipDig,
-    roleClient,
-    baseUrl,
+    user.roleClient,
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
   assert.equal(signedUploadBody["status"], "verified");
-  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(signedUploadBody["submitter"], `${user.ecrAid.prefix}`);
 
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
   assert.equal(signedUploadBody["filename"], fileName);
@@ -390,18 +589,18 @@ export async function checkSignedUpload(
   // assert.equal(unknownUploadBody["contentType"], "application/zip");
   // assert.equal(unknownUploadBody["size"] > 1000, true);
 
-  sresp = await getReportStatusByAid(
-    env.roleName,
-    ecrAid.prefix,
-    roleClient,
-    env.apiBaseUrl,
+  sresp = await apiAdapter.getReportStatusByAid(
+    "ecr1",
+    user.ecrAid.prefix,
+    user.roleClient,
   );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
   // assert.equal(twoUploadsBody.length, 2);
   const signedStatus = twoUploadsBody[0];
+
   assert.equal(signedStatus["status"], "verified");
-  assert.equal(signedStatus["submitter"], `${ecrAid.prefix}`);
+  assert.equal(signedStatus["submitter"], `${user.ecrAid.prefix}`);
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
@@ -413,6 +612,155 @@ export async function checkSignedUpload(
   // assert.equal(signedUpBody["size"] > 1000, true);
 
   return true;
+}
+
+export async function checkFailUpload(
+  roleClient: SignifyClient,
+  failUpResp: Response,
+  fileName: string,
+  failZipDig: string,
+  ecrAid: HabState,
+): Promise<boolean> {
+  let failMessage = "";
+  if (fileName.includes("genMissingSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("genNoSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("removeMetaInfReportsJson")) {
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status >= 300, true);
+    const failUpBody = await failUpResp.json();
+    return true;
+  }
+
+  assert.equal(failUpResp.status, 200);
+  const failUpBody = await failUpResp.json();
+  assert.equal(failUpBody["status"], "failed");
+  assert.equal(failUpBody["submitter"], ecrAid.prefix);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
+  assert.equal(failUpBody["contentType"], "application/zip");
+  assert.equal(failUpBody["size"] > 1000, true);
+
+  const sresp = await apiAdapter.getReportStatusByDig(
+    ecrAid.name,
+    ecrAid.prefix,
+    failZipDig,
+    roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  const signedUploadBody = await sresp.json();
+  assert.equal(signedUploadBody["status"], "failed");
+  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
+  assert.equal(signedUploadBody["contentType"], "application/zip");
+  assert.equal(signedUploadBody["size"] > 1000, true);
+  return true;
+}
+
+export async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+
+  return true;
+}
+
+export async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+
+  return true;
+}
+
+interface ApiUser {
+  roleClient: any;
+  ecrAid: any;
+  ecrCred: any;
+  ecrCredCesr: any;
+  lei: string;
+  uploadDig: string;
+}
+
+export async function checkFailUpload(
+  roleClient: SignifyClient,
+  failUpResp: Response,
+  fileName: string,
+  failZipDig: string,
+  ecrAid: HabState,
+): Promise<boolean> {
+  let failMessage = "";
+  if (fileName.includes("genMissingSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("genNoSignature")) {
+    failMessage = "files from report package missing valid signature";
+  } else if (fileName.includes("removeMetaInfReportsJson")) {
+    // failMessage = "No manifest in file, invalid signed report package";
+    assert.equal(failUpResp.status >= 300, true);
+    const failUpBody = await failUpResp.json();
+    return true;
+  }
+
+  assert.equal(failUpResp.status, 200);
+  const failUpBody = await failUpResp.json();
+  assert.equal(failUpBody["status"], "failed");
+  assert.equal(failUpBody["submitter"], ecrAid.prefix);
+  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
+  assert.equal(failUpBody["contentType"], "application/zip");
+  assert.equal(failUpBody["size"] > 1000, true);
+
+  const sresp = await apiAdapter.getReportStatusByDig(
+    ecrAid.name,
+    ecrAid.prefix,
+    failZipDig,
+    roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  const signedUploadBody = await sresp.json();
+  assert.equal(signedUploadBody["status"], "failed");
+  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
+  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
+  assert.equal(signedUploadBody["contentType"], "application/zip");
+  assert.equal(signedUploadBody["size"] > 1000, true);
+  return true;
+}
+
+export async function checkBadDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody, "Report digest verification failed");
+
+  return true;
+}
+
+export async function checkNonPrefixedDigestUpload(
+  badDigestUpResp: Response,
+): Promise<boolean> {
+  assert.equal(badDigestUpResp.status, 400);
+  const badDigestUpBody = await badDigestUpResp.json();
+  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
+
+  return true;
+}
+
+interface ApiUser {
+  roleClient: any;
+  ecrAid: any;
+  ecrCred: any;
+  ecrCredCesr: any;
+  lei: string;
+  uploadDig: string;
+}
+
+
+export function getDefaultSignedReports(): string[] {
+  return fs.readdirSync(signedDirPrefixed);
 }
 
 export function getDefaultSignedReports(): string[] {

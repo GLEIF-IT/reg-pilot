@@ -19,10 +19,11 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
     : "${WITNESS_URLS:=http://witness-demo:5642,http://witness-demo:5643,http://witness-demo:5644}"
     : "${WITNESS_IDS:=$WAN,$WIL,$WES}"
     : "${VLEI_SERVER:=http://vlei-server:7723}"
+    : "${SECRETS_JSON_CONFIG:=singlesig-single-aid}"
 fi
 
 # Export environment variables
-export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER
+export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG
 
 # Print environment variable values
 echo "SIGNIFY_SECRETS=$SIGNIFY_SECRETS"
@@ -62,23 +63,26 @@ while [[ $# -gt 0 ]]; do
             npm run build
             shift # past argument
             ;;
-        --data)
-            npx jest ./singlesig-vlei-issuance.test.ts
+        --data)            
+            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
+            npx jest ./vlei-issuance.test.ts
             shift # past argument
             ;;
         --report)
+            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./report.test.ts
             shift # past argument
             ;;
         --verify)
-            npx jest ./reg-pilot-api.test.ts -t "reg-pilot-api"
+            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
+            npx jest ./reg-pilot-api.test.ts
             shift # past argument
             ;;
         --proxy)
-            REG_PILOT_API="${REG_PILOT_PROXY}"
-            export REG_PILOT_API
+            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"            
+            export REG_PILOT_API="${REG_PILOT_PROXY}"
             echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
-            npx jest ./vlei-verification.test.ts -t "reg-pilot-api"
+            npx jest ./vlei-verification.test.ts
             shift # past argument
             ;;
         *)
