@@ -33,7 +33,5 @@ jobs:
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
           npm ci     
-      - name: Check formatting
-        run: npm run pretty:check
       - name: Build, Run docker, run tests
-        run: ./test-single-aid-multisig.sh --all
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --all

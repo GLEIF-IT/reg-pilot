@@ -4,17 +4,17 @@ import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
 import { generateFileDigest } from "./utils/generate-digest";
-import { getOrCreateClients } from "./utils/test-util";
+import { Aid, getOrCreateClients } from "./utils/test-util";
 import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { sign } from "crypto";
+import { buildUserData, User } from "../src/utils/handle-json-config";
+
+import { unknownPrefix } from "../src/constants";
 
 let env: TestEnvironment;
 let ecrAid: HabState;
 let roleClient: SignifyClient;
 let keeper: signify.Keeper;
-
-export const unknownPrefix = "EBcIURLpxmVwahksgrsGW6_dUw0zBhyEHYFk17eWrZfk";
 
 const origDir = "orig_reports";
 let unsignedReports: string[];
@@ -23,6 +23,8 @@ let failDirPrefixed: string;
 const signedDir = "signed_reports";
 let signedDirPrefixed: string;
 const tempDir = "temp_reports";
+const secretsJsonPath = "../src/config/";
+let users: Array<User>;
 const tempExtManifestDir = "temp_manifest";
 
 afterAll(async () => {
@@ -30,25 +32,14 @@ afterAll(async () => {
 });
 
 beforeAll(async () => {
-  // process.env.SIGNIFY_SECRETS = "A7DKYPya4oi6uDnvBmjjp";
-  // process.env.TEST_ENVIRONMENT = "nordlei_demo";
-  // process.env.ROLE_NAME = "unicredit-datasubmitter";
-  // process.env.REG_PILOT_API = "https://reg-api-dev.rootsid.cloud";
-
   env = resolveEnvironment();
-  console.log("SECRETS!!!!!!!!!!!!!!!!: ");
-  console.log(env.secrets);
-  const clients = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-    true,
+  const secretsJson = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
+      "utf-8",
+    ),
   );
-  roleClient = clients[clients.length - 1];
-  ecrAid = await roleClient.identifiers().get(env.roleName);
-  keeper = roleClient.manager!.get(ecrAid);
-  failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-  signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
-
+  users = await buildUserData(secretsJson);
   unsignedReports = process.env.UNSIGNED_REPORTS
     ? process.env.UNSIGNED_REPORTS.split(",")
     : getDefaultOrigReports();
@@ -78,28 +69,57 @@ function deleteReportsDir(repDir: string): void {
 
 // This test assumes you have run a vlei-issuance test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
-test("signed-report-generation-test", async function run() {
+test("report-generation-test", async function run() {
+  for (const user of users) {
+    const clients = await getOrCreateClients(
+      1,
+      [user.secrets.get("ecr")!],
+      true,
+    );
+    roleClient = clients[clients.length - 1];
+    ecrAid = await roleClient.identifiers().get("ecr1");
+    keeper = roleClient.manager!.get(ecrAid);
+    failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
+    signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
+    await generate_reports(ecrAid, keeper, signedDirPrefixed, failDirPrefixed);
+  }
+}, 100000);
+
+async function generate_reports(
+  ecrAid: HabState,
+  keeper: signify.Keeper,
+  signedDirPrefixed: string,
+  failDirPrefixed: string,
+) {
   deleteReportsDir(tempDir);
   createReportsDir(tempDir);
   deleteReportsDir(signedDirPrefixed);
-  const signedSuccess = await createSignedReports(unsignedReports);
+  const signedSuccess = await createSignedReports(
+    unsignedReports,
+    ecrAid,
+    keeper,
+  );
   assert.equal(signedSuccess, true);
-}, 100000);
 
-test("unknown-report-generation-test", async function run() {
-  deleteReportsDir(tempDir);
-  createReportsDir(tempDir);
-  assert.equal(await updateUnknownReport(), true);
-}, 100000);
+  if (signedSuccess) {
+    deleteReportsDir(tempDir);
+    createReportsDir(tempDir);
+    assert.equal(await updateUnknownReport(), true);
+    deleteReportsDir(tempDir);
+    createReportsDir(tempDir);
+    deleteReportsDir(failDirPrefixed);
+    assert.equal(
+      await createFailReports(failDirPrefixed, signedDirPrefixed),
+      true,
+    );
+  }
+}
 
-test("fail-report-generation-test", async function run() {
-  deleteReportsDir(tempDir);
-  createReportsDir(tempDir);
-  deleteReportsDir(failDirPrefixed);
-  assert.equal(await createFailReports(), true);
-}, 100000);
-
-async function createSignedReports(filePaths: string[]): Promise<boolean> {
+async function createSignedReports(
+  filePaths: string[],
+  ecrAid: HabState,
+  keeper: signify.Keeper,
+): Promise<boolean> {
   for (const filePath of filePaths) {
     const fileName = path.basename(filePath, path.extname(filePath));
     if (fs.lstatSync(filePath).isFile()) {
@@ -200,7 +220,10 @@ async function updateUnknownReport(): Promise<boolean> {
   return true;
 }
 
-async function createFailReports(): Promise<boolean> {
+async function createFailReports(
+  failDirPrefixed: string,
+  signedDirPrefixed: string,
+): Promise<boolean> {
   const failFuncs: Array<(manifestPath: string) => Promise<boolean>> = [
     genMissingSignature,
     genNoSignature,

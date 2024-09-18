@@ -34,5 +34,5 @@ jobs:
           npm set registry https://registry.npmjs.org/
           npm ci    
       - name: Build, Run docker, run tests
-        run: ./test-multiple-aids.sh --all
+        run: SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --all
   

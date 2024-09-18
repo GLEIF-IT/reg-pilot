@@ -102,20 +102,6 @@ export function createTimestamp() {
   return new Date().toISOString().replace("Z", "000+00:00");
 }
 
-export async function dropReportStatusByAid(
-  aidName: string,
-  aidPrefix: string,
-  client: SignifyClient,
-  baseUrl: string,
-): Promise<Response> {
-  const heads = new Headers();
-  const dreq = { headers: heads, method: "POST", body: null };
-  const durl = `${baseUrl}/status/${aidPrefix}/drop`;
-  let sdreq = await client.createSignedRequest(aidName, durl, dreq);
-  const sresp = await fetch(durl, sdreq);
-  return sresp;
-}
-
 /**
  * Get list of end role authorizations for a Keri idenfitier
  */
@@ -419,35 +405,6 @@ export async function getStates(client: SignifyClient, prefixes: string[]) {
   return participantStates.map((s: any[]) => s[0]);
 }
 
-export async function getReportStatusByAid(
-  aidName: string,
-  aidPrefix: string,
-  client: SignifyClient,
-  baseUrl: string,
-): Promise<Response> {
-  const heads = new Headers();
-  const sreq = { headers: heads, method: "GET", body: null };
-  const surl = `${baseUrl}/status/${aidPrefix}`;
-  let shreq = await client.createSignedRequest(aidName, surl, sreq);
-  const sresp = await fetch(surl, shreq);
-  return sresp;
-}
-
-export async function getReportStatusByDig(
-  aidName: string,
-  aidPrefix: string,
-  dig: string,
-  client: SignifyClient,
-  baseUrl: string,
-): Promise<Response> {
-  const heads = new Headers();
-  const sreq = { headers: heads, method: "GET", body: null };
-  const surl = `${baseUrl}/upload/${aidPrefix}/${dig}`;
-  let shreq = await client.createSignedRequest(aidName, surl, sreq);
-  const sresp = await fetch(surl, shreq);
-  return sresp;
-}
-
 /**
  * Test if end role is authorized for a Keri identifier
  */
@@ -696,101 +653,4 @@ export async function sendAdmitMessage(
   op = await waitOperation(senderClient, op);
 
   await markAndRemoveNotification(senderClient, grantNotification);
-}
-
-export async function checkFailUpload(
-  roleClient: SignifyClient,
-  failUpResp: Response,
-  fileName: string,
-  failZipDig: string,
-  ecrAid: HabState,
-  baseUrl: string,
-): Promise<boolean> {
-  let failMessage = "";
-  if (fileName.includes("genMissingSignature")) {
-    failMessage = "report package missing valid signature";
-  } else if (fileName.includes("genNoSignature")) {
-    failMessage = "files from report package missing valid signature";
-  } else if (fileName.includes("removeMetaInfReportsJson")) {
-    assert.equal(failUpResp.status >= 300, true);
-    const failUpBody = await failUpResp.json();
-    failMessage = "No manifest in file, invalid signed report package";
-    return true;
-  }
-
-  assert.equal(failUpResp.status, 200);
-  const failUpBody = await failUpResp.json();
-  assert.equal(failUpBody["status"], "failed");
-  assert.equal(failUpBody["submitter"], ecrAid.prefix);
-  expect(failUpBody["message"]).toMatch(new RegExp(`${failMessage}`));
-  assert.equal(failUpBody["contentType"], "application/zip");
-  assert.equal(failUpBody["size"] > 1000, true);
-
-  const sresp = await getReportStatusByDig(
-    ecrAid.name,
-    ecrAid.prefix,
-    failZipDig,
-    roleClient,
-    baseUrl,
-  );
-  assert.equal(sresp.status, 200);
-  const signedUploadBody = await sresp.json();
-  assert.equal(signedUploadBody["status"], "failed");
-  assert.equal(signedUploadBody["submitter"], `${ecrAid.prefix}`);
-  assert.equal(failUpBody["message"].includes(`${failMessage}`), true);
-  assert.equal(signedUploadBody["contentType"], "application/zip");
-  assert.equal(signedUploadBody["size"] > 1000, true);
-  return true;
-}
-
-export async function checkBadDigestUpload(
-  badDigestUpResp: Response,
-): Promise<boolean> {
-  assert.equal(badDigestUpResp.status, 400);
-  const badDigestUpBody = await badDigestUpResp.json();
-  assert.equal(badDigestUpBody, "Report digest verification failed");
-
-  return true;
-}
-
-export async function checkNonPrefixedDigestUpload(
-  badDigestUpResp: Response,
-): Promise<boolean> {
-  assert.equal(badDigestUpResp.status, 400);
-  const badDigestUpBody = await badDigestUpResp.json();
-  assert.equal(badDigestUpBody.includes("must start with prefix"), true);
-
-  return true;
-}
-
-export async function uploadReport(
-  aidName: string,
-  aidPrefix: string,
-  fileName: string,
-  zipBuffer: Buffer,
-  zipDigest: string,
-  client: SignifyClient,
-  baseUrl: string,
-): Promise<Response> {
-  let formData = new FormData();
-  let ctype = "application/zip";
-  formData.append("upload", zipBuffer, {
-    filename: `${fileName}`,
-    contentType: `${ctype}`,
-  });
-  let formBuffer = formData.getBuffer();
-  let req: RequestInit = {
-    method: "POST",
-    body: formBuffer,
-    headers: {
-      ...formData.getHeaders(),
-      "Content-Length": formBuffer.length.toString(),
-    },
-  };
-
-  const url = `${baseUrl}/upload/${aidPrefix}/${zipDigest}`;
-
-  let sreq = await client.createSignedRequest(aidName, url, req);
-  const resp = await fetch(url, sreq);
-  return resp;
 }
