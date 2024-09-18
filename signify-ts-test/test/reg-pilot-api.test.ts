@@ -341,51 +341,51 @@ export async function checkSignedUpload(
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 1000, true);
 
-  // Try unknown aid signed report upload
-  const unknownFileName = `report.zip`;
-  const unknownZipBuf = fs.readFileSync(
-    `./test/data/unknown_reports/${unknownFileName}`,
-  );
-  const unknownZipDig = generateFileDigest(unknownZipBuf);
-  const unknownResp = await uploadReport(
-    env.roleName,
-    ecrAid.prefix,
-    unknownFileName,
-    unknownZipBuf,
-    unknownZipDig,
-    roleClient,
-    env.apiBaseUrl,
-  );
-  let unknownBody = await unknownResp.json();
-  assert.equal(unknownResp.status, 200);
-  assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
-  assert.equal(
-    unknownBody["message"],
-    `signature from unknown AID ${unknownPrefix}`,
-  );
-  assert.equal(unknownBody["filename"], unknownFileName);
-  assert.equal(unknownBody["status"], "failed");
-  assert.equal(unknownBody["contentType"], "application/zip");
-  assert.equal(unknownBody["size"] > 1000, true);
+  // // Try unknown aid signed report upload
+  // const unknownFileName = `report.zip`;
+  // const unknownZipBuf = fs.readFileSync(
+  //   `./test/data/unknown_reports/${unknownFileName}`,
+  // );
+  // const unknownZipDig = generateFileDigest(unknownZipBuf);
+  // const unknownResp = await uploadReport(
+  //   env.roleName,
+  //   ecrAid.prefix,
+  //   unknownFileName,
+  //   unknownZipBuf,
+  //   unknownZipDig,
+  //   roleClient,
+  //   env.apiBaseUrl,
+  // );
+  // let unknownBody = await unknownResp.json();
+  // assert.equal(unknownResp.status, 200);
+  // assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
+  // assert.equal(
+  //   unknownBody["message"],
+  //   `signature from unknown AID ${unknownPrefix}`,
+  // );
+  // assert.equal(unknownBody["filename"], unknownFileName);
+  // assert.equal(unknownBody["status"], "failed");
+  // assert.equal(unknownBody["contentType"], "application/zip");
+  // assert.equal(unknownBody["size"] > 1000, true);
 
-  sresp = await getReportStatusByDig(
-    env.roleName,
-    ecrAid.prefix,
-    unknownZipDig,
-    roleClient,
-    env.apiBaseUrl,
-  );
-  assert.equal(sresp.status, 200);
-  const unknownUploadBody = await sresp.json();
-  assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
-  assert.equal(
-    unknownUploadBody["message"],
-    `signature from unknown AID ${unknownPrefix}`,
-  );
-  assert.equal(unknownUploadBody["filename"], unknownFileName);
-  assert.equal(unknownUploadBody["status"], "failed");
-  assert.equal(unknownUploadBody["contentType"], "application/zip");
-  assert.equal(unknownUploadBody["size"] > 1000, true);
+  // sresp = await getReportStatusByDig(
+  //   env.roleName,
+  //   ecrAid.prefix,
+  //   unknownZipDig,
+  //   roleClient,
+  //   env.apiBaseUrl,
+  // );
+  // assert.equal(sresp.status, 200);
+  // const unknownUploadBody = await sresp.json();
+  // assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
+  // assert.equal(
+  //   unknownUploadBody["message"],
+  //   `signature from unknown AID ${unknownPrefix}`,
+  // );
+  // assert.equal(unknownUploadBody["filename"], unknownFileName);
+  // assert.equal(unknownUploadBody["status"], "failed");
+  // assert.equal(unknownUploadBody["contentType"], "application/zip");
+  // assert.equal(unknownUploadBody["size"] > 1000, true);
 
   sresp = await getReportStatusByAid(
     env.roleName,
@@ -395,7 +395,7 @@ export async function checkSignedUpload(
   );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
-  assert.equal(twoUploadsBody.length, 2);
+  // assert.equal(twoUploadsBody.length, 2);
   const signedStatus = twoUploadsBody[0];
   assert.equal(signedStatus["status"], "verified");
   assert.equal(signedStatus["submitter"], `${ecrAid.prefix}`);
@@ -403,11 +403,11 @@ export async function checkSignedUpload(
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
   assert.equal(signedStatus["size"] > 1000, true);
-  const unknownStatus = twoUploadsBody[1];
-  assert.equal(unknownStatus["submitter"], `${ecrAid.prefix}`);
-  assert.equal(unknownStatus["status"], "failed");
-  assert.equal(unknownStatus["contentType"], "application/zip");
-  assert.equal(signedUpBody["size"] > 1000, true);
+  // const unknownStatus = twoUploadsBody[1];
+  // assert.equal(unknownStatus["submitter"], `${ecrAid.prefix}`);
+  // assert.equal(unknownStatus["status"], "failed");
+  // assert.equal(unknownStatus["contentType"], "application/zip");
+  // assert.equal(signedUpBody["size"] > 1000, true);
 
   return true;
 }

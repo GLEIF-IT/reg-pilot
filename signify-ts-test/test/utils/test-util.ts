@@ -716,6 +716,8 @@ export async function checkFailUpload(
     const failUpBody = await failUpResp.json();
     failMessage = "No manifest in file, invalid signed report package";
     return true;
+  } else if(fileName.includes("wrongAid")) {
+    failMessage = "signature from unknown AID";
   }
 
   assert.equal(failUpResp.status, 200);
