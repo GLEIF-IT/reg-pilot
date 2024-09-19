@@ -222,21 +222,6 @@ async function createSignedReports(
       }
 
       zipsProcessed += 1;
-
-      // const fileExtension = path.extname(filePath);
-      // const shortFileName = `${fileName}_signed${fileExtension}`;
-      // const signedRepPath = path.join(signedDirPrefixed, shortFileName);
-      // console.log("Creating packaged signed report " + signedRepPath);
-      // await createExternalManifestZip(signedRepPath, filePath, tempManifest);
-
-      // const repDirPath = await getRepPath(fullTemp);
-      // let tempMetaDir;
-
-      // const data = await fs.promises.readFile(manifestPath, "utf-8");
-      // let manifest: Manifest = JSON.parse(data);
-
-      //generate foldered zip, like older xbrl spec
-      // const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
     }
   }
   assert(zipsProcessed > 0, "No reports zip files processed");
