@@ -6,7 +6,6 @@ import * as process from "process";
 import { getOrCreateClients } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { unknownPrefix } from "../src/constants";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
 import { buildUserData, User } from "../src/utils/handle-json-config";
@@ -22,7 +21,7 @@ let apiUsers: Array<ApiUser> = [];
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
-let signedDirPrefixed: string;
+
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
 
@@ -107,12 +106,13 @@ test("reg-pilot-api", async function run() {
 }, 200000);
 
 async function single_user_test(user: ApiUser) {
-  signedDirPrefixed = path.join(
+  const signedDirPrefixed = path.join(
     __dirname,
     "data",
     signedDir,
     user.ecrAid.prefix,
   );
+  const signedReports = getSignedReports(signedDirPrefixed);
   failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
@@ -215,20 +215,17 @@ async function single_user_test(user: ApiUser) {
   //   const ecrOobi = await roleClient.oobis().get("ecr1", "agent");
   //   console.log("Verifier must have already seen the login", ecrOobi);
   // Loop over the reports directory
-  const reports = fs.readdirSync(signedDirPrefixed);
-  const failReports = fs.readdirSync(failDirPrefixed);
 
   // Check signed reports
-  for (const signedReport of reports) {
-    const filePath = path.join(signedDirPrefixed, signedReport);
-    if (fs.lstatSync(filePath).isFile()) {
+  for (const signedReport of signedReports) {
+    if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
         "ecr1",
         user.ecrAid.prefix,
         user.roleClient,
       );
-      console.log(`Processing file: ${filePath}`);
-      const signedZipBuf = fs.readFileSync(`${filePath}`);
+      console.log(`Processing file: ${signedReport}`);
+      const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await apiAdapter.uploadReport(
         "ecr1",
@@ -238,9 +235,16 @@ async function single_user_test(user: ApiUser) {
         signedZipDig,
         user.roleClient,
       );
-      await checkSignedUpload(signedUpResp, signedReport, signedZipDig, user);
+      await checkSignedUpload(
+        signedUpResp,
+        path.basename(signedReport),
+        signedZipDig,
+        user,
+      );
     }
   }
+
+  const failReports = fs.readdirSync(failDirPrefixed);
 
   // Check fail reports
   for (const failReport of failReports) {
@@ -273,16 +277,15 @@ async function single_user_test(user: ApiUser) {
   }
 
   // Check reports with bad digest
-  for (const signedReport of reports) {
-    const filePath = path.join(signedDirPrefixed, signedReport);
-    if (fs.lstatSync(filePath).isFile()) {
+  for (const signedReport of signedReports) {
+    if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
         "ecr1",
         user.ecrAid.prefix,
         user.roleClient,
       );
-      console.log(`Processing file: ${filePath}`);
-      const badDigestZipBuf = fs.readFileSync(`${filePath}`);
+      console.log(`Processing file: ${signedReport}`);
+      const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await apiAdapter.uploadReport(
         "ecr1",
@@ -297,16 +300,15 @@ async function single_user_test(user: ApiUser) {
   }
 
   // Check reports with not prefixed digest
-  for (const signedReport of reports) {
-    const filePath = path.join(signedDirPrefixed, signedReport);
-    if (fs.lstatSync(filePath).isFile()) {
+  for (const signedReport of signedReports) {
+    if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
         "ecr1",
         user.ecrAid.prefix,
         user.roleClient,
       );
-      console.log(`Processing file: ${filePath}`);
-      const badDigestZipBuf = fs.readFileSync(`${filePath}`);
+      console.log(`Processing file: ${signedReport}`);
+      const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
       const badDigestUpResp = await apiAdapter.uploadReport(
         "ecr1",
@@ -341,7 +343,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   }
 
   for (const user of apiUsers) {
-    signedDirPrefixed = path.join(
+    const signedDirPrefixed = path.join(
       __dirname,
       "data",
       signedDir,
@@ -421,19 +423,17 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     const keeper = user.roleClient.manager!.get(user.ecrAid);
     const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
-    const reports = fs.readdirSync(signedDirPrefixed);
-
+    const signedReports = getSignedReports(signedDirPrefixed);
     // Check signed reports
-    for (const signedReport of reports) {
-      const filePath = path.join(signedDirPrefixed, signedReport);
-      if (fs.lstatSync(filePath).isFile()) {
+    for (const signedReport of signedReports) {
+      if (fs.lstatSync(signedReport).isFile()) {
         apiAdapter.dropReportStatusByAid(
           "ecr1",
           user.ecrAid.prefix,
           user.roleClient,
         );
-        console.log(`Processing file: ${filePath}`);
-        const signedZipBuf = fs.readFileSync(`${filePath}`);
+        console.log(`Processing file: ${signedReport}`);
+        const signedZipBuf = fs.readFileSync(`${signedReport}`);
         const signedZipDig = generateFileDigest(signedZipBuf);
         const signedUpResp = await apiAdapter.uploadReport(
           "ecr1",
@@ -542,48 +542,6 @@ export async function checkSignedUpload(
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 1000, true);
 
-  // Try unknown aid signed report upload
-  const unknownFileName = `report.zip`;
-  const unknownZipBuf = fs.readFileSync(
-    `./test/data/unknown_reports/${unknownFileName}`,
-  );
-  const unknownZipDig = generateFileDigest(unknownZipBuf);
-  const unknownResp = await apiAdapter.uploadReport(
-    "ecr1",
-    user.ecrAid.prefix,
-    unknownFileName,
-    unknownZipBuf,
-    unknownZipDig,
-    user.roleClient,
-  );
-  let unknownBody = await unknownResp.json();
-  assert.equal(unknownResp.status, 200);
-  assert.equal(
-    unknownBody["message"],
-    `signature from unknown AID ${unknownPrefix}`,
-  );
-  assert.equal(unknownBody["filename"], unknownFileName);
-  assert.equal(unknownBody["status"], "failed");
-  assert.equal(unknownBody["contentType"], "application/zip");
-  assert.equal(unknownBody["size"] > 1000, true);
-
-  sresp = await apiAdapter.getReportStatusByDig(
-    "ecr1",
-    user.ecrAid.prefix,
-    unknownZipDig,
-    user.roleClient,
-  );
-  assert.equal(sresp.status, 200);
-  const unknownUploadBody = await sresp.json();
-  assert.equal(
-    unknownUploadBody["message"],
-    `signature from unknown AID ${unknownPrefix}`,
-  );
-  assert.equal(unknownUploadBody["filename"], unknownFileName);
-  assert.equal(unknownUploadBody["status"], "failed");
-  assert.equal(unknownUploadBody["contentType"], "application/zip");
-  assert.equal(unknownUploadBody["size"] > 1000, true);
-
   sresp = await apiAdapter.getReportStatusByAid(
     "ecr1",
     user.ecrAid.prefix,
@@ -591,6 +549,7 @@ export async function checkSignedUpload(
   );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
+  // assert.equal(twoUploadsBody.length, 2);
   const signedStatus = twoUploadsBody[0];
 
   assert.equal(signedStatus["status"], "verified");
@@ -599,10 +558,6 @@ export async function checkSignedUpload(
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
   assert.equal(signedStatus["size"] > 1000, true);
-  const unknownStatus = twoUploadsBody[1];
-  assert.equal(unknownStatus["status"], "failed");
-  assert.equal(unknownStatus["contentType"], "application/zip");
-  assert.equal(signedUpBody["size"] > 1000, true);
 
   return true;
 }
@@ -624,6 +579,8 @@ export async function checkFailUpload(
     assert.equal(failUpResp.status >= 300, true);
     const failUpBody = await failUpResp.json();
     return true;
+  } else if (fileName.includes("wrongAid")) {
+    failMessage = "signature from unknown AID";
   }
 
   assert.equal(failUpResp.status, 200);
@@ -677,4 +634,13 @@ interface ApiUser {
   ecrCredCesr: any;
   lei: string;
   uploadDig: string;
+}
+
+export function getSignedReports(signedDirPrefixed: string): string[] {
+  if (process.env.SIGNED_REPORTS) {
+    return process.env.SIGNED_REPORTS.split(",");
+  } else {
+    const fileNames = fs.readdirSync(signedDirPrefixed);
+    return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
+  }
 }

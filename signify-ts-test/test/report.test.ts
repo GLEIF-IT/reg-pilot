@@ -94,32 +94,23 @@ async function generate_reports(
   deleteReportsDir(tempDir);
   createReportsDir(tempDir);
   deleteReportsDir(signedDirPrefixed);
-  const signedSuccess = await createSignedReports(
-    unsignedReports,
-    ecrAid,
-    keeper,
-  );
-  assert.equal(signedSuccess, true);
+  assert.equal(await createSignedReports(unsignedReports, true), true);
+  assert.equal(await createSignedReports(unsignedReports, false), true);
 
-  if (signedSuccess) {
-    deleteReportsDir(tempDir);
-    createReportsDir(tempDir);
-    assert.equal(await updateUnknownReport(), true);
-    deleteReportsDir(tempDir);
-    createReportsDir(tempDir);
-    deleteReportsDir(failDirPrefixed);
-    assert.equal(
-      await createFailReports(failDirPrefixed, signedDirPrefixed),
-      true,
-    );
-  }
+  deleteReportsDir(tempDir);
+  createReportsDir(tempDir);
+  deleteReportsDir(failDirPrefixed);
+  assert.equal(
+    await createFailReports(failDirPrefixed, signedDirPrefixed),
+    true,
+  );
 }
 
 async function createSignedReports(
   filePaths: string[],
-  ecrAid: HabState,
-  keeper: signify.Keeper,
+  simple: boolean = true,
 ): Promise<boolean> {
+  let zipsProcessed = 0;
   for (const filePath of filePaths) {
     const fileName = path.basename(filePath, path.extname(filePath));
     if (fs.lstatSync(filePath).isFile()) {
@@ -127,43 +118,75 @@ async function createSignedReports(
       const zip = new AdmZip(filePath);
       const fullTemp = path.join(__dirname, tempDir);
       fsExtra.emptyDirSync(fullTemp);
-      zip.extractAllTo(fullTemp, true);
 
-      const repDirPath = await getRepPath(fullTemp);
+      let docInfo = {
+        documentType: "http://xbrl.org/PWD/2020-12-09/report-package",
+        signatures: [] as Signature[],
+      } as DocumentInfo;
+      let manifest = {
+        documentInfo: docInfo,
+      } as Manifest;
 
-      const tempManDir = path.join(__dirname, tempExtManifestDir);
-      fsExtra.ensureDirSync(tempManDir);
-      const tempMetaDir = path.join(tempExtManifestDir, "META-INF");
-      fsExtra.ensureDirSync(tempMetaDir);
-      const tempManifest = path.join(tempMetaDir, "reports.json");
+      let repDirPath: string;
+      if (simple) {
+        console.log(`Processing simple file signature: ${filePath}`);
+        // just copy the zip file here for a single digest/signature
+        fsExtra.copySync(
+          filePath,
+          path.join(fullTemp, path.basename(filePath)),
+        );
+        repDirPath = fullTemp;
+      } else {
+        console.log(`Processing detailed file signature: ${filePath}`);
+        // extract the zip so we can produce digests/signatures for each file
+        zip.extractAllTo(fullTemp, true);
 
-      const manDigested = await addDigestsToReport(
-        repDirPath,
-        ecrAid.prefix,
-        tempManifest,
-      );
-      if (manDigested) {
-        //generate packaged zip, like older xbrl spec
-        await signReport(repDirPath, tempManifest, keeper);
-        const fileExtension = path.extname(filePath);
-        const shortFileName = `${fileName}_signed${fileExtension}`;
-        const signedRepPath = path.join(signedDirPrefixed, shortFileName);
-        console.log("Creating packaged signed report " + signedRepPath);
-        await createExternalManifestZip(signedRepPath, filePath, tempManifest);
+        const foundPath = findReportsDir(fullTemp);
+        if (!foundPath) {
+          throw new Error(`No reports directory found in ${fullTemp}`);
+        } else {
+          repDirPath = foundPath;
+        }
       }
 
-      const digested: boolean = await addDigestsToReport(
-        repDirPath,
-        ecrAid.prefix,
-      );
-      if (digested) {
-        //generate foldered zip, like older xbrl spec
-        const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
-        await signReport(repDirPath, manifestPath, keeper);
-        const fileExtension = path.extname(filePath);
-        const shortFileName = `unzipped${fileName}_signed${fileExtension}`;
+      const reportEntries = await fs.promises.readdir(repDirPath, {
+        withFileTypes: true,
+      });
+
+      for (const reportEntry of reportEntries) {
+        let signature: Signature = {
+          file: "",
+          digest: "",
+          aid: "",
+          sigs: [],
+        };
+
+        const reportPath = path.join(repDirPath, reportEntry.name);
+        const digested = await addDigestToReport(reportPath, signature, simple);
+        assert(digested, `Failed to add digest for ${reportPath}`);
+
+        const signed = await addSignatureToReport(signature, keeper);
+        assert(signed, `Failed to add signature for ${reportPath}`);
+
+        docInfo.signatures.push(signature);
+      }
+
+      const manJson = JSON.stringify(manifest, null, 2);
+
+      const fileExtension = path.extname(filePath);
+
+      // generate simple/complex packaged signed report
+      if (!simple) {
+        let shortFileName = `${fileName}_complex_signed${fileExtension}`;
+        const signedRepPath = path.join(signedDirPrefixed, shortFileName);
+        console.log("Creating complex packaged signed report " + signedRepPath);
+        await createExternalManifestZip(signedRepPath, filePath, manJson);
+
+        // generate unzipped foldered signed report
+        shortFileName = `unzipped${fileName}_signed${fileExtension}`;
         const repPath = path.join(signedDirPrefixed, shortFileName);
-        console.log("Creating foldered signed report " + repPath);
+        console.log("Creating unzipped foldered signed report " + repPath);
+        const manPath = await writeReportsJson(fullTemp, manJson);
         const sfZip = await transferTempToZip(fullTemp, repPath);
         validateReport(new AdmZip(sfZip));
 
@@ -181,42 +204,27 @@ async function createSignedReports(
         );
         validateReport(new AdmZip(sufZip));
         fsExtra.emptyDirSync(fullTemp);
+      } else {
+        const manifestPath = path.join(fullTemp, "META-INF", "reports.json");
+        console.log(`Writing manifest with digests/signatures ${manifestPath}`);
+
+        const manifestDir = path.dirname(manifestPath);
+        if (!fs.existsSync(manifestDir)) {
+          fs.mkdirSync(manifestDir, { recursive: true });
+        }
+
+        fs.writeFileSync(manifestPath, manJson, "utf8");
+        const shortFileName = `${fileName}_signed${fileExtension}`;
+        const signedRepPath = path.join(signedDirPrefixed, shortFileName);
+        console.log(`Creating simple packaged signed report ${signedRepPath}`);
+        const sfZip = await transferTempToZip(fullTemp, signedRepPath);
+        validateReport(new AdmZip(sfZip));
       }
+
+      zipsProcessed += 1;
     }
   }
-  return true;
-}
-
-async function updateUnknownReport(): Promise<boolean> {
-  const unknownReportsDir = path.join(__dirname, "data", "unknown_reports");
-  console.log(`Updating unknown report ${unknownReportsDir}`);
-
-  const reports = fs.readdirSync(unknownReportsDir);
-
-  const file = reports[0];
-  const filePath = path.join(unknownReportsDir, file);
-  const fileName = path.basename(file, path.extname(file));
-  if (fs.lstatSync(filePath).isFile()) {
-    const zip = new AdmZip(filePath);
-
-    const fullTemp = path.join(__dirname, tempDir);
-    fsExtra.emptyDirSync(fullTemp);
-    zip.extractAllTo(fullTemp, true);
-
-    const repDirPath = await getRepPath(fullTemp);
-    const digested: boolean = await addDigestsToReport(
-      repDirPath,
-      unknownPrefix,
-    );
-    if (digested) {
-      const fileExtension = path.extname(file);
-      const shortFileName = `report.zip`;
-      const repPath = path.join(unknownReportsDir, shortFileName);
-      const uZip = await transferTempToZip(fullTemp, repPath);
-      validateReport(new AdmZip(uZip));
-    }
-    fsExtra.emptyDirSync(fullTemp);
-  }
+  assert(zipsProcessed > 0, "No reports zip files processed");
   return true;
 }
 
@@ -228,6 +236,7 @@ async function createFailReports(
     genMissingSignature,
     genNoSignature,
     removeMetaInfReportsJson,
+    wrongAid,
   ];
   console.log("Generating test case: no META-INF/reports.json");
 
@@ -280,6 +289,7 @@ async function createFailReports(
       }
     }
   }
+
   return true;
 }
 
@@ -307,6 +317,26 @@ async function genMissingSignature(manifestPath: string): Promise<boolean> {
   }
 
   throw new Error("Could not remove signature from " + manifestPath);
+}
+
+async function wrongAid(manifestPath: string): Promise<boolean> {
+  console.log(`Generating wrong AID case for manifest ${manifestPath}`);
+
+  assert.equal(fs.existsSync(manifestPath), true);
+  const data = await fs.promises.readFile(manifestPath, "utf-8");
+  let manifest: Manifest = JSON.parse(data);
+  const signatures: Signature[] = manifest.documentInfo.signatures;
+
+  // Remove one signature entry from the manifest
+  if (manifest.documentInfo && manifest.documentInfo.signatures) {
+    for (const sig of manifest.documentInfo.signatures) {
+      sig.aid = unknownPrefix;
+    }
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    return true;
+  }
+
+  throw new Error("No signatures to add unknown aid to " + manifestPath);
 }
 
 async function genNoSignature(manifestPath: string): Promise<boolean> {
@@ -390,81 +420,48 @@ async function removeMetaInfReportsJson(
   throw new Error(`Missing manifest file ${manifestPath}`);
 }
 
-async function signReport(
-  repDirPath: string,
-  manifestPath: string,
+async function addSignatureToReport(
+  signatureBlock: Signature,
   keeper: signify.Keeper,
 ): Promise<boolean> {
-  let manifest;
-  if (fs.existsSync(manifestPath)) {
-    const data = await fs.promises.readFile(manifestPath, "utf-8");
-    manifest = JSON.parse(data);
-    console.log(
-      "Preparing for signing, found META-INF/reports.json in " + repDirPath,
-    );
-  } else {
-    throw new Error("Missing META-INF/reports.json in " + repDirPath);
+  const sigs = [] as string[];
+  for (const signer of keeper.signers as Signer[]) {
+    const nonPrefixedDigest = signatureBlock.digest.split("-", 2)[1];
+    console.log(`Signing non-prefixed digest ${nonPrefixedDigest}`);
+
+    const sig = signer.sign(signify.b(nonPrefixedDigest), 0);
+    const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
+    assert.equal(result, true);
+    sigs.push(sig.qb64);
   }
+  assert(
+    sigs.length > 0,
+    `No signatures added to signature block ${signatureBlock}`,
+  );
+  signatureBlock.sigs = sigs;
+  signatureBlock.aid = ecrAid.prefix;
 
-  const reportsDir = path.join(repDirPath, "reports");
-
-  // signature blocks, with no signatures yet, containing digest must already have been added.
-  for (const signature of manifest.documentInfo.signatures) {
-    const fileName = signature.file;
-    const dig = signature.digest;
-    const nonPrefixedDigest = dig.split("-", 2)[1];
-    console.log("Non prefixed digest is " + nonPrefixedDigest);
-    const sigs = [] as string[];
-    for (const signer of keeper.signers as Signer[]) {
-      const sig = signer.sign(signify.b(nonPrefixedDigest), 0);
-      const result = signer.verfer.verify(sig.raw, nonPrefixedDigest);
-      assert.equal(result, true);
-      sigs.push(sig.qb64);
-    }
-    signature.sigs = sigs;
-  }
-
-  await fs.promises.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
   return true;
 }
 
-async function addDigestsToReport(
-  repDirPath: string,
-  prefix: string,
-  externalManifestPath?: string,
+async function addDigestToReport(
+  reportPath: string,
+  signatureBlock: Signature,
+  simple = false,
 ): Promise<boolean> {
-  const manifestPath = path.join(repDirPath, "META-INF", "reports.json");
-  const data = await fs.promises.readFile(manifestPath, "utf-8");
-  let manifest = JSON.parse(data);
+  const reportName = path.basename(reportPath);
+  const buffer = await fs.promises.readFile(reportPath);
+  const dig = generateFileDigest(buffer);
 
-  // Add digests to signature block, the signReport function will sign the digests
-  const signatures: Signature[] = [];
-  const reportsDir = path.join(repDirPath, "reports");
-  const reportEntries = await fs.promises.readdir(reportsDir, {
-    withFileTypes: true,
-  });
-
-  for (const reportEntry of reportEntries) {
-    const reportPath = path.join(reportsDir, reportEntry.name);
-    const buffer = await fs.promises.readFile(reportPath);
-    const dig = generateFileDigest(buffer);
-    signatures.push({
-      file: `../reports/${reportEntry.name}`,
-      digest: dig,
-      aid: prefix,
-      sigs: [],
-    });
-  }
-
-  manifest.documentInfo.signatures = signatures;
-  const manJson = JSON.stringify(manifest, null, 2);
-  if (!externalManifestPath) {
-    console.log("Writing internal manifest to " + manifestPath);
-    await fs.promises.writeFile(manifestPath, manJson);
+  let relativeFilePath;
+  if (simple) {
+    relativeFilePath = `${reportName}`;
   } else {
-    console.log("Writing external manifest to " + externalManifestPath);
-    await fs.promises.writeFile(externalManifestPath, manJson);
+    relativeFilePath = `${path.basename(path.dirname(reportPath))}/${reportName}`;
   }
+  signatureBlock.file = relativeFilePath;
+  signatureBlock.digest = dig;
+
   return true;
 }
 
@@ -524,13 +521,9 @@ interface Manifest {
   documentInfo: DocumentInfo;
 }
 
-interface Digest {
-  file: string;
-  dig: string;
-}
-
 async function getRepPath(fullTemp: string): Promise<string> {
   const dirs: string[] = await listDirectories(fullTemp);
+
   const repZip: string[] = await listReportZips(fullTemp);
   let repDirPath: string = fullTemp;
   if (dirs.includes("META-INF")) {
@@ -566,6 +559,7 @@ async function getRepPath(fullTemp: string): Promise<string> {
   }
   return repDirPath;
 }
+
 function getDefaultOrigReports(): string[] {
   console.log(`Getting unsigned reports from ${origDir}`);
 
@@ -588,7 +582,7 @@ function getDefaultOrigReports(): string[] {
 async function createExternalManifestZip(
   signedRepPath: string,
   origZipFilePath: string,
-  newManifestPath: string,
+  manJson: string,
 ): Promise<void> {
   // Create a temporary directory
   const tempDir = path.join(__dirname, "tempZipDir");
@@ -604,10 +598,9 @@ async function createExternalManifestZip(
     fs.mkdirSync(metaInfDir);
   }
 
-  // Copy the new manifest file to the META-INF directory
-  const manifestFileName = path.basename(newManifestPath);
-  const destManifestPath = path.join(metaInfDir, manifestFileName);
-  fs.copyFileSync(newManifestPath, destManifestPath);
+  const destManifestPath = path.join(metaInfDir, "reports.json");
+  fs.writeFileSync(destManifestPath, manJson, "utf8");
+  console.log(`Manifest written to path ${destManifestPath}: ${manJson}`);
 
   // Create a new zip file that includes the contents of the temporary directory
   const newZip = new AdmZip();
@@ -617,7 +610,7 @@ async function createExternalManifestZip(
   // Clean up the temporary directory
   fsExtra.removeSync(tempDir);
 
-  console.log(`New zip package file created at: ${signedRepPath}`);
+  console.log(`New complex zip package file created at: ${signedRepPath}`);
 }
 
 function validateReport(zip: AdmZip) {
@@ -654,4 +647,35 @@ function validateReport(zip: AdmZip) {
   console.log(
     "Validation passed: META-INF directory with report.json and either reports directory or zip file found.",
   );
+}
+
+function findReportsDir(dirPath: string): string | null {
+  const files = fs.readdirSync(dirPath);
+
+  for (const file of files) {
+    const fullPath = path.join(dirPath, file);
+    if (fs.lstatSync(fullPath).isDirectory()) {
+      if (file === "reports") {
+        return fullPath;
+      } else {
+        const found = findReportsDir(fullPath);
+        if (found) {
+          return found;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+async function writeReportsJson(
+  fullTemp: string,
+  manJson: string,
+): Promise<string> {
+  const dirPath = await getRepPath(fullTemp);
+  const manifestPath = path.join(dirPath, "META-INF", "reports.json");
+  fs.writeFileSync(manifestPath, manJson, "utf8");
+  console.log(`Manifest written to path ${manifestPath}: ${manJson}`);
+  return manifestPath;
 }
