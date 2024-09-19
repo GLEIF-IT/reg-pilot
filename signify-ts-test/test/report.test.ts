@@ -34,20 +34,6 @@ afterAll(async () => {
 
 beforeAll(async () => {
   env = resolveEnvironment();
-  console.log("SECRETS!!!!!!!!!!!!!!!!: ");
-  console.log(env.secrets);
-  const clients = await getOrCreateClients(
-    env.secrets.length,
-    env.secrets,
-    true,
-  );
-  roleClient = clients[clients.length - 1];
-  ecrAid = await roleClient.identifiers().get(env.roleName);
-  keeper = roleClient.manager!.get(ecrAid);
-  failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-  signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
-
-  unsignedReports = process.env.UNSIGNED_REPORTS ? process.env.UNSIGNED_REPORTS.split(",") : getDefaultOrigReports();
   const secretsJson = JSON.parse(
     fs.readFileSync(
       path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
@@ -111,20 +97,12 @@ async function generate_reports(
   deleteReportsDir(signedDirPrefixed);
   assert.equal(await createSignedReports(unsignedReports, true), true);
   assert.equal(await createSignedReports(unsignedReports, false), true);
-}, 100000);
 
-// test("unknown-report-generation-test", async function run() {
-//   deleteReportsDir(tempDir);
-//   createReportsDir(tempDir);
-//   assert.equal(await updateUnknownReport(), true);
-// }, 100000);
-
-test("fail-report-generation-test", async function run() {
-    deleteReportsDir(tempDir);
-    createReportsDir(tempDir);
-    deleteReportsDir(failDirPrefixed);
-    assert.equal(await createFailReports(), true);
-}, 100000);
+  deleteReportsDir(tempDir);
+  createReportsDir(tempDir);
+  deleteReportsDir(failDirPrefixed);
+  assert.equal(await createFailReports(failDirPrefixed, signedDirPrefixed), true);
+};
 
 async function createSignedReports(filePaths: string[], simple: boolean = true): Promise<boolean> {
   let zipsProcessed = 0;
@@ -372,9 +350,10 @@ async function createFailReports(
       }
     }
   }
-  return true;
+
   return true;
 }
+
 async function genMissingSignature(manifestPath: string): Promise<boolean> {
   console.log(`Generating missing signature case for manifest ${manifestPath}`);
 
@@ -421,6 +400,7 @@ async function wrongAid(manifestPath: string): Promise<boolean> {
 
   throw new Error("No signatures to add unknown aid to " + manifestPath);
 }
+
 async function genNoSignature(manifestPath: string): Promise<boolean> {
   assert.equal(fs.existsSync(manifestPath), true);
   const data = await fs.promises.readFile(manifestPath, "utf-8");
