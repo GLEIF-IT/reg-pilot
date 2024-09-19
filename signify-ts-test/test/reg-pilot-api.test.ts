@@ -6,7 +6,6 @@ import * as process from "process";
 import { getOrCreateClients } from "./utils/test-util";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { unknownPrefix } from "../src/constants";
 import { HabState, SignifyClient } from "signify-ts";
 import path from "path";
 import { buildUserData, User } from "../src/utils/handle-json-config";
@@ -236,7 +235,12 @@ async function single_user_test(user: ApiUser) {
         signedZipDig,
         user.roleClient,
       );
-      await checkSignedUpload(signedUpResp, path.basename(signedReport), signedZipDig, user);
+      await checkSignedUpload(
+        signedUpResp,
+        path.basename(signedReport),
+        signedZipDig,
+        user,
+      );
     }
   }
 
@@ -538,52 +542,6 @@ export async function checkSignedUpload(
   assert.equal(signedUploadBody["contentType"], "application/zip");
   assert.equal(signedUploadBody["size"] > 1000, true);
 
-  // // Try unknown aid signed report upload
-  // const unknownFileName = `report.zip`;
-  // const unknownZipBuf = fs.readFileSync(
-  //   `./test/data/unknown_reports/${unknownFileName}`,
-  // );
-  // const unknownZipDig = generateFileDigest(unknownZipBuf);
-  // const unknownResp = await uploadReport(
-  //   env.roleName,
-  //   ecrAid.prefix,
-  //   unknownFileName,
-  //   unknownZipBuf,
-  //   unknownZipDig,
-  //   roleClient,
-  //   env.apiBaseUrl,
-  // );
-  // let unknownBody = await unknownResp.json();
-  // assert.equal(unknownResp.status, 200);
-  // assert.equal(unknownBody["submitter"], `${ecrAid.prefix}`);
-  // assert.equal(
-  //   unknownBody["message"],
-  //   `signature from unknown AID ${unknownPrefix}`,
-  // );
-  // assert.equal(unknownBody["filename"], unknownFileName);
-  // assert.equal(unknownBody["status"], "failed");
-  // assert.equal(unknownBody["contentType"], "application/zip");
-  // assert.equal(unknownBody["size"] > 1000, true);
-
-  // sresp = await getReportStatusByDig(
-  //   env.roleName,
-  //   ecrAid.prefix,
-  //   unknownZipDig,
-  //   roleClient,
-  //   env.apiBaseUrl,
-  // );
-  // assert.equal(sresp.status, 200);
-  // const unknownUploadBody = await sresp.json();
-  // assert.equal(unknownUploadBody["submitter"], `${ecrAid.prefix}`);
-  // assert.equal(
-  //   unknownUploadBody["message"],
-  //   `signature from unknown AID ${unknownPrefix}`,
-  // );
-  // assert.equal(unknownUploadBody["filename"], unknownFileName);
-  // assert.equal(unknownUploadBody["status"], "failed");
-  // assert.equal(unknownUploadBody["contentType"], "application/zip");
-  // assert.equal(unknownUploadBody["size"] > 1000, true);
-
   sresp = await apiAdapter.getReportStatusByAid(
     "ecr1",
     user.ecrAid.prefix,
@@ -600,7 +558,6 @@ export async function checkSignedUpload(
   assert.equal(signedStatus["filename"], fileName);
   assert.equal(signedStatus["contentType"], "application/zip");
   assert.equal(signedStatus["size"] > 1000, true);
-
 
   return true;
 }
@@ -622,7 +579,7 @@ export async function checkFailUpload(
     assert.equal(failUpResp.status >= 300, true);
     const failUpBody = await failUpResp.json();
     return true;
-  } else if(fileName.includes("wrongAid")) {
+  } else if (fileName.includes("wrongAid")) {
     failMessage = "signature from unknown AID";
   }
 
@@ -684,6 +641,6 @@ export function getSignedReports(signedDirPrefixed: string): string[] {
     return process.env.SIGNED_REPORTS.split(",");
   } else {
     const fileNames = fs.readdirSync(signedDirPrefixed);
-    return fileNames.map(fileName => path.join(signedDirPrefixed, fileName));
+    return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
   }
 }
