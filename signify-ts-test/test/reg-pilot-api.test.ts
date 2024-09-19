@@ -297,15 +297,14 @@ async function single_user_test(user: ApiUser) {
 
   // Check reports with not prefixed digest
   for (const signedReport of signedReports) {
-    const filePath = path.join(signedDirPrefixed, signedReport);
-    if (fs.lstatSync(filePath).isFile()) {
+    if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
         "ecr1",
         user.ecrAid.prefix,
         user.roleClient,
       );
-      console.log(`Processing file: ${filePath}`);
-      const badDigestZipBuf = fs.readFileSync(`${filePath}`);
+      console.log(`Processing file: ${signedReport}`);
+      const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
       const badDigestUpResp = await apiAdapter.uploadReport(
         "ecr1",
@@ -423,15 +422,14 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     const signedReports = getSignedReports(signedDirPrefixed);
     // Check signed reports
     for (const signedReport of signedReports) {
-      const filePath = path.join(signedDirPrefixed, signedReport);
-      if (fs.lstatSync(filePath).isFile()) {
+      if (fs.lstatSync(signedReport).isFile()) {
         apiAdapter.dropReportStatusByAid(
           "ecr1",
           user.ecrAid.prefix,
           user.roleClient,
         );
-        console.log(`Processing file: ${filePath}`);
-        const signedZipBuf = fs.readFileSync(`${filePath}`);
+        console.log(`Processing file: ${signedReport}`);
+        const signedZipBuf = fs.readFileSync(`${signedReport}`);
         const signedZipDig = generateFileDigest(signedZipBuf);
         const signedUpResp = await apiAdapter.uploadReport(
           "ecr1",
