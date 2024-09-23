@@ -10,6 +10,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 |----|------------|----------------|------------------|
 | 1  | 2024-08-09 | 1.1.17         | [b38f8e4]        | 
 | 2  | 2024-08-29 | 1.2.0-dev13    | [aceccd5]        | 
+| 3  | 2024-09-23 | 1.2.0-dev13    | [266320d]        | 
 
 
 #### b. test domain
@@ -17,6 +18,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | #  | Date       | keripy version | Last Commit Hash | 
 |----|------------|----------------|------------------|
 | 1  | 2024-08-09 | 1.1.17         | [b38f8e4]        | 
+| 2  | 2024-09-12 | 1.2.0-dev13    | [aceccd5]        | 
 
 
 ### 2. vlei-verifier
@@ -27,6 +29,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 |----|------------|----------------|------------------|
 | 1  | 2024-08-09 | 1.1.17         | [c28678a]        | 
 | 2  | 2024-08-29 | 1.2.0-dev13    | [a10baa8]        |
+| 3  | 2024-09-23 | 1.2.0-dev13    | [c4b05f4]        | 
 
 
 #### b. test domain
@@ -34,3 +37,4 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | #  | Date       | keripy version | Last Commit Hash | 
 |----|------------|----------------|------------------|
 | 1  | 2024-08-09  | 1.1.17        | [c28678a]        | 
+| 2  | 2024-09-12 | 1.2.0-dev13    | [a10baa8]        | 
