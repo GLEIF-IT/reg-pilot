@@ -45,6 +45,10 @@ export function resolveEnvironment(
     case "multisig-multiple-aid":
       secretsJsonFile = "multisig-multiple-aid-secrets.json";
       break;
+    default:
+      throw new Error(
+        `Unknown secrets configuration '${process.env.SECRETS_JSON_CONFIG}'`,
+      );
   }
   let env;
   switch (preset) {

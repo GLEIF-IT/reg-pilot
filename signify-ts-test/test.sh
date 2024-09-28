@@ -1,12 +1,19 @@
 #!/bin/bash
 
+exitOnFail() {
+    if [ $? -ne 0 ]; then
+        echo "Failed to execute command: $1"
+        exit 1
+    fi
+}
+
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
     echo "  --all"
     echo "      Runs --build, --docker=verify, --data, --report, and --verify"
     echo "  --docker=deps|verify|proxy-verify"
-    echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers"
+    echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers, you will need to specify the REG_PILOT_API and VLEI_VERIFIER environment variables"
     echo "      verify: Setup all services (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
     echo "      verify-proxy: Setup all services and a proxy (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
     echo "  --build"
@@ -63,7 +70,7 @@ echo "VLEI_SERVER=$VLEI_SERVER"
 
 # Check if the only argument is --all
 if [[ $# -eq 1 && $1 == "--all" ]]; then
-    set -- --docker=verify --build --data --report --verify --proxy
+    set -- --build --docker=verify --data --report --verify --proxy
 fi
 
 if [[ $# -eq 0 ]]; then
@@ -87,25 +94,30 @@ while [[ $# -gt 0 ]]; do
                     echo "Unknown docker action: $docker_action"
                     ;;
             esac
+            exitOnFail "$1"
             shift # past argument
             ;;
         --build)
             npm run build
+            exitOnFail "$1"
             shift # past argument
             ;;
         --data)            
             export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./vlei-issuance.test.ts
+            exitOnFail "$1"
             shift # past argument
             ;;
         --report)
             export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./report.test.ts
+            exitOnFail "$1"
             shift # past argument
             ;;
         --verify)
             export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./reg-pilot-api.test.ts
+            exitOnFail "$1"
             shift # past argument
             ;;
         --proxy)
@@ -113,10 +125,12 @@ while [[ $# -gt 0 ]]; do
             export REG_PILOT_API="${REG_PILOT_PROXY}"
             echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
             npx jest ./vlei-verification.test.ts
+            exitOnFail "$1"
             shift # past argument
             ;;
         *)
             echo "Unknown argument: $1"
+            exitOnFail "$1"
             shift # past argument
             ;;
     esac
