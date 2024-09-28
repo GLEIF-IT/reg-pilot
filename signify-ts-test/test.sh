@@ -1,5 +1,29 @@
 #!/bin/bash
 
+printHelp() {
+    echo "Usage: test.sh [options]"
+    echo "Options:"
+    echo "  --all"
+    echo "      Runs --build, --docker=verify, --data, --report, and --verify"
+    echo "  --docker=deps|verify|proxy-verify"
+    echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers"
+    echo "      verify: Setup all services (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
+    echo "      verify-proxy: Setup all services and a proxy (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
+    echo "  --build"
+    echo "      build the typescript tests"
+    echo "  --data"
+    echo "      run the test data generation to populate keria identifiers/credentials"
+    echo "  --report"
+    echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
+    echo "  --verify"
+    echo "      run the reg-pilot-api and vlei-verifier integration tests using the keria instance to login and upload signed/failure reports"
+    echo "  --proxy"
+    echo "      add a proxy service between the tests and the reg-pilot-api to test forwarded communications"
+    echo "  --help"
+    echo "      print this help"
+    exit 0
+}
+
 # Extracted values from resolve-env.ts
 WAN='BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha'
 WIL='BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM'
@@ -7,8 +31,8 @@ WES='BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX'
 
 # Check if TEST_ENVIRONMENT is set
 if [ -z "$TEST_ENVIRONMENT" ]; then
+    echo "TEST_ENVIRONMENT is not set, setting default values"
     # Default values for 'docker' environment
-    : "${SIGNIFY_SECRETS:=D_PbQb01zuzQgK-kDWjqy,BTaqgh1eeOjXO5iQJp6mb,Akv4TFoiYeHNqzj3N8gEg,CbII3tno87wn3uGBP12qm}"
     : "${TEST_ENVIRONMENT:=docker}"
     : "${ROLE_NAME:=EBADataSubmitter}"
     : "${REG_PILOT_API:=http://127.0.0.1:8000}"
@@ -23,10 +47,9 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
 fi
 
 # Export environment variables
-export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG
+export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG
 
 # Print environment variable values
-echo "SIGNIFY_SECRETS=$SIGNIFY_SECRETS"
 echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
 echo "ROLE_NAME=$ROLE_NAME"
 echo "REG_PILOT_API=$REG_PILOT_API"
@@ -40,12 +63,19 @@ echo "VLEI_SERVER=$VLEI_SERVER"
 
 # Check if the only argument is --all
 if [[ $# -eq 1 && $1 == "--all" ]]; then
-    set -- --docker=proxy-verify --build --data --report --verify --proxy
+    set -- --docker=verify --build --data --report --verify --proxy
+fi
+
+if [[ $# -eq 0 ]]; then
+    printHelp
 fi
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            printHelp
+            ;;
         --docker=*)
             docker_action="${1#*=}"
             case $docker_action in

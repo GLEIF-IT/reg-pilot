@@ -217,7 +217,6 @@ export async function getOrCreateClient(
  * });
  * @example
  * <caption>Launch jest from shell with pre-defined secrets</caption>
- * $ SIGNIFY_SECRETS="0ACqshJKkJ7DDXcaDuwnmI8s,0ABqicvyicXGvIVg6Ih-dngE" npx jest ./tests
  */
 export async function getOrCreateClients(
   count: number,
@@ -225,14 +224,13 @@ export async function getOrCreateClients(
   getOnly: boolean = false,
 ): Promise<SignifyClient[]> {
   const tasks: Promise<SignifyClient>[] = [];
-  const secrets = process.env["SIGNIFY_SECRETS"]?.split(",");
   for (let i = 0; i < count; i++) {
     tasks.push(
-      getOrCreateClient(brans?.at(i) ?? secrets?.at(i) ?? undefined, getOnly),
+      getOrCreateClient(brans?.at(i) ?? undefined, getOnly),
     );
   }
   const clients: SignifyClient[] = await Promise.all(tasks);
-  console.log(`SIGNIFY_SECRETS="${clients.map((i) => i.bran).join(",")}"`);
+  console.log(`secrets="${clients.map((i) => i.bran).join(",")}"`);
   return clients;
 }
 
