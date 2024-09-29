@@ -10,6 +10,8 @@ exitOnFail() {
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
+    echo "  --fast"
+    echo "      Runs --all but with less rigor for the fastest runs"
     echo "  --all"
     echo "      Runs --build, --docker=verify, --data, --report, and --verify"
     echo "  --docker=deps|verify|proxy-verify"
@@ -51,10 +53,24 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
     : "${WITNESS_IDS:=$WAN,$WIL,$WES}"
     : "${VLEI_SERVER:=http://vlei-server:7723}"
     : "${SECRETS_JSON_CONFIG:=singlesig-single-aid}"
+    : "${UNSIGNED_REPORTS:=signify-ts-test/test/data/orig_reports/DUMMYLEI123456789012.CON_FR_PILLAR3010000_CONDIS_2023-12-31_20230405102913000.zip}"
+fi
+
+# Check if the only argument is --fast
+if [[ $# -eq 1 && $1 == "--fast" ]]; then
+    SPEED="fast"
+    echo "Using fast test settings"
+    set -- --all
+fi
+
+# Check if the only argument is --all
+if [[ $# -eq 1 && $1 == "--all" ]]; then
+    set -- --build --docker=verify --data --report --verify --proxy
+    echo "Running all tests"
 fi
 
 # Export environment variables
-export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG
+export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED
 
 # Print environment variable values
 echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
@@ -67,11 +83,8 @@ echo "KERIA_BOOT=$KERIA_BOOT"
 echo "WITNESS_URLS=$WITNESS_URLS"
 echo "WITNESS_IDS=$WITNESS_IDS"
 echo "VLEI_SERVER=$VLEI_SERVER"
-
-# Check if the only argument is --all
-if [[ $# -eq 1 && $1 == "--all" ]]; then
-    set -- --build --docker=verify --data --report --verify --proxy
-fi
+echo "UNSIGNED_REPORTS=$UNSIGNED_REPORTS"
+echo "SPEED=$SPEED"
 
 if [[ $# -eq 0 ]]; then
     printHelp
@@ -103,25 +116,21 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data)            
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./vlei-issuance.test.ts
             exitOnFail "$1"
             shift # past argument
             ;;
         --report)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./report.test.ts
             exitOnFail "$1"
             shift # past argument
             ;;
         --verify)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./reg-pilot-api.test.ts
             exitOnFail "$1"
             shift # past argument
             ;;
         --proxy)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"            
             export REG_PILOT_API="${REG_PILOT_PROXY}"
             echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
             npx jest ./vlei-verification.test.ts

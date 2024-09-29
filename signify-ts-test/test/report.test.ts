@@ -43,6 +43,8 @@ beforeAll(async () => {
   unsignedReports = process.env.UNSIGNED_REPORTS
     ? process.env.UNSIGNED_REPORTS.split(",")
     : getDefaultOrigReports();
+  console.log("Unsigned reports: ", unsignedReports);
+  console.log("Speed mode: ", process.env.SPEED);
 });
 
 // Function to create a report dir
