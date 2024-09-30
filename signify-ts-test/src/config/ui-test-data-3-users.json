@@ -1,9 +1,9 @@
 {
   "secrets": {
-    "gleif1": "D_PbQb01zuzQgK-kDWjqy,C_NufsiunfsB9f-3fcNdu",
-    "qvi1": "BTaqgh1eeOjXO5iQJp6mb,nU89hdcBU9hFBiufdbac2,78BHBygcbai7cbaigcvD3",
-    "le1": "Akv4TFoiYeHNqzj3N8gEg,moe8hBbe7bvcRaeveHU83,NKby7gcbYNcha8cba8ca3",
-    "le2": "Lf8nafHfan8fnafnnnfad,k90ncBBbdHbnfah8h93jf,Mcijfia8hN8hbVyf6dda8",
+    "gleif1": "D_PbQb01zuzQgK-kDWjqy",
+    "qvi1": "BTaqgh1eeOjXO5iQJp6mb",
+    "le1": "Akv4TFoiYeHNqzj3N8gEg",
+    "le2": "Lf8nafHfan8fnafnnnfad",
     "ecr1": "nf98hUHUy8Vt5tvdyaYV7",
     "ecr2": "CbII3tno87wn3uGBP12qm",
     "ecr3": "defh7b7g7gfaBuf83bf0f"
@@ -24,10 +24,10 @@
         "gleif": "gleif1",
         "qvi": "qvi1",
         "le": "le1",
-        "ecr": "ecr2"
+        "ecr": "ecr1"
       },
       "LE": "875500ELOZEL05BVXV37",
-      "contextRole": "EBA Data Submitter"
+      "contextRole": "Data Submitter"
     },
     {
       "secrets": {

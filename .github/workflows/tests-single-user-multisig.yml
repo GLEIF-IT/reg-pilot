@@ -8,7 +8,7 @@ on:
       - "main"
   workflow_dispatch:
 jobs:
-  test-multisig:
+  test-single-aid-multisig:
     name: Run multisig single user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -33,5 +33,20 @@ jobs:
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
           npm ci     
-      - name: Build, Run docker, run tests
-        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --all
+      - name: Run docker
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --docker=proxy-verify 
+      
+      - name: Build
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --build
+
+      - name: Issue Credentials
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --data-multisig
+
+      - name: Generate Reports
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --report
+
+      - name: Run API tests
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --verify
+
+      - name: Run Verifier tests
+        run: SECRETS_JSON_CONFIG=multisig-single-aid ./test.sh --proxy

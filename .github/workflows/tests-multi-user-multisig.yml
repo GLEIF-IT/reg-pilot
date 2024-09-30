@@ -33,6 +33,23 @@ jobs:
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
           npm ci    
-      - name: Build, Run docker, run tests
-        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --all
+
+      - name: Run docker
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --docker=proxy-verify 
+      
+      - name: Build
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --build
+
+      - name: Issue Credentials
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --data-multisig
+
+      - name: Generate Reports
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --report
+
+      - name: Run API tests
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --verify
+
+      - name: Run Verifier tests
+        run: SECRETS_JSON_CONFIG=multisig-multiple-aid ./test.sh --proxy
+
   
