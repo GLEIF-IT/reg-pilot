@@ -64,10 +64,9 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data)            
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             export GENERATE_TEST_DATA=true
-            npx jest ./vlei-issuance.test.ts
-            shift # past argument
+            export WORKFLOW="${WORKFLOW}"
+            npx jest ./run-vlei-issuance-workflow.test.ts
             ;;      
         *)
             echo "Unknown argument: $1"
