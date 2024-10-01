@@ -48,6 +48,9 @@ export function resolveEnvironment(
     case "singlesig-single-aid-nord-demo":
       secretsJsonFile = "singlesig-single-aid-secrets-nord-demo.json";
       break;
+    case "singlesig-single-aid-rootsid":
+      secretsJsonFile = "singlesig-single-aid-secrets-rootsid.json";
+      break;
     default:
       throw new Error(
         `Unknown secrets configuration '${process.env.SECRETS_JSON_CONFIG}'`,
