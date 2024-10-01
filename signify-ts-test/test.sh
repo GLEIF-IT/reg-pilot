@@ -34,32 +34,15 @@ printHelp() {
 }
 
 handleEnv() {
-    # Extracted values from resolve-env.ts
-    # WAN='BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha'
-    # WIL='BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM'
-    # WES='BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX'
-
     # Check if TEST_ENVIRONMENT is set
     if [ -z "$TEST_ENVIRONMENT" ]; then
         echo "TEST_ENVIRONMENT is not set, setting to docker"
         # Default values for 'docker' environment
         : "${TEST_ENVIRONMENT:=docker}"
-        # : "${ROLE_NAME:=EBADataSubmitter}"
-        # : "${REG_PILOT_API:=http://127.0.0.1:8000}"
-        # : "${REG_PILOT_PROXY:=http://127.0.0.1:3434}"
-        # : "${VLEI_VERIFIER:=http://127.0.0.1:7676}"
-        # : "${KERIA:=http://127.0.0.1:3901}"
-        # : "${KERIA_BOOT:=http://127.0.0.1:3903}"
-        # : "${WITNESS_URLS:=http://witness-demo:5642,http://witness-demo:5643,http://witness-demo:5644}"
-        # : "${WITNESS_IDS:=$WAN,$WIL,$WES}"
-        # : "${VLEI_SERVER:=http://vlei-server:7723}"
-        # : "${SECRETS_JSON_CONFIG:=singlesig-single-aid}"
-        # : "${UNSIGNED_REPORTS:=signify-ts-test/test/data/orig_reports/DUMMYLEI123456789012.CON_FR_PILLAR3010000_CONDIS_2023-12-31_20230405102913000.zip}"
-        # : "${SPEED:=rigorous}"
     fi
 
     # Export environment variables
-    export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED
+    export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED WORKFLOW
 
     # Print environment variable values
     echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
@@ -73,7 +56,8 @@ handleEnv() {
     echo "WITNESS_IDS=$WITNESS_IDS"
     echo "VLEI_SERVER=$VLEI_SERVER"
     echo "UNSIGNED_REPORTS=$UNSIGNED_REPORTS"
-    echo "SPEED=$SPEED"    
+    echo "SPEED=$SPEED"
+    echo "WORKFLOW=$WORKFLOW"
 }
 
 if [[ $# -eq 0 ]]; then
@@ -151,6 +135,13 @@ for arg in "${args[@]}"; do
             args=("${args[@]/$arg}")
             ;;
         --data)            
+            export WORKFLOW="${WORKFLOW}"
+            npx jest ./run-vlei-issuance-workflow.test.ts
+            exitOnFail "$1"
+            args=("${args[@]/$arg}")
+            ;;
+        --data-multisig)            
+            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
             npx jest ./vlei-issuance.test.ts
             exitOnFail "$1"
             args=("${args[@]/$arg}")

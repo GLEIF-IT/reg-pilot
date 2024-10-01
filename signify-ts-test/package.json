@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "vlei-issuance-workflow:singlesig-single_aid": "ts-node ./src/run-vlei-issuance-workflow.ts",
     "start": "npm run build:esm -- --watch",
     "build:types": "tsc -p tsconfig.build.json",
     "build": "npm run build:types",

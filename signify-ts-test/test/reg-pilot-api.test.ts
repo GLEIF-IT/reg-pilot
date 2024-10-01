@@ -403,7 +403,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     sresp = await fetch(env.apiBaseUrl + spath, sreq);
     assert.equal(sresp.status, 422); // no signed headers provided
 
-    apiAdapter.dropReportStatusByAid(
+    await apiAdapter.dropReportStatusByAid(
       idAlias,
       user.ecrAid.prefix,
       user.roleClient,
@@ -431,7 +431,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     // Check signed reports
     for (const signedReport of signedReports) {
       if (fs.lstatSync(signedReport).isFile()) {
-        apiAdapter.dropReportStatusByAid(
+        await apiAdapter.dropReportStatusByAid(
           idAlias,
           user.ecrAid.prefix,
           user.roleClient,
@@ -447,7 +447,12 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
           signedZipDig,
           user.roleClient,
         );
-        await checkSignedUpload(signedUpResp, signedReport, signedZipDig, user);
+        await checkSignedUpload(
+          signedUpResp,
+          path.basename(signedReport),
+          signedZipDig,
+          user,
+        );
         user.uploadDig = signedZipDig;
         break;
       }

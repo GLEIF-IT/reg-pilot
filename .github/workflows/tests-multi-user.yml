@@ -8,7 +8,7 @@ on:
       - "main"
   workflow_dispatch:
 jobs: 
-  test-multiple-aids:
+  test-multiple-aids-singlesig:
     name: Run singlesig multi user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -33,6 +33,23 @@ jobs:
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
           npm ci    
-      - name: Build, Run docker, run tests
-        run: SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --all
+      - name: Run docker
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --docker=proxy-verify 
+      
+      - name: Build
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --build
+
+      - name: Issue Credentials
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --data
+
+      - name: Generate Reports
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --report
+
+      - name: Run API tests
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --verify
+
+      - name: Run Verifier tests
+        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --proxy
+        
+
   
