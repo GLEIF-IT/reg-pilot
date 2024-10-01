@@ -36,7 +36,6 @@ export async function buildCredentials(
       type: cred.type,
       issuer: cred.issuer,
       issuee: cred.issuee,
-      recipient: cred.recipient,
       schema: cred.schema,
       rules: cred.rules,
       privacy: cred.privacy,
@@ -62,7 +61,6 @@ export interface CredentialInfo {
   type: string;
   issuer: string;
   issuee: string;
-  recipient?: string;
   schema: string;
   rules?: string;
   privacy: boolean;
