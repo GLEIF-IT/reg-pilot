@@ -4,6 +4,9 @@ import {
   MultiSigVleiIssuance,
 } from "../src/vlei-issuance";
 import path from "path";
+import { EcrTestData, buildTestData } from "../src/utils/generate-test-data";
+import { boolean } from "mathjs";
+
 const fs = require("fs");
 const yaml = require("js-yaml");
 
@@ -21,7 +24,7 @@ function loadWorkflow(filePath: string) {
 async function runWorkflow(workflow: any) {
   let executedSteps = new Set();
   const config = workflow.workflow.config;
-  let vi = new SingleSigVleiIssuance(config.secrets, true);
+  let vi = new SingleSigVleiIssuance(config.secrets);
   await vi.prepareClients();
   for (const user of vi.users) {
     await vi.createRegistries(user);
@@ -33,7 +36,12 @@ async function runWorkflow(workflow: any) {
   async function executeStep(user: any, stepName: string, step: any) {
     console.log(`Executing: ${step.name}`);
     if (step.type == "issue_credential") {
-      await vi.getOrIssueCredential(user, step.credential);
+      await vi.getOrIssueCredential(
+        user,
+        step.credential,
+        Boolean(step.generate_test_data),
+        step.test_name,
+      );
     }
     executedSteps.add(step.id);
   }
@@ -41,7 +49,8 @@ async function runWorkflow(workflow: any) {
 
 test("issue-credentials", async function run() {
   const workflowsDir = "../src/workflows/";
-  const workflowFile = process.env.WORKFLOW;
+  const workflowFile =
+    process.env.WORKFLOW || "issue-credentials-singlesig-multi-user.yaml";
   const workflow = loadWorkflow(
     path.join(__dirname, `${workflowsDir}${workflowFile}`),
   );
