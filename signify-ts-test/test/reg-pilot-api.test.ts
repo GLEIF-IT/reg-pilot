@@ -244,35 +244,37 @@ async function single_user_test(user: ApiUser) {
     }
   }
 
-  const failReports = fs.readdirSync(failDirPrefixed);
+  if(fs.existsSync(failDirPrefixed)) {
+    const failReports = fs.readdirSync(failDirPrefixed);
 
-  // Check fail reports
-  for (const failReport of failReports) {
-    const filePath = path.join(failDirPrefixed, failReport);
-    if (fs.lstatSync(filePath).isFile()) {
-      await apiAdapter.dropReportStatusByAid(
-        "ecr1",
-        user.ecrAid.prefix,
-        user.roleClient,
-      );
-      console.log(`Processing file: ${filePath}`);
-      const failZipBuf = fs.readFileSync(`${filePath}`);
-      const failZipDig = generateFileDigest(failZipBuf);
-      const failUpResp = await apiAdapter.uploadReport(
-        "ecr1",
-        user.ecrAid.prefix,
-        failReport,
-        failZipBuf,
-        failZipDig,
-        user.roleClient,
-      );
-      await checkFailUpload(
-        user.roleClient,
-        failUpResp,
-        failReport,
-        failZipDig,
-        user.ecrAid,
-      );
+    // Check fail reports
+    for (const failReport of failReports) {
+      const filePath = path.join(failDirPrefixed, failReport);
+      if (fs.lstatSync(filePath).isFile()) {
+        await apiAdapter.dropReportStatusByAid(
+          "ecr1",
+          user.ecrAid.prefix,
+          user.roleClient,
+        );
+        console.log(`Processing file: ${filePath}`);
+        const failZipBuf = fs.readFileSync(`${filePath}`);
+        const failZipDig = generateFileDigest(failZipBuf);
+        const failUpResp = await apiAdapter.uploadReport(
+          "ecr1",
+          user.ecrAid.prefix,
+          failReport,
+          failZipBuf,
+          failZipDig,
+          user.roleClient,
+        );
+        await checkFailUpload(
+          user.roleClient,
+          failUpResp,
+          failReport,
+          failZipDig,
+          user.ecrAid,
+        );
+      }
     }
   }
 
