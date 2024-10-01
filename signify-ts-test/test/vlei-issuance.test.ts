@@ -5,9 +5,6 @@ import { resolveEnvironment } from "./utils/resolve-env";
 const env = resolveEnvironment();
 
 test("vlei-issuance", async function run() {
-  const ve: VleiIssuance = new VleiIssuance(
-    env.secretsJsonConfig,
-    env.generateTestData,
-  );
+  const ve: VleiIssuance = new VleiIssuance(env.secretsJsonConfig);
   await ve.issueCredentials();
 }, 3600000);

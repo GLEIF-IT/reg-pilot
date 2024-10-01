@@ -74,9 +74,9 @@ import {
   buildUserData,
   buildCredentials,
 } from "./utils/handle-json-config";
-import { EcrTestData, buildTestData } from "./utils/generate-test-data";
 import fs from "fs";
 import path from "path";
+import { buildTestData, EcrTestData } from "./utils/generate-test-data";
 
 export class VleiIssuance {
   secretsJsonPath: string = "config/";
@@ -87,7 +87,6 @@ export class VleiIssuance {
     string,
     CredentialInfo
   >();
-  generateTestData: boolean;
   registries: Map<string, { regk: string }> = new Map<
     string,
     { regk: string }
@@ -97,8 +96,7 @@ export class VleiIssuance {
   rules: any = RULES;
   credentialData: Map<string, any> = new Map<string, any>();
 
-  constructor(secretsJsonFile: string, generateTestData: boolean) {
-    this.generateTestData = generateTestData;
+  constructor(secretsJsonFile: string) {
     this.secretsJsonFile = secretsJsonFile;
     this.secretsJson = JSON.parse(
       fs.readFileSync(
@@ -229,18 +227,12 @@ export class VleiIssuance {
         user.clients.get("qvi")!.length > 1 ||
         user.clients.get("le")!.length > 1
       ) {
-        let subclassInstance = new MultiSigVleiIssuance(
-          this.secretsJsonFile,
-          this.generateTestData,
-        );
+        let subclassInstance = new MultiSigVleiIssuance(this.secretsJsonFile);
         Object.assign(subclassInstance, this);
         Object.assign(this, subclassInstance);
         Object.setPrototypeOf(this, MultiSigVleiIssuance.prototype);
       } else {
-        let subclassInstance = new SingleSigVleiIssuance(
-          this.secretsJsonFile,
-          this.generateTestData,
-        );
+        let subclassInstance = new SingleSigVleiIssuance(this.secretsJsonFile);
         Object.assign(subclassInstance, this);
         Object.assign(this, subclassInstance);
         Object.setPrototypeOf(this, SingleSigVleiIssuance.prototype);
@@ -261,8 +253,8 @@ export class SingleSigVleiIssuance extends VleiIssuance {
   oorAuthData: any;
   kargsAID: any;
 
-  constructor(secretsJsonFile: string, generateTestData: boolean) {
-    super(secretsJsonFile, generateTestData);
+  constructor(secretsJsonFile: string) {
+    super(secretsJsonFile);
   }
 
   public async createRegistries(user: User) {
@@ -305,6 +297,8 @@ export class SingleSigVleiIssuance extends VleiIssuance {
   public async getOrIssueCredential(
     user: User,
     credName: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test",
   ): Promise<any> {
     const credInfo: CredentialInfo = this.credentialsInfo.get(credName)!;
     const issuerClient = user.clients.get(credInfo.issuer)![0];
@@ -327,15 +321,16 @@ export class SingleSigVleiIssuance extends VleiIssuance {
       const roleAid = user.aids.get(credInfo.attributes["AID"])![0];
       credData.AID = roleAid.prefix;
     }
-    if (credData.LEI == null) {
-      credData.LEI = user.LE;
+    const credDataTmp = JSON.parse(JSON.stringify(credData));
+    if (credDataTmp.LEI == null) {
+      credDataTmp.LEI = user.LE;
     }
     const cred = await getOrIssueCredential(
       issuerClient,
       issuerAID,
       recipientAID,
       issuerRegistry,
-      credData,
+      credDataTmp,
       schema,
       rules || undefined,
       credSource || undefined,
@@ -362,91 +357,24 @@ export class SingleSigVleiIssuance extends VleiIssuance {
     assert.equal(credHolder.status.s, "0");
     assert(credHolder.atc !== undefined);
     this.credentials.set(credName, cred);
+    if (generateTestData) {
+      let tmpCred = cred;
+      tmpCred.cesr = await recipientClient.credentials().get(cred.sad.d, true);
+      let testData: EcrTestData = {
+        aid: recipientAID.prefix,
+        lei: credDataTmp.LEI,
+        credential: tmpCred,
+        engagementContextRole: credDataTmp.engagementContextRole,
+      };
+      await buildTestData(testData, testName);
+    }
     return cred;
-  }
-
-  protected async vleiIssuance(user: User) {
-    // this.prepareConstants(user);
-    // await this.createRegistries(user);
-    // console.log("Issuing QVI vLEI Credential");
-    // const qviCred = await this.getOrIssueCredential("qviCred", user.clients.get("gleif")![0],
-    //   user.clients.get("qvi")![0],
-    //   user.aids.get("gleif")![0],
-    //   user.aids.get("qvi")![0],
-    //   this.registries.get("gleif")!, this.qviData, QVI_SCHEMA_SAID
-    // )
-    // console.log("Issuing LE vLEI Credential");
-    // const leCredSource = this.buildCredSource("qvi", qviCred);
-    // const leCred = await this.getOrIssueCredential("leCred", user.clients.get("qvi")![0],
-    //   user.clients.get("le")![0],
-    //   user.aids.get("qvi")![0],
-    //   user.aids.get("le")![0],
-    //   this.registries.get("qvi")!, this.leData, LE_SCHEMA_SAID, LE_RULES, leCredSource
-    // )
-    // console.log("Issuing ECR vLEI Credential from LE");
-    // const ecrCredSource = this.buildCredSource("le", leCred);
-    // let ecrCred = await this.getOrIssueCredential("ecrCred", user.clients.get("le")![0],
-    //   user.clients.get("ecr")![0],
-    //   user.aids.get("le")![0],
-    //   user.aids.get("ecr")![0],
-    //   this.registries.get("le")!, this.ecrData, ECR_SCHEMA_SAID, ECR_RULES, ecrCredSource, true
-    // )
-    // console.log("Issuing ECR AUTH vLEI Credential");
-    // this.ecrAuthData.AID = user.aids.get("ecr")![0].prefix;
-    // const ecrAuthCredSource = this.buildCredSource("le", leCred);
-    // const ecrAuthCred = await this.getOrIssueAuthCredential("ecrAuthCred", user.clients.get("le")![0],
-    //   user.clients.get("qvi")![0],
-    //   user.aids.get("le")![0],
-    //   user.aids.get("qvi")![0],
-    //   user.aids.get("ecr")![0],
-    //   this.registries.get("le")!, this.ecrAuthData, ECR_AUTH_SCHEMA_SAID, ECR_AUTH_RULES, ecrAuthCredSource
-    // )
-    // console.log("Issuing ECR vLEI Credential from ECR AUTH");
-    // const ecrCredSource2 = this.buildCredSource("auth", ecrAuthCred, "I2I");
-    // const ecrCred2 = await this.getOrIssueCredential("ecrCred2", user.clients.get("qvi")![0],
-    //   user.clients.get("ecr")![0],
-    //   user.aids.get("qvi")![0],
-    //   user.aids.get("ecr")![0],
-    //   this.registries.get("qvi")!,
-    //   this.ecrData, ECR_SCHEMA_SAID, ECR_RULES, ecrCredSource2, true
-    // )
-    // console.log("Issuing OOR AUTH vLEI Credential");
-    // this.oorAuthData.AID = user.aids.get("ecr")![0].prefix;
-    // const oorAuthCredSource = this.buildCredSource("le", leCred);
-    // const oorAuthCred = await this.getOrIssueAuthCredential("oorAuthCred",
-    //   user.clients.get("le")![0],
-    //   user.clients.get("qvi")![0],
-    //   user.aids.get("le")![0],
-    //   user.aids.get("qvi")![0],
-    //   user.aids.get("ecr")![0],
-    //   this.registries.get("le")!, this.oorAuthData, OOR_AUTH_SCHEMA_SAID, OOR_AUTH_RULES, oorAuthCredSource,
-    // );
-    // console.log("Issuing OOR vLEI Credential from OOR AUTH");
-    // const oorCredSource = this.buildCredSource("auth", oorAuthCred, "I2I");
-    // const oorCred = await this.getOrIssueCredential("oorCred", user.clients.get("qvi")![0],
-    //   user.clients.get("ecr")![0],
-    //   user.aids.get("qvi")![0],
-    //   user.aids.get("ecr")![0],
-    //   this.registries.get("qvi")!, this.oorData, OOR_SCHEMA_SAID, OOR_RULES, oorCredSource
-    // )
-    // await assertOperations(
-    //   user.clients.get("gleif")![0],
-    //   user.clients.get("qvi")![0],
-    //   user.clients.get("le")![0],
-    //   user.clients.get("ecr")![0],
-    // );
-    // await warnNotifications(
-    //   user.clients.get("gleif")![0],
-    //   user.clients.get("qvi")![0],
-    //   user.clients.get("le")![0],
-    //   user.clients.get("ecr")![0],
-    // );
   }
 }
 
 export class MultiSigVleiIssuance extends VleiIssuance {
-  constructor(secretsJsonFile: string, generateTestData: boolean) {
-    super(secretsJsonFile, generateTestData);
+  constructor(secretsJsonFile: string) {
+    super(secretsJsonFile);
   }
   protected async vleiIssuance(user: User) {
     /**
