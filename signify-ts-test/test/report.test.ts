@@ -98,7 +98,8 @@ test("report-generation-test", async function run() {
       true
     );
     roleClient = clients[clients.length - 1];
-    ecrAid = await roleClient.identifiers().get("ecr1");
+    const idAlias = env.roleName ? env.roleName : "ecr1";
+    ecrAid = await roleClient.identifiers().get(idAlias);
     keeper = roleClient.manager!.get(ecrAid);
     failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
     signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);

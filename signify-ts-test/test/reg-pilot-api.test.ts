@@ -24,6 +24,7 @@ const signedDir = "signed_reports";
 
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
+let idAlias: string;
 
 afterEach(async () => {});
 
@@ -33,6 +34,7 @@ beforeAll(async () => {
   let ecrCredCesr: any;
   let ecrCredHolder: any;
   env = resolveEnvironment();
+  idAlias = env.roleName ? env.roleName : "ecr1";
   const secretsJson = JSON.parse(
     fs.readFileSync(
       path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
@@ -57,7 +59,7 @@ beforeAll(async () => {
       uploadDig: "",
     };
     apiUser.roleClient = roleClient;
-    ecrAid = await roleClient.identifiers().get("ecr1");
+    ecrAid = await roleClient.identifiers().get(idAlias);
     apiUser.ecrAid = ecrAid;
     let creds = await roleClient.credentials().list();
     let ecrCreds = creds.filter(
@@ -122,7 +124,7 @@ async function single_user_test(user: ApiUser) {
 
   // fails to query report status because not logged in with ecr yet
   let sresp = await apiAdapter.getReportStatusByAid(
-    "ecr1",
+    idAlias,
     user.ecrAid.prefix,
     user.roleClient,
   );
@@ -168,14 +170,14 @@ async function single_user_test(user: ApiUser) {
   assert.equal(sresp.status, 422); // no signed headers provided
 
   const dresp = await apiAdapter.dropReportStatusByAid(
-    "ecr1",
+    idAlias,
     user.ecrAid.prefix,
     user.roleClient,
   );
   if (dresp.status < 300) {
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
-      "ecr1",
+      idAlias,
       user.ecrAid.prefix,
       user.roleClient,
     );
@@ -212,7 +214,7 @@ async function single_user_test(user: ApiUser) {
   // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
 
   //Try known aid signed report upload
-  //   const ecrOobi = await roleClient.oobis().get("ecr1", "agent");
+  //   const ecrOobi = await roleClient.oobis().get(idAlias, "agent");
   //   console.log("Verifier must have already seen the login", ecrOobi);
   // Loop over the reports directory
 
@@ -220,7 +222,7 @@ async function single_user_test(user: ApiUser) {
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         user.roleClient,
       );
@@ -228,7 +230,7 @@ async function single_user_test(user: ApiUser) {
       const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await apiAdapter.uploadReport(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         signedReport,
         signedZipBuf,
@@ -252,7 +254,7 @@ async function single_user_test(user: ApiUser) {
       const filePath = path.join(failDirPrefixed, failReport);
       if (fs.lstatSync(filePath).isFile()) {
         await apiAdapter.dropReportStatusByAid(
-          "ecr1",
+          idAlias,
           user.ecrAid.prefix,
           user.roleClient,
         );
@@ -260,7 +262,7 @@ async function single_user_test(user: ApiUser) {
         const failZipBuf = fs.readFileSync(`${filePath}`);
         const failZipDig = generateFileDigest(failZipBuf);
         const failUpResp = await apiAdapter.uploadReport(
-          "ecr1",
+          idAlias,
           user.ecrAid.prefix,
           failReport,
           failZipBuf,
@@ -282,7 +284,7 @@ async function single_user_test(user: ApiUser) {
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         user.roleClient,
       );
@@ -290,7 +292,7 @@ async function single_user_test(user: ApiUser) {
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await apiAdapter.uploadReport(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         signedReport,
         badDigestZipBuf,
@@ -305,7 +307,7 @@ async function single_user_test(user: ApiUser) {
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         user.roleClient,
       );
@@ -313,7 +315,7 @@ async function single_user_test(user: ApiUser) {
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
       const badDigestUpResp = await apiAdapter.uploadReport(
-        "ecr1",
+        idAlias,
         user.ecrAid.prefix,
         signedReport,
         badDigestZipBuf,
@@ -360,7 +362,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
     // fails to query report status because not logged in with ecr yet
     let sresp = await apiAdapter.getReportStatusByAid(
-      "ecr1",
+      idAlias,
       user.ecrAid.prefix,
       user.roleClient,
     );
@@ -402,13 +404,13 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     assert.equal(sresp.status, 422); // no signed headers provided
 
     apiAdapter.dropReportStatusByAid(
-      "ecr1",
+      idAlias,
       user.ecrAid.prefix,
       user.roleClient,
     );
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
-      "ecr1",
+      idAlias,
       user.ecrAid.prefix,
       user.roleClient,
     );
@@ -430,7 +432,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     for (const signedReport of signedReports) {
       if (fs.lstatSync(signedReport).isFile()) {
         apiAdapter.dropReportStatusByAid(
-          "ecr1",
+          idAlias,
           user.ecrAid.prefix,
           user.roleClient,
         );
@@ -438,7 +440,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
         const signedZipBuf = fs.readFileSync(`${signedReport}`);
         const signedZipDig = generateFileDigest(signedZipBuf);
         const signedUpResp = await apiAdapter.uploadReport(
-          "ecr1",
+          idAlias,
           user.ecrAid.prefix,
           signedReport,
           signedZipBuf,
@@ -453,7 +455,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   }
   // check upload by aid
   let sresp = await apiAdapter.getReportStatusByAid(
-    "ecr1",
+    idAlias,
     user1.ecrAid.prefix,
     user1.roleClient,
   );
@@ -462,7 +464,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   // check upload by aid from different lei
   sresp = await apiAdapter.getReportStatusByAid(
-    "ecr1",
+    idAlias,
     user3.ecrAid.prefix,
     user1.roleClient,
   );
@@ -470,7 +472,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   // check upload by dig from different lei
   sresp = await apiAdapter.getReportStatusByDig(
-    "ecr1",
+    idAlias,
     user3.ecrAid.prefix,
     user3.uploadDig,
     user1.roleClient,
@@ -479,7 +481,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   // check upload by dig from the same lei
   sresp = await apiAdapter.getReportStatusByDig(
-    "ecr1",
+    idAlias,
     user1.ecrAid.prefix,
     user2.uploadDig,
     user1.roleClient,
@@ -488,7 +490,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   // check LEI upload statuses by aid
   sresp = await apiAdapter.getLeiReportStatusesByAid(
-    "ecr1",
+    idAlias,
     user1.ecrAid.prefix,
     user1.roleClient,
   );
@@ -529,7 +531,7 @@ export async function checkSignedUpload(
   assert.equal(signedUpBody["size"] > 1000, true);
 
   let sresp = await apiAdapter.getReportStatusByDig(
-    "ecr1",
+    idAlias,
     user.ecrAid.prefix,
     signedZipDig,
     user.roleClient,
@@ -545,7 +547,7 @@ export async function checkSignedUpload(
   assert.equal(signedUploadBody["size"] > 1000, true);
 
   sresp = await apiAdapter.getReportStatusByAid(
-    "ecr1",
+    idAlias,
     user.ecrAid.prefix,
     user.roleClient,
   );
