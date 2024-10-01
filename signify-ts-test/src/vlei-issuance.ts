@@ -25,9 +25,9 @@ import {
   waitForCredential,
   admitSinglesig,
   waitAndMarkNotification,
-  getOrIssueAuthCredential,
   assertOperations,
   warnNotifications,
+  Aid,
 } from "../test/utils/test-util";
 import {
   addEndRoleMultisig,
@@ -38,8 +38,7 @@ import {
   grantMultisig,
   issueCredentialMultisig,
 } from "../test/utils/multisig-utils";
-import fs from "fs";
-import { sec } from "mathjs";
+import { boolean, sec } from "mathjs";
 import { retry } from "../test/utils/retry";
 import {
   QVI_SCHEMA_SAID,
@@ -65,23 +64,53 @@ import {
   LE_INTERNAL_NAME,
   vleiServerUrl,
   witnessIds,
+  SCHEMAS,
+  RULES,
 } from "./constants";
 
-import { User, buildUserData } from "./utils/handle-json-config";
+import {
+  User,
+  CredentialInfo,
+  buildUserData,
+  buildCredentials,
+} from "./utils/handle-json-config";
+import { EcrTestData, buildTestData } from "./utils/generate-test-data";
+import fs from "fs";
+import path from "path";
 
 export class VleiIssuance {
-  secretsJsonPath: string = "./src/config/";
+  secretsJsonPath: string = "config/";
+  secretsJsonFile: string;
   secretsJson: any;
   users: Array<User> = new Array<User>();
+  credentialsInfo: Map<string, CredentialInfo> = new Map<
+    string,
+    CredentialInfo
+  >();
+  generateTestData: boolean;
+  registries: Map<string, { regk: string }> = new Map<
+    string,
+    { regk: string }
+  >();
+  credentials: Map<string, any> = new Map<string, any>();
+  schemas: any = SCHEMAS;
+  rules: any = RULES;
+  credentialData: Map<string, any> = new Map<string, any>();
 
-  constructor(secretsJsonFile: string) {
+  constructor(secretsJsonFile: string, generateTestData: boolean) {
+    this.generateTestData = generateTestData;
+    this.secretsJsonFile = secretsJsonFile;
     this.secretsJson = JSON.parse(
-      fs.readFileSync(this.secretsJsonPath + secretsJsonFile, "utf-8"),
+      fs.readFileSync(
+        path.join(__dirname, this.secretsJsonPath) + secretsJsonFile,
+        "utf-8",
+      ),
     );
   }
 
   public async prepareClients() {
     this.users = await buildUserData(this.secretsJson);
+    this.credentialsInfo = await buildCredentials(this.secretsJson);
     await this.createClients();
     await this.createAids();
     await this.fetchOobis();
@@ -97,7 +126,7 @@ export class VleiIssuance {
   }
 
   // Create clients dynamically for each user
-  public async createClients() {
+  protected async createClients() {
     for (const user of this.users) {
       for (const [key, values] of user.secrets) {
         for (const value of values.split(",")) {
@@ -113,7 +142,7 @@ export class VleiIssuance {
   }
 
   // Create AIDs for each client
-  public async createAids() {
+  protected async createAids() {
     const kargsAID = {
       toad: witnessIds.length,
       wits: witnessIds,
@@ -134,7 +163,7 @@ export class VleiIssuance {
   }
 
   // Fetch OOBIs for each client
-  public async fetchOobis() {
+  protected async fetchOobis() {
     for (const user of this.users) {
       for (const [role, clientList] of user.clients) {
         for (let i = 0; i < clientList.length; i++) {
@@ -151,7 +180,7 @@ export class VleiIssuance {
   }
 
   // Create contacts between clients
-  public async createContacts() {
+  protected async createContacts() {
     const contactPromises: Promise<string>[] = [];
     for (const user of this.users) {
       for (const [roleA, clientListA] of user.clients) {
@@ -177,7 +206,7 @@ export class VleiIssuance {
   }
 
   // Resolve OOBIs for each client and schema
-  public async resolveOobis(schemaUrls: string[]) {
+  protected async resolveOobis(schemaUrls: string[]) {
     const resolveOobiPromises: Promise<void>[] = [];
     for (const user of this.users) {
       for (const [role, clientList] of user.clients) {
@@ -193,21 +222,233 @@ export class VleiIssuance {
 
   // Issue credentials for all users
   public async issueCredentials() {
+    await this.prepareClients();
     for (const user of this.users) {
       if (
         user.clients.get("gleif")!.length > 1 ||
         user.clients.get("qvi")!.length > 1 ||
         user.clients.get("le")!.length > 1
       ) {
-        await this.mutiSigVleiIssuance(user);
+        let subclassInstance = new MultiSigVleiIssuance(
+          this.secretsJsonFile,
+          this.generateTestData,
+        );
+        Object.assign(subclassInstance, this);
+        Object.assign(this, subclassInstance);
+        Object.setPrototypeOf(this, MultiSigVleiIssuance.prototype);
       } else {
-        await this.singleSigVleiIssuance(user);
+        let subclassInstance = new SingleSigVleiIssuance(
+          this.secretsJsonFile,
+          this.generateTestData,
+        );
+        Object.assign(subclassInstance, this);
+        Object.assign(this, subclassInstance);
+        Object.setPrototypeOf(this, SingleSigVleiIssuance.prototype);
+      }
+      await this.vleiIssuance(user);
+    }
+  }
+
+  protected async vleiIssuance(user: User) {}
+}
+
+export class SingleSigVleiIssuance extends VleiIssuance {
+  qviData: any;
+  leData: any;
+  ecrData: any;
+  ecrAuthData: any;
+  oorData: any;
+  oorAuthData: any;
+  kargsAID: any;
+
+  constructor(secretsJsonFile: string, generateTestData: boolean) {
+    super(secretsJsonFile, generateTestData);
+  }
+
+  public async createRegistries(user: User) {
+    for (const [role, clientList] of user.clients) {
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        const registry = await this.getOrCreateRegistry(
+          client,
+          user.aids.get(role)![0],
+          `${role}Registry`,
+        );
+        this.registries.set(role, registry);
       }
     }
   }
 
-  // Issue multisig credentials
-  private async mutiSigVleiIssuance(user: User) {
+  private async getOrCreateRegistry(
+    client: SignifyClient,
+    aid: Aid,
+    registryName: string,
+  ) {
+    return await getOrCreateRegistry(client, aid, registryName);
+  }
+
+  public buildCredSource(credType: string, cred: any, o?: string) {
+    const credDict: { [key: string]: any } = {
+      n: cred.sad.d,
+      s: cred.sad.s,
+    };
+    if (o != null) {
+      credDict["o"] = o;
+    }
+    const credSource = Saider.saidify({
+      d: "",
+      [credType]: credDict,
+    })[1];
+    return credSource;
+  }
+
+  public async getOrIssueCredential(
+    user: User,
+    credName: string,
+  ): Promise<any> {
+    const credInfo: CredentialInfo = this.credentialsInfo.get(credName)!;
+    const issuerClient = user.clients.get(credInfo.issuer)![0];
+    const recipientClient = user.clients.get(credInfo.issuee)![0];
+    const issuerAID = user.aids.get(credInfo.issuer)![0];
+    const recipientAID = user.aids.get(credInfo.issuee)![0];
+    const issuerRegistry = this.registries.get(credInfo.issuer)!;
+    const credData = credInfo.attributes;
+    const schema = this.schemas[credInfo.schema];
+    const rules = this.rules[credInfo.rules!];
+    const privacy = credInfo.privacy;
+    let credSource = null;
+    if (credInfo.credSource != null) {
+      const credType = credInfo.credSource["type"];
+      const issuerCred = this.credentials.get(credInfo.credSource["name"]);
+      const credO = credInfo.credSource["o"] || null;
+      credSource = this.buildCredSource(credType, issuerCred, credO);
+    }
+    if (credInfo.attributes["AID"] != null) {
+      const roleAid = user.aids.get(credInfo.attributes["AID"])![0];
+      credData.AID = roleAid.prefix;
+    }
+    if (credData.LEI == null) {
+      credData.LEI = user.LE;
+    }
+    const cred = await getOrIssueCredential(
+      issuerClient,
+      issuerAID,
+      recipientAID,
+      issuerRegistry,
+      credData,
+      schema,
+      rules || undefined,
+      credSource || undefined,
+      boolean(privacy || false),
+    );
+
+    let credHolder = await getReceivedCredential(recipientClient, cred.sad.d);
+
+    if (!credHolder) {
+      await sendGrantMessage(issuerClient, issuerAID, recipientAID, cred);
+      await sendAdmitMessage(recipientClient, recipientAID, issuerAID);
+
+      credHolder = await retry(async () => {
+        const cCred = await getReceivedCredential(recipientClient, cred.sad.d);
+        assert(cCred !== undefined);
+        return cCred;
+      }, CRED_RETRY_DEFAULTS);
+    }
+
+    assert.equal(credHolder.sad.d, cred.sad.d);
+    assert.equal(credHolder.sad.s, schema);
+    assert.equal(credHolder.sad.i, issuerAID.prefix);
+    assert.equal(credHolder.sad.a.i, recipientAID.prefix);
+    assert.equal(credHolder.status.s, "0");
+    assert(credHolder.atc !== undefined);
+    this.credentials.set(credName, cred);
+    return cred;
+  }
+
+  protected async vleiIssuance(user: User) {
+    // this.prepareConstants(user);
+    // await this.createRegistries(user);
+    // console.log("Issuing QVI vLEI Credential");
+    // const qviCred = await this.getOrIssueCredential("qviCred", user.clients.get("gleif")![0],
+    //   user.clients.get("qvi")![0],
+    //   user.aids.get("gleif")![0],
+    //   user.aids.get("qvi")![0],
+    //   this.registries.get("gleif")!, this.qviData, QVI_SCHEMA_SAID
+    // )
+    // console.log("Issuing LE vLEI Credential");
+    // const leCredSource = this.buildCredSource("qvi", qviCred);
+    // const leCred = await this.getOrIssueCredential("leCred", user.clients.get("qvi")![0],
+    //   user.clients.get("le")![0],
+    //   user.aids.get("qvi")![0],
+    //   user.aids.get("le")![0],
+    //   this.registries.get("qvi")!, this.leData, LE_SCHEMA_SAID, LE_RULES, leCredSource
+    // )
+    // console.log("Issuing ECR vLEI Credential from LE");
+    // const ecrCredSource = this.buildCredSource("le", leCred);
+    // let ecrCred = await this.getOrIssueCredential("ecrCred", user.clients.get("le")![0],
+    //   user.clients.get("ecr")![0],
+    //   user.aids.get("le")![0],
+    //   user.aids.get("ecr")![0],
+    //   this.registries.get("le")!, this.ecrData, ECR_SCHEMA_SAID, ECR_RULES, ecrCredSource, true
+    // )
+    // console.log("Issuing ECR AUTH vLEI Credential");
+    // this.ecrAuthData.AID = user.aids.get("ecr")![0].prefix;
+    // const ecrAuthCredSource = this.buildCredSource("le", leCred);
+    // const ecrAuthCred = await this.getOrIssueAuthCredential("ecrAuthCred", user.clients.get("le")![0],
+    //   user.clients.get("qvi")![0],
+    //   user.aids.get("le")![0],
+    //   user.aids.get("qvi")![0],
+    //   user.aids.get("ecr")![0],
+    //   this.registries.get("le")!, this.ecrAuthData, ECR_AUTH_SCHEMA_SAID, ECR_AUTH_RULES, ecrAuthCredSource
+    // )
+    // console.log("Issuing ECR vLEI Credential from ECR AUTH");
+    // const ecrCredSource2 = this.buildCredSource("auth", ecrAuthCred, "I2I");
+    // const ecrCred2 = await this.getOrIssueCredential("ecrCred2", user.clients.get("qvi")![0],
+    //   user.clients.get("ecr")![0],
+    //   user.aids.get("qvi")![0],
+    //   user.aids.get("ecr")![0],
+    //   this.registries.get("qvi")!,
+    //   this.ecrData, ECR_SCHEMA_SAID, ECR_RULES, ecrCredSource2, true
+    // )
+    // console.log("Issuing OOR AUTH vLEI Credential");
+    // this.oorAuthData.AID = user.aids.get("ecr")![0].prefix;
+    // const oorAuthCredSource = this.buildCredSource("le", leCred);
+    // const oorAuthCred = await this.getOrIssueAuthCredential("oorAuthCred",
+    //   user.clients.get("le")![0],
+    //   user.clients.get("qvi")![0],
+    //   user.aids.get("le")![0],
+    //   user.aids.get("qvi")![0],
+    //   user.aids.get("ecr")![0],
+    //   this.registries.get("le")!, this.oorAuthData, OOR_AUTH_SCHEMA_SAID, OOR_AUTH_RULES, oorAuthCredSource,
+    // );
+    // console.log("Issuing OOR vLEI Credential from OOR AUTH");
+    // const oorCredSource = this.buildCredSource("auth", oorAuthCred, "I2I");
+    // const oorCred = await this.getOrIssueCredential("oorCred", user.clients.get("qvi")![0],
+    //   user.clients.get("ecr")![0],
+    //   user.aids.get("qvi")![0],
+    //   user.aids.get("ecr")![0],
+    //   this.registries.get("qvi")!, this.oorData, OOR_SCHEMA_SAID, OOR_RULES, oorCredSource
+    // )
+    // await assertOperations(
+    //   user.clients.get("gleif")![0],
+    //   user.clients.get("qvi")![0],
+    //   user.clients.get("le")![0],
+    //   user.clients.get("ecr")![0],
+    // );
+    // await warnNotifications(
+    //   user.clients.get("gleif")![0],
+    //   user.clients.get("qvi")![0],
+    //   user.clients.get("le")![0],
+    //   user.clients.get("ecr")![0],
+    // );
+  }
+}
+
+export class MultiSigVleiIssuance extends VleiIssuance {
+  constructor(secretsJsonFile: string, generateTestData: boolean) {
+    super(secretsJsonFile, generateTestData);
+  }
+  protected async vleiIssuance(user: User) {
     /**
      * The abbreviations used in this script follows GLEIF vLEI
      * ecosystem governance framework (EGF).
@@ -229,7 +470,7 @@ export class VleiIssuance {
     const ecrData = {
       LEI: leData.LEI,
       personLegalName: "John Doe",
-      engagementContextRole: "EBA Data Submitter",
+      engagementContextRole: user.contextRole,
     };
     const kargsAID = {
       toad: witnessIds.length,
@@ -1563,466 +1804,5 @@ export class VleiIssuance {
       );
     }
     assert.equal(ecrCred.sad.d, ecrCredbyECR.sad.d);
-  }
-
-  // Issue singlesig credentials
-  private async singleSigVleiIssuance(user: User) {
-    const qviData = {
-      LEI: "254900OPPU84GM83MG36",
-    };
-
-    const leData = {
-      LEI: user.LE,
-    };
-    const ecrData = {
-      LEI: leData.LEI,
-      personLegalName: "John Doe",
-      engagementContextRole: "EBA Data Submitter",
-    };
-    const ecrAuthData = {
-      AID: "",
-      LEI: ecrData.LEI,
-      personLegalName: ecrData.personLegalName,
-      engagementContextRole: ecrData.engagementContextRole,
-    };
-
-    const oorData = {
-      LEI: leData.LEI,
-      personLegalName: "John Doe",
-      officialRole: "HR Manager",
-    };
-
-    const oorAuthData = {
-      AID: "",
-      LEI: oorData.LEI,
-      personLegalName: oorData.personLegalName,
-      officialRole: oorData.officialRole,
-    };
-    const kargsAID = {
-      toad: witnessIds.length,
-      wits: witnessIds,
-    };
-
-    const [gleifRegistry, qviRegistry, leRegistry] = await Promise.all([
-      getOrCreateRegistry(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        "gleifRegistry",
-      ),
-      getOrCreateRegistry(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        "qviRegistry",
-      ),
-      getOrCreateRegistry(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        `leRegistry${user.aids.get("ecr")![0].prefix}`,
-      ),
-    ]);
-
-    console.log("Issuing QVI vLEI Credential");
-    const qviCred = await getOrIssueCredential(
-      user.clients.get("gleif")![0],
-      user.aids.get("gleif")![0],
-      user.aids.get("qvi")![0],
-      gleifRegistry,
-      qviData,
-      QVI_SCHEMA_SAID,
-    );
-
-    let qviCredHolder = await getReceivedCredential(
-      user.clients.get("qvi")![0],
-      qviCred.sad.d,
-    );
-
-    if (!qviCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        user.aids.get("qvi")![0],
-        qviCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("gleif")![0],
-      );
-
-      qviCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("qvi")![0],
-          qviCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(qviCredHolder.sad.d, qviCred.sad.d);
-    assert.equal(qviCredHolder.sad.s, QVI_SCHEMA_SAID);
-    assert.equal(qviCredHolder.sad.i, user.aids.get("gleif")![0].prefix);
-    assert.equal(qviCredHolder.sad.a.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(qviCredHolder.status.s, "0");
-    assert(qviCredHolder.atc !== undefined);
-
-    console.log("Issuing LE vLEI Credential");
-    const leCredSource = Saider.saidify({
-      d: "",
-      qvi: {
-        n: qviCred.sad.d,
-        s: qviCred.sad.s,
-      },
-    })[1];
-
-    const leCred = await getOrIssueCredential(
-      user.clients.get("qvi")![0],
-      user.aids.get("qvi")![0],
-      user.aids.get("le")![0],
-      qviRegistry,
-      leData,
-      LE_SCHEMA_SAID,
-      LE_RULES,
-      leCredSource,
-    );
-
-    let leCredHolder = await getReceivedCredential(
-      user.clients.get("le")![0],
-      leCred.sad.d,
-    );
-
-    if (!leCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("le")![0],
-        leCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        user.aids.get("qvi")![0],
-      );
-
-      leCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("le")![0],
-          leCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(leCredHolder.sad.d, leCred.sad.d);
-    assert.equal(leCredHolder.sad.s, LE_SCHEMA_SAID);
-    assert.equal(leCredHolder.sad.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(leCredHolder.sad.a.i, user.aids.get("le")![0].prefix);
-    assert.equal(leCredHolder.sad.e.qvi.n, qviCred.sad.d);
-    assert.equal(leCredHolder.status.s, "0");
-    assert(leCredHolder.atc !== undefined);
-
-    console.log("Issuing ECR vLEI Credential from LE");
-    const ecrCredSource = Saider.saidify({
-      d: "",
-      le: {
-        n: leCred.sad.d,
-        s: leCred.sad.s,
-      },
-    })[1];
-
-    const ecrCred = await getOrIssueCredential(
-      user.clients.get("le")![0],
-      user.aids.get("le")![0],
-      user.aids.get("ecr")![0],
-      leRegistry,
-      ecrData,
-      ECR_SCHEMA_SAID,
-      ECR_RULES,
-      ecrCredSource,
-      true,
-    );
-
-    let ecrCredHolder = await getReceivedCredential(
-      user.clients.get("ecr")![0],
-      ecrCred.sad.d,
-    );
-
-    if (!ecrCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        user.aids.get("ecr")![0],
-        ecrCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("ecr")![0],
-        user.aids.get("ecr")![0],
-        user.aids.get("le")![0],
-      );
-
-      ecrCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("ecr")![0],
-          ecrCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(ecrCredHolder.sad.d, ecrCred.sad.d);
-    assert.equal(ecrCredHolder.sad.s, ECR_SCHEMA_SAID);
-    assert.equal(ecrCredHolder.sad.i, user.aids.get("le")![0].prefix);
-    assert.equal(ecrCredHolder.sad.a.i, user.aids.get("ecr")![0].prefix);
-    assert.equal(ecrCredHolder.sad.e.le.n, leCred.sad.d);
-    assert.equal(ecrCredHolder.status.s, "0");
-    assert(ecrCredHolder.atc !== undefined);
-
-    console.log("Issuing ECR AUTH vLEI Credential");
-    ecrAuthData.AID = user.aids.get("ecr")![0].prefix;
-    const ecrAuthCredSource = Saider.saidify({
-      d: "",
-      le: {
-        n: leCred.sad.d,
-        s: leCred.sad.s,
-      },
-    })[1];
-
-    const roleAidPrefix =
-      user.aids.get("qvi")![0].prefix + user.aids.get("ecr")![0].prefix;
-    const ecrAuthCred = await getOrIssueAuthCredential(
-      user.clients.get("le")![0],
-      user.aids.get("le")![0],
-      user.aids.get("qvi")![0],
-      user.aids.get("ecr")![0],
-      leRegistry,
-      ecrAuthData,
-      ECR_AUTH_SCHEMA_SAID,
-      ECR_AUTH_RULES,
-      ecrAuthCredSource,
-    );
-
-    let ecrAuthCredHolder = await getReceivedCredential(
-      user.clients.get("qvi")![0],
-      ecrAuthCred.sad.d,
-    );
-
-    if (!ecrAuthCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        user.aids.get("qvi")![0],
-        ecrAuthCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("le")![0],
-      );
-
-      ecrAuthCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("qvi")![0],
-          ecrAuthCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(ecrAuthCredHolder.sad.d, ecrAuthCred.sad.d);
-    assert.equal(ecrAuthCredHolder.sad.s, ECR_AUTH_SCHEMA_SAID);
-    assert.equal(ecrAuthCredHolder.sad.i, user.aids.get("le")![0].prefix);
-    assert.equal(ecrAuthCredHolder.sad.a.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(ecrAuthCredHolder.sad.a.AID, user.aids.get("ecr")![0].prefix);
-    assert.equal(ecrAuthCredHolder.sad.e.le.n, leCred.sad.d);
-    assert.equal(ecrAuthCredHolder.status.s, "0");
-    assert(ecrAuthCredHolder.atc !== undefined);
-
-    console.log("Issuing ECR vLEI Credential from ECR AUTH");
-    const ecrCredSource2 = Saider.saidify({
-      d: "",
-      auth: {
-        n: ecrAuthCred.sad.d,
-        s: ecrAuthCred.sad.s,
-        o: "I2I",
-      },
-    })[1];
-
-    const ecrCred2 = await getOrIssueCredential(
-      user.clients.get("qvi")![0],
-      user.aids.get("qvi")![0],
-      user.aids.get("ecr")![0],
-      qviRegistry,
-      ecrData,
-      ECR_SCHEMA_SAID,
-      ECR_RULES,
-      ecrCredSource2,
-      true,
-    );
-
-    let ecrCredHolder2 = await getReceivedCredential(
-      user.clients.get("ecr")![0],
-      ecrCred2.sad.d,
-    );
-
-    if (!ecrCredHolder2) {
-      await sendGrantMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("ecr")![0],
-        ecrCred2,
-      );
-      await sendAdmitMessage(
-        user.clients.get("ecr")![0],
-        user.aids.get("ecr")![0],
-        user.aids.get("qvi")![0],
-      );
-
-      ecrCredHolder2 = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("ecr")![0],
-          ecrCred2.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(ecrCredHolder2.sad.d, ecrCred2.sad.d);
-    assert.equal(ecrCredHolder2.sad.s, ECR_SCHEMA_SAID);
-    assert.equal(ecrCredHolder2.sad.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(ecrCredHolder2.sad.e.auth.n, ecrAuthCred.sad.d);
-    assert.equal(ecrCredHolder2.status.s, "0");
-    assert(ecrCredHolder2.atc !== undefined);
-
-    console.log("Issuing OOR AUTH vLEI Credential");
-    oorAuthData.AID = user.aids.get("ecr")![0].prefix;
-    const oorAuthCredSource = Saider.saidify({
-      d: "",
-      le: {
-        n: leCred.sad.d,
-        s: leCred.sad.s,
-      },
-    })[1];
-
-    const oorAuthCred = await getOrIssueAuthCredential(
-      user.clients.get("le")![0],
-      user.aids.get("le")![0],
-      user.aids.get("qvi")![0],
-      user.aids.get("ecr")![0],
-      leRegistry,
-      oorAuthData,
-      OOR_AUTH_SCHEMA_SAID,
-      OOR_AUTH_RULES,
-      oorAuthCredSource,
-    );
-
-    let oorAuthCredHolder = await getReceivedCredential(
-      user.clients.get("qvi")![0],
-      oorAuthCred.sad.d,
-    );
-
-    if (!oorAuthCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        user.aids.get("qvi")![0],
-        oorAuthCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("le")![0],
-      );
-
-      oorAuthCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("qvi")![0],
-          oorAuthCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(oorAuthCredHolder.sad.d, oorAuthCred.sad.d);
-    assert.equal(oorAuthCredHolder.sad.s, OOR_AUTH_SCHEMA_SAID);
-    assert.equal(oorAuthCredHolder.sad.i, user.aids.get("le")![0].prefix);
-    assert.equal(oorAuthCredHolder.sad.a.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(oorAuthCredHolder.sad.a.AID, user.aids.get("ecr")![0].prefix);
-    assert.equal(oorAuthCredHolder.sad.e.le.n, leCred.sad.d);
-    assert.equal(oorAuthCredHolder.status.s, "0");
-    assert(oorAuthCredHolder.atc !== undefined);
-
-    console.log("Issuing OOR vLEI Credential from OOR AUTH");
-    const oorCredSource = Saider.saidify({
-      d: "",
-      auth: {
-        n: oorAuthCred.sad.d,
-        s: oorAuthCred.sad.s,
-        o: "I2I",
-      },
-    })[1];
-
-    const oorCred = await getOrIssueCredential(
-      user.clients.get("qvi")![0],
-      user.aids.get("qvi")![0],
-      user.aids.get("ecr")![0],
-      qviRegistry,
-      oorData,
-      OOR_SCHEMA_SAID,
-      OOR_RULES,
-      oorCredSource,
-    );
-
-    let oorCredHolder = await getReceivedCredential(
-      user.clients.get("ecr")![0],
-      oorCred.sad.d,
-    );
-
-    if (!oorCredHolder) {
-      await sendGrantMessage(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        user.aids.get("ecr")![0],
-        oorCred,
-      );
-      await sendAdmitMessage(
-        user.clients.get("ecr")![0],
-        user.aids.get("ecr")![0],
-        user.aids.get("qvi")![0],
-      );
-
-      oorCredHolder = await retry(async () => {
-        const cred = await getReceivedCredential(
-          user.clients.get("ecr")![0],
-          oorCred.sad.d,
-        );
-        assert(cred !== undefined);
-        return cred;
-      }, CRED_RETRY_DEFAULTS);
-    }
-
-    assert.equal(oorCredHolder.sad.d, oorCred.sad.d);
-    assert.equal(oorCredHolder.sad.s, OOR_SCHEMA_SAID);
-    assert.equal(oorCredHolder.sad.i, user.aids.get("qvi")![0].prefix);
-    assert.equal(oorCredHolder.sad.e.auth.n, oorAuthCred.sad.d);
-    assert.equal(oorCredHolder.status.s, "0");
-    assert(oorCredHolder.atc !== undefined);
-
-    await assertOperations(
-      user.clients.get("gleif")![0],
-      user.clients.get("qvi")![0],
-      user.clients.get("le")![0],
-      user.clients.get("ecr")![0],
-    );
-    await warnNotifications(
-      user.clients.get("gleif")![0],
-      user.clients.get("qvi")![0],
-      user.clients.get("le")![0],
-      user.clients.get("ecr")![0],
-    );
   }
 }

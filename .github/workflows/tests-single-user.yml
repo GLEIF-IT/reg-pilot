@@ -8,7 +8,7 @@ on:
       - "main"
   workflow_dispatch:
 jobs:
-  test:
+  test-single-aid-singlesig:
     name: Run singlesig single user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
@@ -35,5 +35,21 @@ jobs:
           npm ci     
       - name: Check formatting
         run: npm run pretty:check
-      - name: Build, Run docker, run tests
-        run: SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --all
+        
+      - name: Run docker
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --docker=proxy-verify 
+      
+      - name: Build
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --build
+
+      - name: Issue Credentials
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --data
+
+      - name: Generate Reports
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --report
+
+      - name: Run API tests
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --verify
+
+      - name: Run Verifier tests
+        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --proxy

@@ -21,6 +21,7 @@ export interface TestEnvironment {
   verifierBaseUrl: string;
   roleName: string;
   secretsJsonConfig: string;
+  generateTestData: boolean;
 }
 
 const WAN = "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha";
@@ -31,8 +32,9 @@ export function resolveEnvironment(
   input?: TestEnvironmentPreset,
 ): TestEnvironment {
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
+  // let secretsJsonFile: string = "ui-test-data-3-users.json";
   let secretsJsonFile: string = "singlesig-single-aid-secrets.json";
-  switch (process.env.SECRETS_JSON_CONFIG || "singlesig-single-aid") {
+  switch (process.env.SECRETS_JSON_CONFIG || "singlesig-multiple-aid") {
     case "singlesig-single-aid":
       secretsJsonFile = "singlesig-single-aid-secrets.json";
       break;
@@ -44,6 +46,9 @@ export function resolveEnvironment(
       break;
     case "multisig-multiple-aid":
       secretsJsonFile = "multisig-multiple-aid-secrets.json";
+      break;
+    case "ui-test-data-3-users":
+      secretsJsonFile = "ui-test-data-3-users.json";
       break;
   }
   let env;
@@ -65,6 +70,7 @@ export function resolveEnvironment(
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "local":
@@ -84,6 +90,7 @@ export function resolveEnvironment(
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_dev":
@@ -107,6 +114,7 @@ export function resolveEnvironment(
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
         roleName: process.env.ROLE_NAME || "role",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_test":
@@ -133,6 +141,7 @@ export function resolveEnvironment(
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dev":
@@ -163,6 +172,7 @@ export function resolveEnvironment(
           process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
         roleName: process.env.ROLE_NAME || "EBADataSubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_demo":
@@ -194,6 +204,7 @@ export function resolveEnvironment(
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dry":
@@ -219,6 +230,7 @@ export function resolveEnvironment(
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
         roleName: process.env.ROLE_NAME || "unicredit-datasubmitter",
         secretsJsonConfig: secretsJsonFile,
+        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     default:

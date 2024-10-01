@@ -20,11 +20,10 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
     : "${WITNESS_IDS:=$WAN,$WIL,$WES}"
     : "${VLEI_SERVER:=http://vlei-server:7723}"
     : "${SECRETS_JSON_CONFIG:=singlesig-single-aid}"
-    : "${WORKFLOW:=issue-credentials-singlesig-single-user.yaml}"
 fi
 
 # Export environment variables
-export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG, WORKFLOW
+export SIGNIFY_SECRETS TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG
 
 # Print environment variable values
 echo "SIGNIFY_SECRETS=$SIGNIFY_SECRETS"
@@ -65,32 +64,10 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data)            
+            export GENERATE_TEST_DATA=true
             export WORKFLOW="${WORKFLOW}"
             npx jest ./run-vlei-issuance-workflow.test.ts
-            shift # past argument
-            ;;
-        --data-multisig)            
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
-            npx jest ./vlei-issuance.test.ts
-            shift # past argument
-            ;;
-        --report)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
-            npx jest ./report.test.ts
-            shift # past argument
-            ;;
-        --verify)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
-            npx jest ./reg-pilot-api.test.ts
-            shift # past argument
-            ;;
-        --proxy)
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"            
-            export REG_PILOT_API="${REG_PILOT_PROXY}"
-            echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
-            npx jest ./vlei-verification.test.ts
-            shift # past argument
-            ;;
+            ;;      
         *)
             echo "Unknown argument: $1"
             shift # past argument
