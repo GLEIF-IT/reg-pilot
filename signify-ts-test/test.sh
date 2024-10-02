@@ -39,6 +39,7 @@ handleEnv() {
         echo "TEST_ENVIRONMENT is not set, setting to docker"
         # Default values for 'docker' environment
         : "${TEST_ENVIRONMENT:=docker}"
+        : "${WORKFLOW:=issue-credentials-singlesig-single-user.yaml}"
     fi
 
     # Export environment variables
@@ -60,59 +61,60 @@ handleEnv() {
     echo "WORKFLOW=$WORKFLOW"
 }
 
+checkArgs() {
+    for arg in "${args[@]}"; do
+        case $arg in
+            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy)
+                ;;
+            *)
+                echo "Unknown argument: $arg"
+                printHelp
+                ;;
+        esac
+    done
+}
+
+handle_arguments() {
+    local arg_to_handle=$1
+    echo "arg to handle ${arg_to_handle}"
+    local replacement=$2
+    # Convert the string into an array
+    IFS=' ' read -r -a additional_args <<< "${replacement}"
+    echo "replacement ${additional_args[*]}"
+    shift
+    shift
+    local commands=("$@")
+    echo "commands ${commands[*]}"
+    
+    for i in "${!args[@]}"; do
+        if [[ "${args[i]}" == "$arg_to_handle" ]]; then
+            echo "Processing ${arg_to_handle} argument"
+            for cmd in "${commands[@]}"; do
+                eval "$cmd"
+                exitOnFail "$1"
+            done
+            echo "completed processing ${arg_to_handle} argument"
+            args=("${args[@]:0:i}" "${args[@]:i+1}")
+            # Append additional arguments to the args array
+            args+=("${additional_args[@]}")
+            echo "Args after ${arg_to_handle} substitution: ${args[*]}"
+            break
+        fi
+    done
+    checkArgs
+}
+
 if [[ $# -eq 0 ]]; then
     printHelp
 fi
 
 args=("$@")
+checkArgs
 
-# Make sure we have known arguments
-for arg in "${args[@]}"; do
-    case $arg in
-        --help|--fast|--build|--all|--docker=*|--data|--report|--report=*|--verify|--proxy)
-            ;;
-        *)
-            echo "Unknown argument: $arg"
-            printHelp
-            ;;
-    esac
-done
-
-# Replace --all with the specified arguments
-args=("$@")
-for i in "${!args[@]}"; do
-    if [[ "${args[i]}" == "--all" ]]; then
-        args=("${args[@]:0:i}" --build --docker=verify --data --report --verify --proxy "${args[@]:i+1}")
-        break
-    fi
-done
-
-# Process high-priority arguments first
-for arg in "${args[@]}"; do
-    echo "Processing setup argument: $arg"
-    case $arg in
-        --help)
-            args=("${args[@]/$arg}")
-            printHelp
-            ;;
-        --fast)
-            args=("${args[@]/$arg}")
-            SPEED="fast"
-            export SPEED
-            echo "Using fast test settings: SPEED=$SPEED"
-            ;;
-        --build)
-            args=("${args[@]/$arg}")
-            npm run build
-            exitOnFail "npm run build"
-            ;;
-        # --all)
-        #     args=("${args[@]/$arg}")
-        #     set -- --build --docker=verify --data --report --verify --proxy
-        #     echo "Running all tests"
-        #     ;;
-    esac
-done
+handle_arguments "--help" "" 'printHelp'
+handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
+handle_arguments "--fast" "" 'SPEED="fast"' 'export SPEED' 'echo "Using speed settings: ${SPEED}"'
+handle_arguments "--build" "" 'npm run build'
 
 handleEnv
 
@@ -121,7 +123,7 @@ for arg in "${args[@]}"; do
     # echo "Processing step argument: $arg"
     case $arg in
         --docker=*)
-            docker_action="${1#*=}"
+            docker_action="${arg#*=}"
             case $docker_action in
                 deps | verify | proxy-verify)
                     docker compose down -v
@@ -129,6 +131,7 @@ for arg in "${args[@]}"; do
                     ;;
                 *)
                     echo "Unknown docker action: $docker_action"
+                    exit 1
                     ;;
             esac
             exitOnFail "$1"
@@ -152,7 +155,7 @@ for arg in "${args[@]}"; do
             args=("${args[@]/$arg}")
             ;;
         --report=*)
-            report_type="${1#*=}"
+            report_type="${arg#*=}"
             case $report_type in
                 external_manifest | simple | unfoldered | unzipped | fail)
                     export REPORT_TYPES="$report_type"
@@ -174,9 +177,9 @@ for arg in "${args[@]}"; do
             exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
-        # *)
-        #     echo "Unknown argument: $arg"
-        #     printHelp
-        #     ;;
+        *)
+            echo "Step argument unknown: $arg"
+            printHelp
+            ;;
     esac
 done
