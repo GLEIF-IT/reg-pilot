@@ -39,15 +39,15 @@ handleEnv() {
         echo "TEST_ENVIRONMENT is not set, setting to docker"
         # Default values for 'docker' environment
         : "${TEST_ENVIRONMENT:=docker}"
-        : "${WORKFLOW:=issue-credentials-singlesig-single-user.yaml}"
+        # : "${WORKFLOW:=issue-credentials-singlesig-single-user.yaml}"
     fi
 
     # Export environment variables
-    export TEST_ENVIRONMENT ROLE_NAME REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED WORKFLOW
+    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED WORKFLOW
 
     # Print environment variable values
     echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
-    echo "ROLE_NAME=$ROLE_NAME"
+    echo "ID_ALIAS=$ID_ALIAS"
     echo "REG_PILOT_API=$REG_PILOT_API"
     echo "REG_PILOT_PROXY=$REG_PILOT_PROXY"
     echo "VLEI_VERIFIER=$VLEI_VERIFIER"
@@ -76,19 +76,19 @@ checkArgs() {
 
 handle_arguments() {
     local arg_to_handle=$1
-    echo "arg to handle ${arg_to_handle}"
+    # echo "arg to handle ${arg_to_handle}"
     local replacement=$2
     # Convert the string into an array
     IFS=' ' read -r -a additional_args <<< "${replacement}"
-    echo "replacement ${additional_args[*]}"
+    # echo "replacement ${additional_args[*]}"
     shift
     shift
     local commands=("$@")
-    echo "commands ${commands[*]}"
+    # echo "commands ${commands[*]}"
     
     for i in "${!args[@]}"; do
         if [[ "${args[i]}" == "$arg_to_handle" ]]; then
-            echo "Processing ${arg_to_handle} argument"
+            # echo "Processing ${arg_to_handle} argument"
             for cmd in "${commands[@]}"; do
                 eval "$cmd"
                 exitOnFail "$1"
@@ -97,7 +97,7 @@ handle_arguments() {
             args=("${args[@]:0:i}" "${args[@]:i+1}")
             # Append additional arguments to the args array
             args+=("${additional_args[@]}")
-            echo "Args after ${arg_to_handle} substitution: ${args[*]}"
+            # echo "Args after ${arg_to_handle} substitution: ${args[*]}"
             break
         fi
     done
