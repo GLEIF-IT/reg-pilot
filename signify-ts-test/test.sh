@@ -64,7 +64,7 @@ handleEnv() {
 checkArgs() {
     for arg in "${args[@]}"; do
         case $arg in
-            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy)
+            --help|--all|--fast|--build|--docker=*|--data|--data-multisig|--report|--report=*|--verify|--proxy)
                 ;;
             *)
                 echo "Unknown argument: $arg"
