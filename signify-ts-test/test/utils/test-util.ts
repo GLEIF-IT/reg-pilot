@@ -225,9 +225,7 @@ export async function getOrCreateClients(
 ): Promise<SignifyClient[]> {
   const tasks: Promise<SignifyClient>[] = [];
   for (let i = 0; i < count; i++) {
-    tasks.push(
-      getOrCreateClient(brans?.at(i) ?? undefined, getOnly),
-    );
+    tasks.push(getOrCreateClient(brans?.at(i) ?? undefined, getOnly));
   }
   const clients: SignifyClient[] = await Promise.all(tasks);
   console.log(`secrets="${clients.map((i) => i.bran).join(",")}"`);

@@ -10,6 +10,7 @@ See the README.md in this dir for more information on how to run the tests and s
   `docker compose down -v; docker compose up verify -d`
 
 # Example for how to run the verification test against a remote keria instance that has its own test data (like nord_demo)
+
 - Print the help message:
   `./test.sh --help`
 - Example to run all tests w/ defaults via docker:

@@ -246,7 +246,7 @@ async function single_user_test(user: ApiUser) {
     }
   }
 
-  if(fs.existsSync(failDirPrefixed)) {
+  if (fs.existsSync(failDirPrefixed)) {
     const failReports = fs.readdirSync(failDirPrefixed);
 
     // Check fail reports
