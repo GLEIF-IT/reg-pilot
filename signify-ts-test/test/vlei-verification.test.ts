@@ -14,7 +14,7 @@ let ecrCredCesr: any;
 let ecrCredHolder: any;
 let env: TestEnvironment;
 let roleClient: SignifyClient;
-
+let idAlias: string;
 const secretsJsonPath = "../src/config/";
 let users: Array<User>;
 
@@ -22,6 +22,7 @@ afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
+  idAlias = env.roleName ? env.roleName : "ecr1";
   const secretsJson = JSON.parse(
     fs.readFileSync(
       path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
@@ -43,7 +44,7 @@ test("vlei-verification", async function run() {
       true,
     );
     roleClient = clients[clients.length - 1];
-    ecrAid = await roleClient.identifiers().get("ecr1");
+    ecrAid = await roleClient.identifiers().get(idAlias);
 
     let creds = await roleClient.credentials().list();
     let ecrCreds = creds.filter(
@@ -114,14 +115,14 @@ async function vlei_verification(
   heads.set("method", "POST");
   let vreqInit = { headers: heads, method: "POST", body: null };
   let vurl = `${env.verifierBaseUrl}/request/verify/${ecrAid.prefix}?${params}`;
-  let vreq = await roleClient.createSignedRequest("ecr1", vurl, vreqInit);
+  let vreq = await roleClient.createSignedRequest(idAlias, vurl, vreqInit);
   let vresp = await fetch(vreq);
   assert.equal(202, vresp.status);
 
   heads.set("Content-Type", "application/json");
   let areqInit = { headers: heads, method: "GET", body: null };
   let aurl = `${env.verifierBaseUrl}/authorizations/${ecrAid.prefix}`;
-  let areq = await roleClient.createSignedRequest("ecr1", aurl, areqInit);
+  let areq = await roleClient.createSignedRequest(idAlias, aurl, areqInit);
   let aresp = await fetch(areq);
   assert.equal(200, aresp.status);
   let body = await aresp.json();

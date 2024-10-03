@@ -4,8 +4,6 @@ import {
   MultiSigVleiIssuance,
 } from "../src/vlei-issuance";
 import path from "path";
-import { EcrTestData, buildTestData } from "../src/utils/generate-test-data";
-import { boolean } from "mathjs";
 
 const fs = require("fs");
 const yaml = require("js-yaml");
