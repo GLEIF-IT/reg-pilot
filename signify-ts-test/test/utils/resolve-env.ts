@@ -19,7 +19,7 @@ export interface TestEnvironment {
   apiBaseUrl: string;
   proxyBaseUrl: string;
   verifierBaseUrl: string;
-  roleName: string;
+  idAlias: string;
   secretsJsonConfig: string;
   generateTestData: boolean;
 }
@@ -78,7 +78,7 @@ export function resolveEnvironment(
         apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
-        roleName: process.env.ID_ALIAS || "ecr1",
+        idAlias: process.env.ID_ALIAS || "ecr1",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -98,7 +98,7 @@ export function resolveEnvironment(
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
-        roleName: process.env.ID_ALIAS || "ecr1",
+        idAlias: process.env.ID_ALIAS || "ecr1",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -122,7 +122,7 @@ export function resolveEnvironment(
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
-        roleName: process.env.ID_ALIAS || "role",
+        idAlias: process.env.ID_ALIAS || "role",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -149,7 +149,7 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
-        roleName: process.env.ID_ALIAS || "ecr1",
+        idAlias: process.env.ID_ALIAS || "ecr1",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -180,7 +180,7 @@ export function resolveEnvironment(
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
-        roleName: process.env.ID_ALIAS || "ecr1",
+        idAlias: process.env.ID_ALIAS || "ecr1",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -212,7 +212,7 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-        roleName: process.env.ID_ALIAS || "unicredit-datasubmitter",
+        idAlias: process.env.ID_ALIAS || "unicredit-datasubmitter",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
@@ -238,7 +238,7 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-        roleName: process.env.ID_ALIAS || "unicredit-datasubmitter",
+        idAlias: process.env.ID_ALIAS || "unicredit-datasubmitter",
         secretsJsonConfig: secretsJsonFile,
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
