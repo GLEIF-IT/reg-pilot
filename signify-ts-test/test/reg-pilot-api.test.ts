@@ -393,7 +393,10 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     assert.equal(cresp.status, 200);
     let cbody = await cresp.json();
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
-    assert.equal(cbody["msg"], `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`);
+    assert.equal(
+      cbody["msg"],
+      `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
+    );
     assert.equal(cbody["said"], user.ecrCred.sad.d);
 
     // try to get status without signed headers provided
