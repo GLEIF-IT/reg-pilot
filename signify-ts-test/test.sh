@@ -21,7 +21,7 @@ printHelp() {
     echo "  --build"
     echo "      build the typescript tests"
     echo "  --data"
-    echo "      run the test data generation to populate keria identifiers/credentials"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "  --report"
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"
@@ -31,6 +31,46 @@ printHelp() {
     echo "  --help"
     echo "      print this help"
     exit 0
+}
+
+sig_types=("multisg" "singlesig")
+id_types=("multiple-aid" "single-aid")
+user_types=()
+handleUsers() {
+    # Check if SECRETS_JSON_CONFIG is set
+    if [ -z "$SECRETS_JSON_CONFIG" ]; then
+        echo "SECRETS_JSON_CONFIG is not set, using permutations of ${sig_types[*]} and ${id_types[*]}"    
+    else
+        # Parse the secrets json config
+        # for instance multisig-multiple-aid should result in sig_types=multisig and id_types=multiple-aid
+        sig_types=()
+        id_types=()
+        for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
+            IFS='-' read -r -a secret_parts <<< "$secret"
+            sig_types+=("${secret_parts[0]}")
+            id_types+=("${id_type[1]}")
+        done
+    fi
+
+    if [[ -z "$WORKFLOW" ]]; then
+        echo "WORKFLOW is not set, using sig_types ${sig_types[*]} and id_types ${id_types[*]} to set workflows"
+        if [[ "${id_types[1]}" == "single-aid" ]]; then
+            user_types+=("single-user")
+        fi
+        if [[ "${id_types[1]}" == "multiple-aid" ]]; then
+            user_types+=("multi-user")
+        fi
+    else
+        # Parse the workflow
+        # for instance issue-credentials-multisig-single-user.yaml should result in sig_types=multisig and user_types=single-user
+        for workflow in $(echo $WORKFLOW | sed "s/,/ /g"); do
+            IFS='-' read -r -a workflow_parts <<< "$workflow"
+            sig_types+=("${workflow_parts[2]}")
+            user_types+=("${user_type[3]}")
+        done
+    fi
+
+    echo "Finished setting sig_types ${sig_types[*]} and id_types ${id_types[*]} and user_types ${user_types[*]}"
 }
 
 handleEnv() {
@@ -64,7 +104,7 @@ handleEnv() {
 checkArgs() {
     for arg in "${args[@]}"; do
         case $arg in
-            --help|--all|--fast|--build|--docker=*|--data|--data-multisig|--report|--report=*|--verify|--proxy)
+            --help|--all|--fast|--build|--docker=*|--data|--data=*|--report|--report=*|--verify|--proxy)
                 ;;
             *)
                 echo "Unknown argument: $arg"
@@ -111,13 +151,14 @@ fi
 args=("$@")
 checkArgs
 
+handleUsers
+
 handle_arguments "--help" "" 'printHelp'
 handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
 handle_arguments "--fast" "" 'SPEED="fast"' 'export SPEED' 'echo "Using speed settings: ${SPEED}"'
 handle_arguments "--build" "" 'npm run build'
 
 handleEnv
-
 # Parse arguments
 for arg in "${args[@]}"; do
     # echo "Processing step argument: $arg"
@@ -137,14 +178,32 @@ for arg in "${args[@]}"; do
             exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
-        --data)            
-            export WORKFLOW="${WORKFLOW}"
-            npx jest ./run-vlei-issuance-workflow.test.ts
-            exitOnFail "$1"
+        --data)
+            for sig_type in "${sig_types[@]}"; do
+                for user_type in "${user_types[@]}"; do
+                    wfile="issue-credentials-${sig_type}-${user_type}.yaml"
+                    wpath="$(pwd)/src/workflows/${wfile}"
+                    if [ -f "$wpath" ]; then
+                        export WORKFLOW="$wfile"
+                        npx jest ./run-vlei-issuance-workflow.test.ts
+                        exitOnFail "$1"
+                    else
+                        echo "SKIPPING - Workflow file $(pwd)/src/workflows/${wfile} does not exist"
+                    fi
+
+                done
+            done
             args=("${args[@]/$arg}")
             ;;
-        --data-multisig)            
-            export SECRETS_JSON_CONFIG="${SECRETS_JSON_CONFIG}"
+        --data=*)
+            for sig_type in "${sig_types[@]}"; do
+                for id_type in "${id_types[@]}"; do
+                    export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
+                    npx jest ./vlei-issuance.test.ts
+                    exitOnFail "$1"
+                done
+            done
+            export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
             npx jest ./vlei-issuance.test.ts
             exitOnFail "$1"
             args=("${args[@]/$arg}")

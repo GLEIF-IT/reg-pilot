@@ -22,7 +22,7 @@ afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
-  idAlias = env.roleName ? env.roleName : "ecr1";
+  idAlias = env.idAlias ? env.idAlias : "ecr1";
   const secretsJson = JSON.parse(
     fs.readFileSync(
       path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
