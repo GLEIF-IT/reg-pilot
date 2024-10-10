@@ -7,6 +7,21 @@ exitOnFail() {
     fi
 }
 
+# Updated deduplication function
+deduplicate_array() {
+    local array_name=$1
+    eval "local arr=(\"\${${array_name}[@]}\")"
+    local seen=()
+    local unique=()
+    for item in "${arr[@]}"; do
+        if [[ ! " ${seen[*]} " =~ " ${item} " ]]; then
+            unique+=("$item")
+            seen+=("$item")
+        fi
+    done
+    eval "$array_name=(\"\${unique[@]}\")"
+}
+
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
@@ -33,7 +48,27 @@ printHelp() {
     exit 0
 }
 
-sig_types=("multisg" "singlesig")
+clearEnv() {
+    # Clear all specified environment variables
+    unset TEST_ENVIRONMENT
+    unset ID_ALIAS
+    unset REG_PILOT_API
+    unset REG_PILOT_PROXY
+    unset VLEI_VERIFIER
+    unset KERIA
+    unset KERIA_BOOT
+    unset WITNESS_URLS
+    unset WITNESS_IDS
+    unset VLEI_SERVER
+    unset SECRETS_JSON_CONFIG
+    unset SPEED
+    unset WORKFLOW
+}
+
+# Call the clearEnv function to clear the environment variables
+clearEnv
+
+sig_types=("multisig" "singlesig")
 id_types=("multiple-aid" "single-aid")
 user_types=()
 handleUsers() {
@@ -48,28 +83,35 @@ handleUsers() {
         for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
             IFS='-' read -r -a secret_parts <<< "$secret"
             sig_types+=("${secret_parts[0]}")
-            id_types+=("${id_type[1]}")
+            id_types+=("${secret_parts[1]}-aid")
         done
+        echo "SECRETS_JSON_CONFIG is set, using sig_types: ${sig_types[*]} and id_types: ${id_types[*]}"
     fi
 
     if [[ -z "$WORKFLOW" ]]; then
         echo "WORKFLOW is not set, using sig_types ${sig_types[*]} and id_types ${id_types[*]} to set workflows"
-        if [[ "${id_types[1]}" == "single-aid" ]]; then
-            user_types+=("single-user")
-        fi
-        if [[ "${id_types[1]}" == "multiple-aid" ]]; then
-            user_types+=("multi-user")
-        fi
+        for id_type in "${id_types[@]}"; do
+            if [[ "${id_type}" == "single-aid" ]]; then
+                user_types+=("single-user")
+            fi
+            if [[ "${id_type}" == "multiple-aid" ]]; then
+                user_types+=("multi-user")
+            fi
+        done
     else
         # Parse the workflow
         # for instance issue-credentials-multisig-single-user.yaml should result in sig_types=multisig and user_types=single-user
         for workflow in $(echo $WORKFLOW | sed "s/,/ /g"); do
             IFS='-' read -r -a workflow_parts <<< "$workflow"
             sig_types+=("${workflow_parts[2]}")
-            user_types+=("${user_type[3]}")
+            user_types+=("${workflow_parts[3]}-user")
         done
     fi
 
+    # Call deduplication function for each array
+    deduplicate_array sig_types
+    deduplicate_array id_types
+    deduplicate_array user_types
     echo "Finished setting sig_types ${sig_types[*]} and id_types ${id_types[*]} and user_types ${user_types[*]}"
 }
 
@@ -104,7 +146,7 @@ handleEnv() {
 checkArgs() {
     for arg in "${args[@]}"; do
         case $arg in
-            --help|--all|--fast|--build|--docker=*|--data|--data=*|--report|--report=*|--verify|--proxy)
+            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy)
                 ;;
             *)
                 echo "Unknown argument: $arg"
@@ -188,24 +230,11 @@ for arg in "${args[@]}"; do
                         npx jest ./run-vlei-issuance-workflow.test.ts
                         exitOnFail "$1"
                     else
-                        echo "SKIPPING - Workflow file $(pwd)/src/workflows/${wfile} does not exist"
+                        echo "SKIPPING - Workflow file ${wpath} does not exist"
                     fi
 
                 done
             done
-            args=("${args[@]/$arg}")
-            ;;
-        --data=*)
-            for sig_type in "${sig_types[@]}"; do
-                for id_type in "${id_types[@]}"; do
-                    export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
-                    npx jest ./vlei-issuance.test.ts
-                    exitOnFail "$1"
-                done
-            done
-            export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
-            npx jest ./vlei-issuance.test.ts
-            exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
         --report)
