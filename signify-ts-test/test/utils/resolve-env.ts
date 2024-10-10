@@ -34,12 +34,18 @@ export function resolveEnvironment(
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
   // let secretsJsonFile: string = "ui-test-data-3-users.json";
   let secretsJsonFile: string = "singlesig-single-aid-secrets.json";
-  switch (process.env.SECRETS_JSON_CONFIG || "singlesig-multiple-aid") {
-    case "singlesig-single-aid":
-      secretsJsonFile = "singlesig-single-aid-secrets.json";
+  switch (process.env.SECRETS_JSON_CONFIG || "multisig-multi-user") {
+    case "singlesig-single-user":
+      secretsJsonFile = "configuration-singlesig-single-user.json";
       break;
-    case "singlesig-multiple-aid":
-      secretsJsonFile = "singlesig-multiple-aid-secrets.json";
+    case "singlesig-multi-user":
+      secretsJsonFile = "configuration-singlesig-multi-user.json";
+      break;
+    case "multisig-single-user":
+      secretsJsonFile = "configuration-multisig-single-user.json";
+      break;
+    case "multisig-multi-user":
+      secretsJsonFile = "configuration-multisig-multi-user.json";
       break;
     case "multisig-single-aid":
       secretsJsonFile = "multisig-single-aid-secrets.json";
@@ -55,6 +61,9 @@ export function resolveEnvironment(
       break;
     case "ui-test-data-3-users":
       secretsJsonFile = "ui-test-data-3-users.json";
+      break;
+    case "base-configuration":      
+      secretsJsonFile = "base-configuration.json";
       break;
     default:
       throw new Error(

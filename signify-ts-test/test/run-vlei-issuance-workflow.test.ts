@@ -1,7 +1,5 @@
 import {
-  VleiIssuance,
-  SingleSigVleiIssuance,
-  MultiSigVleiIssuance,
+  VleiIssuance
 } from "../src/vlei-issuance";
 import path from "path";
 
@@ -19,24 +17,27 @@ function loadWorkflow(filePath: string) {
   }
 }
 
-async function runWorkflow(workflow: any) {
+async function runWorkflowSingle(workflow: any) {
   let executedSteps = new Set();
   const config = workflow.workflow.config;
-  let vi = new SingleSigVleiIssuance(config.secrets);
+  let vi = new VleiIssuance(config.secrets);
   await vi.prepareClients();
-  for (const user of vi.users) {
-    await vi.createRegistries(user);
-    for (const [k, v] of Object.entries(workflow.workflow.steps)) {
-      await executeStep(user, k, v);
-    }
+  await vi.createRegistries();
+  for (const [k, v] of Object.entries(workflow.workflow.steps)) {
+    await executeStep(k, v);
   }
+  
 
-  async function executeStep(user: any, stepName: string, step: any) {
-    console.log(`Executing: ${step.name}`);
+  async function executeStep(stepName: string, step: any) {
+    console.log(`Executing: ${step.description}`);
     if (step.type == "issue_credential") {
       await vi.getOrIssueCredential(
-        user,
+        stepName,
         step.credential,
+        step.attributes,
+        step.issuer_aid,
+        step.issuee_aid,
+        step.credential_source,
         Boolean(step.generate_test_data),
         step.test_name,
       );
@@ -48,11 +49,11 @@ async function runWorkflow(workflow: any) {
 test("issue-credentials", async function run() {
   const workflowsDir = "../src/workflows/";
   const workflowFile =
-    process.env.WORKFLOW || "issue-credentials-singlesig-multi-user.yaml";
+    process.env.WORKFLOW || "multisig-single-user.yaml";
   const workflow = loadWorkflow(
     path.join(__dirname, `${workflowsDir}${workflowFile}`),
   );
   if (workflow) {
-    await runWorkflow(workflow);
+    await runWorkflowSingle(workflow);
   }
 }, 3600000);
