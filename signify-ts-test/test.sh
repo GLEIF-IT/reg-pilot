@@ -28,7 +28,7 @@ printHelp() {
     echo "  --fast"
     echo "      Runs --all but with less rigor for the fastest runs"
     echo "  --all"
-    echo "      Runs --build, --docker=verify, --data, --report, and --verify"
+    echo "      Runs --build --docker=verify --data --report --verify"
     echo "  --docker=deps|verify|proxy-verify"
     echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers, you will need to specify the REG_PILOT_API and VLEI_VERIFIER environment variables"
     echo "      verify: Setup all services (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
@@ -41,6 +41,18 @@ printHelp() {
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"
     echo "      run the reg-pilot-api and vlei-verifier integration tests using the keria instance to login and upload signed/failure reports"
+    echo "  --multsig"
+    echo "      use the mutiple-sig aid configuration"
+    echo "  --singsig"
+    echo "      use the single-sig aid configuration"
+    echo "  --multaid"
+    echo "      use the multi-user configuration"
+    echo "  --singaid"
+    echo "      use the single-user configuration"
+    echo "  --multuser"
+    echo "      use the mutiple-user aid configuration"
+    echo "  --singuser"
+    echo "      use the single-user aid configuration"
     echo "  --proxy"
     echo "      add a proxy service between the tests and the reg-pilot-api to test forwarded communications"
     echo "  --help"
@@ -66,26 +78,33 @@ clearEnv() {
 }
 
 # Call the clearEnv function to clear the environment variables
-clearEnv
+# clearEnv
 
-sig_types=("multisig" "singlesig")
-id_types=("multiple-aid" "single-aid")
+sig_types=()
+id_types=()
 user_types=()
-handleUsers() {
-    # Check if SECRETS_JSON_CONFIG is set
-    if [ -z "$SECRETS_JSON_CONFIG" ]; then
-        echo "SECRETS_JSON_CONFIG is not set, using permutations of ${sig_types[*]} and ${id_types[*]}"    
+handle_users() {
+    handle_arguments "--multaid" "" 'id_types+=("multiple-aid")'
+    handle_arguments "--singaid" "" 'id_types+=("single-aid")'
+    handle_arguments "--multuser" "" 'user_types+=("multi-user")'
+    handle_arguments "--singuser" "" 'user_types+=("single-user")'
+    handle_arguments "--singsig" "" 'sig_types+=("singlesig")'
+    handle_arguments "--multsig" "" 'sig_types+=("multisig")'
+
+    # Check if arrays are empty
+    if [ ${#sig_types[@]} -eq 0 ] && [ ${#id_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ] && [ -z "$SECRETS_JSON_CONFIG" ]; then
+        echo "No sig_types, id_types, or user_types specified, and no SECRETS_JSON_CONFIG, so using default permutations"
+        sig_types=("multisig" "singlesig")
+        id_types=("multiple-aid" "single-aid")
     else
         # Parse the secrets json config
         # for instance multisig-multiple-aid should result in sig_types=multisig and id_types=multiple-aid
-        sig_types=()
-        id_types=()
         for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
             IFS='-' read -r -a secret_parts <<< "$secret"
             sig_types+=("${secret_parts[0]}")
             id_types+=("${secret_parts[1]}-aid")
         done
-        echo "SECRETS_JSON_CONFIG is set, using sig_types: ${sig_types[*]} and id_types: ${id_types[*]}"
+        echo "Argument or SECRETS_JSON_CONFIG is set, using sig_types: ${sig_types[*]} and id_types: ${id_types[*]}"
     fi
 
     if [[ -z "$WORKFLOW" ]]; then
@@ -146,7 +165,7 @@ handleEnv() {
 checkArgs() {
     for arg in "${args[@]}"; do
         case $arg in
-            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy)
+            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy|--multaid|--multuser|--multsig|--singaid|--singuser|--singsig)
                 ;;
             *)
                 echo "Unknown argument: $arg"
@@ -193,7 +212,7 @@ fi
 args=("$@")
 checkArgs
 
-handleUsers
+handle_users
 
 handle_arguments "--help" "" 'printHelp'
 handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
