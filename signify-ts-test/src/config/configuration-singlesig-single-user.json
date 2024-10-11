@@ -3,27 +3,23 @@
     "gleif1": "D_PbQb01zuzQgK-kDWjqy",
     "qvi1": "BTaqgh1eeOjXO5iQJp6mb",
     "le1": "Akv4TFoiYeHNqzj3N8gEg",
-    "ecr1": "CbII3tno87wn3uGBP12qm"
+    "le2": "Lf8nafHfan8fnafnnnfad",
+    "ecr1": "nf98hUHUy8Vt5tvdyaYV7",
+    "ecr2": "CbII3tno87wn3uGBP12qm",
+    "ecr3": "defh7b7g7gfaBuf83bf0f"
   },
   "credentials": {
     "gleif_to_qvi_vlei_cred": {
       "type": "direct",
-      "issuer": "gleif",
-      "issuee": "qvi",
       "schema": "QVI_SCHEMA_SAID",
       "privacy": false,
-      "attributes": {
-        "LEI": "254900OPPU84GM83MG36"
-      }
+      "attributes": {}
     },
     "qvi_to_le_vlei_cred": {
       "credSource": {
-        "name": "gleif_to_qvi_vlei_cred",
         "type": "qvi"
       },
       "type": "direct",
-      "issuer": "qvi",
-      "issuee": "le",
       "schema": "LE_SCHEMA_SAID",
       "rules": "LE_RULES",
       "privacy": false,
@@ -31,100 +27,119 @@
     },
     "le_to_ecr_vlei_cred": {
       "credSource": {
-        "name": "qvi_to_le_vlei_cred",
         "type": "le"
       },
       "type": "direct",
-      "issuer": "le",
-      "issuee": "ecr",
       "schema": "ECR_SCHEMA_SAID",
       "rules": "ECR_RULES",
       "privacy": true,
       "attributes": {
-        "personLegalName": "John Doe",
         "engagementContextRole": "EBA Data Submitter"
       }
     },
     "le_to_qvi_ecr_auth_cred": {
       "credSource": {
-        "name": "qvi_to_le_vlei_cred",
         "type": "le"
       },
       "type": "direct",
-      "issuer": "le",
-      "issuee": "qvi",
       "schema": "ECR_AUTH_SCHEMA_SAID",
       "rules": "ECR_AUTH_RULES",
       "privacy": false,
       "attributes": {
-        "AID": "ecr",
-        "personLegalName": "John Doe",
         "engagementContextRole": "EBA Data Submitter"
       }
     },
     "qvi_to_ecr_vlei_cred_from_le_to_qvi_ecr_auth_cred": {
       "credSource": {
-        "name": "le_to_qvi_ecr_auth_cred",
         "type": "auth",
         "o": "I2I"
       },
       "type": "direct",
-      "issuer": "qvi",
-      "issuee": "ecr",
       "schema": "ECR_SCHEMA_SAID",
       "rules": "ECR_RULES",
       "privacy": true,
       "attributes": {
-        "personLegalName": "John Doe",
         "engagementContextRole": "EBA Data Submitter"
       }
     },
     "le_to_qvi_oor_auth_cred": {
       "credSource": {
-        "name": "qvi_to_le_vlei_cred",
         "type": "le"
       },
       "type": "direct",
-      "issuer": "le",
-      "issuee": "qvi",
       "schema": "OOR_AUTH_SCHEMA_SAID",
       "rules": "OOR_AUTH_RULES",
       "privacy": false,
       "attributes": {
-        "AID": "ecr",
-        "personLegalName": "John Doe",
         "officialRole": "HR Manager"
       }
     },
     "qvi_to_ecr_vlei_oor_cred_from_le_to_qvi_oor_auth_cred": {
       "credSource": {
-        "name": "le_to_qvi_oor_auth_cred",
         "type": "auth",
         "o": "I2I"
       },
       "type": "direct",
-      "issuer": "qvi",
-      "issuee": "ecr",
       "schema": "OOR_SCHEMA_SAID",
       "rules": "OOR_RULES",
       "privacy": false,
       "attributes": {
-        "personLegalName": "John Doe",
         "officialRole": "HR Manager"
       }
     }
   },
+  "agents": {
+    "gleif-agent-1": {
+      "secret": "gleif1"
+    },
+    "qvi-agent-1": {
+      "secret": "qvi1"
+    },
+    "le-agent-1": {
+      "secret": "le1"
+    },
+    "ecr-agent-1": {
+      "secret": "ecr1"
+    }
+  },
+  "identifiers": {
+    "gleif-aid-1": {
+      "agent": "gleif-agent-1",
+      "name": "gleif-aid-1"
+    },
+    "qvi-aid-1": {
+      "agent": "qvi-agent-1",
+      "name": "qvi-aid-1"
+    },
+    "le-aid-1": {
+      "agent": "le-agent-1",
+      "name": "le-aid-1"
+    },
+    "ecr-aid-1": {
+      "agent": "ecr-agent-1",
+      "name": "ecr-aid-1"
+    }
+  },
   "users": [
     {
-      "secrets": {
-        "gleif": "gleif1",
-        "qvi": "qvi1",
-        "le": "le1",
-        "ecr": "ecr1"
-      },
-      "LE": "875500ELOZEL05BVXV37",
-      "contextRole": "EBA Data Submitter",
-      "alias": "user1"
+      "type": "GLEIF",
+      "alias": "gleif-user-1",
+      "identifiers": ["gleif-aid-1"]
+    },
+    {
+      "type": "QVI",
+      "alias": "qvi-user-1",
+      "identifiers": ["qvi-aid-1"]
+    },
+    {
+      "type": "LE",
+      "alias": "le-user-1",
+      "identifiers": ["le-aid-1"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-1",
+      "identifiers": ["ecr-aid-1"]
     }
   ]
 }

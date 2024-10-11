@@ -19,8 +19,8 @@ export interface TestEnvironment {
   apiBaseUrl: string;
   proxyBaseUrl: string;
   verifierBaseUrl: string;
-  roleName: string;
-  secretsJsonConfig: string;
+  workflow: string;
+  configuration: string;
   generateTestData: boolean;
 }
 
@@ -32,35 +32,6 @@ export function resolveEnvironment(
   input?: TestEnvironmentPreset,
 ): TestEnvironment {
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
-  // let secretsJsonFile: string = "ui-test-data-3-users.json";
-  let secretsJsonFile: string = "singlesig-single-aid-secrets.json";
-  switch (process.env.SECRETS_JSON_CONFIG || "singlesig-multiple-aid") {
-    case "singlesig-single-aid":
-      secretsJsonFile = "singlesig-single-aid-secrets.json";
-      break;
-    case "singlesig-multiple-aid":
-      secretsJsonFile = "singlesig-multiple-aid-secrets.json";
-      break;
-    case "multisig-single-aid":
-      secretsJsonFile = "multisig-single-aid-secrets.json";
-      break;
-    case "multisig-multiple-aid":
-      secretsJsonFile = "multisig-multiple-aid-secrets.json";
-      break;
-    case "singlesig-single-aid-nord-demo":
-      secretsJsonFile = "singlesig-single-aid-secrets-nord-demo.json";
-      break;
-    case "singlesig-single-aid-rootsid":
-      secretsJsonFile = "singlesig-single-aid-secrets-rootsid.json";
-      break;
-    case "ui-test-data-3-users":
-      secretsJsonFile = "ui-test-data-3-users.json";
-      break;
-    default:
-      throw new Error(
-        `Unknown secrets configuration '${process.env.SECRETS_JSON_CONFIG}'`,
-      );
-  }
   let env;
   switch (preset) {
     case "docker":
@@ -78,8 +49,10 @@ export function resolveEnvironment(
         apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
-        roleName: process.env.ID_ALIAS || "ecr1",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -98,8 +71,10 @@ export function resolveEnvironment(
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
-        roleName: process.env.ID_ALIAS || "ecr1",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -122,8 +97,10 @@ export function resolveEnvironment(
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
-        roleName: process.env.ID_ALIAS || "role",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -149,8 +126,10 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
-        roleName: process.env.ID_ALIAS || "ecr1",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -180,8 +159,10 @@ export function resolveEnvironment(
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
-        roleName: process.env.ID_ALIAS || "ecr1",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -212,8 +193,10 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-        roleName: process.env.ID_ALIAS || "unicredit-datasubmitter",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
@@ -238,8 +221,10 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI demo verifier not set",
-        roleName: process.env.ID_ALIAS || "unicredit-datasubmitter",
-        secretsJsonConfig: secretsJsonFile,
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        configuration:
+          process.env.CONFIGURATION ||
+          "configuration-singlesig-single-user.json",
         generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;

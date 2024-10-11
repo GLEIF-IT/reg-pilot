@@ -34,22 +34,13 @@ jobs:
           npm set registry https://registry.npmjs.org/
           npm ci    
       - name: Run docker
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --docker=proxy-verify 
+        run: ./test-workflow.sh --docker=verify 
       
       - name: Build
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --build
+        run: ./test-workflow.sh --build
 
-      - name: Issue Credentials
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --data
-
-      - name: Generate Reports
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --report
-
-      - name: Run API tests
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --verify
-
-      - name: Run Verifier tests
-        run: WORKFLOW=issue-credentials-singlesig-multi-user.yaml SECRETS_JSON_CONFIG=singlesig-multiple-aid ./test.sh --proxy
+      - name: Issue Credentials, Generate reports, API test, Verifier test
+        run: WORKFLOW=singlesig-multi-user.yaml CONFIGURATION=configuration-singlesig-multi-user.json ./test-workflow.sh --data-report-verify-proxy
         
 
   

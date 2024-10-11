@@ -1,0 +1,202 @@
+{
+  "secrets": {
+    "gleif1": "D_PbQb01zuzQgK-kDWjq1",
+    "gleif2": "D_PbQb01zuzQgK-kDWjq2",
+    "qvi1": "BTaqgh1eeOjXO5iQJp6m1",
+    "qvi2": "BTaqgh1eeOjXO5iQJp6m2",
+    "qvi3": "BTaqgh1eeOjXO5iQJp6m3",
+    "le1": "Lf8nafHfan8fnafnnnfa1",
+    "le2": "Lf8nafHfan8fnafnnnfa2",
+    "le3": "Lf8nafHfan8fnafnnnfa3",
+    "ecr1": "nf98hUHUy8Vt5tvdyaYV7",
+    "ecr2": "CbII3tno87wn3uGBP12qm",
+    "ecr3": "defh7b7g7gfaBuf83bf0f"
+  },
+  "credentials": {
+    "gleif_to_qvi_vlei_cred": {
+      "type": "direct",
+      "schema": "QVI_SCHEMA_SAID",
+      "privacy": false,
+      "attributes": {}
+    },
+    "qvi_to_le_vlei_cred": {
+      "credSource": {
+        "type": "qvi"
+      },
+      "type": "direct",
+      "schema": "LE_SCHEMA_SAID",
+      "rules": "LE_RULES",
+      "privacy": false,
+      "attributes": {}
+    },
+    "le_to_ecr_vlei_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "ECR_SCHEMA_SAID",
+      "rules": "ECR_RULES",
+      "privacy": true,
+      "attributes": {
+        "engagementContextRole": "EBA Data Submitter"
+      }
+    },
+    "le_to_qvi_ecr_auth_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "ECR_AUTH_SCHEMA_SAID",
+      "rules": "ECR_AUTH_RULES",
+      "privacy": false,
+      "attributes": {
+        "engagementContextRole": "EBA Data Submitter"
+      }
+    },
+    "qvi_to_ecr_vlei_cred_from_le_to_qvi_ecr_auth_cred": {
+      "credSource": {
+        "type": "auth",
+        "o": "I2I"
+      },
+      "type": "direct",
+      "schema": "ECR_SCHEMA_SAID",
+      "rules": "ECR_RULES",
+      "privacy": true,
+      "attributes": {
+        "engagementContextRole": "EBA Data Submitter"
+      }
+    },
+    "le_to_qvi_oor_auth_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "OOR_AUTH_SCHEMA_SAID",
+      "rules": "OOR_AUTH_RULES",
+      "privacy": false,
+      "attributes": {
+        "officialRole": "HR Manager"
+      }
+    },
+    "qvi_to_ecr_vlei_oor_cred_from_le_to_qvi_oor_auth_cred": {
+      "credSource": {
+        "type": "auth",
+        "o": "I2I"
+      },
+      "type": "direct",
+      "schema": "OOR_SCHEMA_SAID",
+      "rules": "OOR_RULES",
+      "privacy": false,
+      "attributes": {
+        "officialRole": "HR Manager"
+      }
+    }
+  },
+  "agents": {
+    "gleif-agent-1": {
+      "secret": "gleif1"
+    },
+    "gleif-agent-2": {
+      "secret": "gleif2"
+    },
+    "qvi-agent-1": {
+      "secret": "qvi1"
+    },
+    "qvi-agent-2": {
+      "secret": "qvi2"
+    },
+    "qvi-agent-3": {
+      "secret": "qvi3"
+    },
+    "le-agent-1": {
+      "secret": "le1"
+    },
+    "le-agent-2": {
+      "secret": "le2"
+    },
+    "le-agent-3": {
+      "secret": "le3"
+    },
+    "ecr-agent-1": {
+      "secret": "ecr1"
+    }
+  },
+  "identifiers": {
+    "gleif-aid-1": {
+      "agent": "gleif-agent-1",
+      "name": "gleif-aid-1"
+    },
+    "gleif-aid-2": {
+      "agent": "gleif-agent-2",
+      "name": "gleif-aid-2"
+    },
+    "gleif-multisig-1": {
+      "name": "gleif-multisig-1",
+      "identifiers": ["gleif-aid-1", "gleif-aid-2"],
+      "isith": ["1/2", "1/2"],
+      "nsith": ["1/2", "1/2"]
+    },
+    "qvi-aid-1": {
+      "agent": "qvi-agent-1",
+      "name": "qvi-aid-1"
+    },
+    "qvi-aid-2": {
+      "agent": "qvi-agent-2",
+      "name": "qvi-aid-2"
+    },
+    "qvi-aid-3": {
+      "agent": "qvi-agent-3",
+      "name": "qvi-aid-3"
+    },
+    "qvi-multisig-1": {
+      "name": "qvi-multisig-1",
+      "identifiers": ["qvi-aid-1", "qvi-aid-2", "qvi-aid-3"],
+      "isith": ["2/3", "1/2", "1/2"],
+      "nsith": ["2/3", "1/2", "1/2"]
+    },
+    "le-aid-1": {
+      "agent": "le-agent-1",
+      "name": "le-aid-1"
+    },
+    "le-aid-2": {
+      "agent": "le-agent-2",
+      "name": "le-aid-2"
+    },
+    "le-aid-3": {
+      "agent": "le-agent-3",
+      "name": "le-aid-3"
+    },
+    "le-multisig-1": {
+      "name": "le-multisig-1",
+      "identifiers": ["le-aid-1", "le-aid-2", "le-aid-3"],
+      "isith": ["2/3", "1/2", "1/2"],
+      "nsith": ["2/3", "1/2", "1/2"]
+    },
+    "ecr-aid-1": {
+      "agent": "ecr-agent-1",
+      "name": "ecr-aid-1"
+    }
+  },
+  "users": [
+    {
+      "type": "GLEIF",
+      "alias": "gleif-user-1",
+      "identifiers": ["gleif-aid-1", "gleif-aid-2", "gleif-multisig-1"]
+    },
+    {
+      "type": "QVI",
+      "alias": "qvi-user-1",
+      "identifiers": ["qvi-aid-1", "qvi-aid-2", "qvi-aid-3", "qvi-multisig-1"]
+    },
+    {
+      "type": "LE",
+      "alias": "le-user-1",
+      "identifiers": ["le-aid-1", "le-aid-2", "le-aid-3", "le-multisig-1"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-1",
+      "identifiers": ["ecr-aid-1"]
+    }
+  ]
+}
