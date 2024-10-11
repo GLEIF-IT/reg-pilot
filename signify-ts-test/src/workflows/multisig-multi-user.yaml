@@ -5,8 +5,8 @@ workflow:
       type: "issue_credential"
       attributes:
         LEI: "254900OPPU84GM83MG36"
-      issuer_aid: "gleif-aid-1"
-      issuee_aid: "qvi-aid-1"
+      issuer_aid: "gleif-multisig-1"
+      issuee_aid: "qvi-multisig-1"
       description: "GLEIF issues QVI vLEI credential"
       credential: "gleif_to_qvi_vlei_cred"
     le_cred:
@@ -14,8 +14,8 @@ workflow:
       type: "issue_credential"
       attributes:
         LEI: "875500ELOZEL05BVXV37"
-      issuer_aid: "qvi-aid-1"
-      issuee_aid: "le-aid-1"
+      issuer_aid: "qvi-multisig-1"
+      issuee_aid: "le-multisig-1"
       description: "QVI issues LE vLEI credential"
       credential: "qvi_to_le_vlei_cred"
       credential_source: "qvi_cred"
@@ -24,8 +24,8 @@ workflow:
       type: "issue_credential"
       attributes:
         LEI: "875500ELOZEL05BVXV38"
-      issuer_aid: "qvi-aid-1"
-      issuee_aid: "le-aid-2"
+      issuer_aid: "qvi-multisig-1"
+      issuee_aid: "le-multisig-2"
       description: "QVI issues LE vLEI credential"
       credential: "qvi_to_le_vlei_cred"
       credential_source: "qvi_cred"
@@ -35,7 +35,7 @@ workflow:
       attributes:
         personLegalName: "John Doe"
         LEI: "875500ELOZEL05BVXV37"
-      issuer_aid: "le-aid-1"
+      issuer_aid: "le-multisig-1"
       issuee_aid: "ecr-aid-1"
       description: "LE issues ECR vLEI credential"
       credential: "le_to_ecr_vlei_cred"
@@ -46,7 +46,7 @@ workflow:
       attributes:
         personLegalName: "Mike Stewart"
         LEI: "875500ELOZEL05BVXV37"
-      issuer_aid: "le-aid-1"
+      issuer_aid: "le-multisig-1"
       issuee_aid: "ecr-aid-2"
       description: "LE issues ECR vLEI credential"
       credential: "le_to_ecr_vlei_cred"
@@ -57,7 +57,7 @@ workflow:
       attributes:
         personLegalName: "David Clark"
         LEI: "875500ELOZEL05BVXV38"
-      issuer_aid: "le-aid-2"
+      issuer_aid: "le-multisig-2"
       issuee_aid: "ecr-aid-3"
       description: "LE issues ECR vLEI credential"
       credential: "le_to_ecr_vlei_cred"
@@ -77,8 +77,8 @@ workflow:
       type: "generate_report"
       aid: "ecr-aid-3"
       description: "Generating reports for ecr-aid-3 user"
-    api_test_ecr1:
-      id: "api_test_ecr1"
+    api_test_1:
+      id: "api_test_1"
       type: "api_test"
       aids: ["ecr-aid-1", "ecr-aid-2", "ecr-aid-3"]
       description: "Running API test for [ecr-aid-1, ecr-aid-2, ecr-aid-2] users"

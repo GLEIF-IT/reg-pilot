@@ -33,7 +33,7 @@
       "schema": "ECR_SCHEMA_SAID",
       "rules": "ECR_RULES",
       "privacy": true,
-      "attributes": {        
+      "attributes": {
         "engagementContextRole": "EBA Data Submitter"
       }
     },

@@ -8,6 +8,9 @@
     "le1": "Lf8nafHfan8fnafnnnfa1",
     "le2": "Lf8nafHfan8fnafnnnfa2",
     "le3": "Lf8nafHfan8fnafnnnfa3",
+    "le4": "Lf8nafHfan8fnafnnnfa4",
+    "le5": "Lf8nafHfan8fnafnnnfa5",
+    "le6": "Lf8nafHfan8fnafnnnfa6",
     "ecr1": "nf98hUHUy8Vt5tvdyaYV7",
     "ecr2": "CbII3tno87wn3uGBP12qm",
     "ecr3": "defh7b7g7gfaBuf83bf0f"
@@ -117,8 +120,23 @@
     "le-agent-3": {
       "secret": "le3"
     },
+    "le-agent-4": {
+      "secret": "le4"
+    },
+    "le-agent-5": {
+      "secret": "le5"
+    },
+    "le-agent-6": {
+      "secret": "le6"
+    },
     "ecr-agent-1": {
       "secret": "ecr1"
+    },
+    "ecr-agent-2": {
+      "secret": "ecr2"
+    },
+    "ecr-agent-3": {
+      "secret": "ecr3"
     }
   },
   "identifiers": {
@@ -172,9 +190,35 @@
       "isith": ["2/3", "1/2", "1/2"],
       "nsith": ["2/3", "1/2", "1/2"]
     },
+    "le-aid-4": {
+      "agent": "le-agent-4",
+      "name": "le-aid-4"
+    },
+    "le-aid-5": {
+      "agent": "le-agent-5",
+      "name": "le-aid-5"
+    },
+    "le-aid-6": {
+      "agent": "le-agent-6",
+      "name": "le-aid-6"
+    },
+    "le-multisig-2": {
+      "name": "le-multisig-2",
+      "identifiers": ["le-aid-4", "le-aid-5", "le-aid-6"],
+      "isith": ["2/3", "1/2", "1/2"],
+      "nsith": ["2/3", "1/2", "1/2"]
+    },
     "ecr-aid-1": {
       "agent": "ecr-agent-1",
       "name": "ecr-aid-1"
+    },
+    "ecr-aid-2": {
+      "agent": "ecr-agent-2",
+      "name": "ecr-aid-2"
+    },
+    "ecr-aid-3": {
+      "agent": "ecr-agent-3",
+      "name": "ecr-aid-3"
     }
   },
   "users": [
@@ -194,9 +238,24 @@
       "identifiers": ["le-aid-1", "le-aid-2", "le-aid-3", "le-multisig-1"]
     },
     {
+      "type": "LE",
+      "alias": "le-user-2",
+      "identifiers": ["le-aid-4", "le-aid-5", "le-aid-6", "le-multisig-2"]
+    },
+    {
       "type": "ECR",
       "alias": "ecr-user-1",
       "identifiers": ["ecr-aid-1"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-2",
+      "identifiers": ["ecr-aid-2"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-3",
+      "identifiers": ["ecr-aid-3"]
     }
   ]
 }

@@ -1,6 +1,4 @@
 workflow:
-  config:
-    secrets: "configuration-multisig-single-user.json"
   steps:
     qvi_cred:
       id: "qvi_cred"
@@ -32,5 +30,18 @@ workflow:
       description: "LE issues ECR vLEI credential"
       credential: "le_to_ecr_vlei_cred"
       credential_source: "le_cred"
-
-    
+    gen_report_ecr1:
+      id: "gen_report_ecr1"
+      type: "generate_report"
+      aid: "ecr-aid-1"
+      description: "Generating reports for ecr-aid-1 user"
+    api_test_ecr1:
+      id: "api_test_ecr1"
+      type: "api_test"
+      aids: ["ecr-aid-1"]
+      description: "Running API test for ecr-aid-1 user"
+    vlei_verification_test_1:
+      id: "vlei_verification_1"
+      type: "vlei_verification_test"
+      aids: ["ecr-aid-1"]
+      description: "Running Vlei Verification test for ecr-aid-1 user"
