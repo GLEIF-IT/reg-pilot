@@ -35,7 +35,7 @@ jobs:
           npm ci    
 
       - name: Run docker
-        run: ./test-workflow.sh --docker=proxy-verify 
+        run: ./test-workflow.sh --docker=verify 
       
       - name: Build
         run: ./test-workflow.sh --build
