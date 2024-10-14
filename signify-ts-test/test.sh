@@ -37,6 +37,7 @@ printHelp() {
     echo "      build the typescript tests"
     echo "  --data"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "  --report"
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"

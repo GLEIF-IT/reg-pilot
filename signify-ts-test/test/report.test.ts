@@ -7,11 +7,16 @@ import { generateFileDigest } from "./utils/generate-digest";
 import { Aid, getOrCreateClients } from "./utils/test-util";
 import signify, { HabState, Signer, SignifyClient } from "signify-ts";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { buildUserData, User } from "../src/utils/handle-json-config";
+import {
+  buildAidData,
+  buildUserData,
+  User,
+} from "../src/utils/handle-json-config";
 
 import { unknownPrefix } from "../src/constants";
 import { sign } from "crypto";
 import { boolean, re } from "mathjs";
+import { getReportGenTestData } from "./utils/test-data";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -19,63 +24,18 @@ export const UNFOLDERED_TYPE = "unfoldered";
 export const UNZIPPED_TYPE = "unzipped";
 export const FAIL_TYPE = "fail";
 
-let reportTypes: string[];
 let env: TestEnvironment;
-let ecrAid: HabState;
-let roleClient: SignifyClient;
-let keeper: signify.Keeper;
 
-const origDir = "orig_reports";
-let unsignedReports: string[];
-const failDir = "fail_reports";
-let failDirPrefixed: string;
-const signedDir = "signed_reports";
-let signedDirPrefixed: string;
 const tempDir = "temp_reports";
 const tempPath = path.join(__dirname, tempDir);
 const secretsJsonPath = "../src/config/";
-let users: Array<User>;
 const tempExtManifestDir = "temp_manifest";
 
 afterAll(async () => {
   deleteReportsDir(tempPath);
 });
 
-beforeAll(async () => {
-  const speed = process.env.SPEED;
-  console.log("Speed mode: ", speed);
-  let fast: boolean = speed == "fast";
-
-  reportTypes = process.env.REPORT_TYPES
-    ? process.env.REPORT_TYPES.split(",")
-    : fast
-      ? [SIMPLE_TYPE]
-      : [
-          EXTERNAL_MAN_TYPE,
-          SIMPLE_TYPE,
-          UNFOLDERED_TYPE,
-          UNZIPPED_TYPE,
-          FAIL_TYPE,
-        ];
-  console.log("Report types: ", reportTypes);
-
-  env = resolveEnvironment();
-  const secretsJson = JSON.parse(
-    fs.readFileSync(
-      path.join(__dirname, secretsJsonPath + env.secretsJsonConfig),
-      "utf-8",
-    ),
-  );
-  users = await buildUserData(secretsJson);
-
-  unsignedReports = process.env.UNSIGNED_REPORTS
-    ? process.env.UNSIGNED_REPORTS.split(",")
-    : fast
-      ? [getDefaultOrigReports()[0]]
-      : getDefaultOrigReports();
-
-  console.log("Unsigned reports: ", unsignedReports);
-});
+beforeAll(async () => {});
 
 // Function to create a report dir
 function createReportsDir(repDir: string): void {
@@ -100,35 +60,73 @@ function deleteReportsDir(repDir: string): void {
 
 // This test assumes you have run a vlei-issuance test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
-test("report-generation-test", async function run() {
-  for (const user of users) {
-    const clients = await getOrCreateClients(
-      1,
-      [user.secrets.get("ecr")!],
-      true,
+if (require.main === module) {
+  test("report-generation-test", async function run() {
+    env = resolveEnvironment();
+    const configJson = JSON.parse(
+      fs.readFileSync(
+        path.join(__dirname, secretsJsonPath + env.configuration),
+        "utf-8",
+      ),
     );
-    roleClient = clients[clients.length - 1];
-    const idAlias = env.idAlias ? env.idAlias : "ecr1";
-    ecrAid = await roleClient.identifiers().get(idAlias);
-    keeper = roleClient.manager!.get(ecrAid);
-    failDirPrefixed = path.join(__dirname, "data", failDir, ecrAid.prefix);
-    signedDirPrefixed = path.join(__dirname, "data", signedDir, ecrAid.prefix);
-    await generate_reports(ecrAid, keeper, signedDirPrefixed, failDirPrefixed);
-  }
-}, 100000);
+    let users = await buildUserData(configJson);
+    users = users.filter((user) => user.type === "ECR");
+    for (const user of users) {
+      const testData = getReportGenTestData();
+      const clients = await getOrCreateClients(
+        1,
+        [user.identifiers[0].agent.secret],
+        true,
+      );
+      const roleClient = clients[0];
+      const ecrAid = await roleClient
+        .identifiers()
+        .get(user.identifiers[0].name);
+      const keeper = roleClient.manager!.get(ecrAid);
+      const failDirPrefixed = path.join(
+        __dirname,
+        "data",
+        testData["failDir"],
+        ecrAid.prefix,
+      );
+      const signedDirPrefixed = path.join(
+        __dirname,
+        "data",
+        testData["signedDir"],
+        ecrAid.prefix,
+      );
+      await generate_reports(
+        ecrAid,
+        keeper,
+        signedDirPrefixed,
+        failDirPrefixed,
+        testData["unsignedReports"],
+        testData["reportTypes"],
+      );
+    }
+  }, 100000);
+}
 
-async function generate_reports(
+export async function generate_reports(
   ecrAid: HabState,
   keeper: signify.Keeper,
   signedDirPrefixed: string,
   failDirPrefixed: string,
+  unsignedReports: string[],
+  reportTypes: string[],
 ) {
   deleteReportsDir(signedDirPrefixed);
   deleteReportsDir(failDirPrefixed);
 
   deleteReportsDir(tempPath);
   createReportsDir(tempPath);
-  const signedReports = await createSignedReports(unsignedReports, reportTypes);
+  const signedReports = await createSignedReports(
+    unsignedReports,
+    reportTypes,
+    keeper,
+    ecrAid,
+    signedDirPrefixed,
+  );
   assert.equal(signedReports.length > 0, true);
 
   if (reportTypes.includes(FAIL_TYPE)) {
@@ -141,9 +139,14 @@ async function generate_reports(
   }
 }
 
+module.exports = { generate_reports };
+
 async function createSignedReports(
   filePaths: string[],
   reportTypes: string[] = [SIMPLE_TYPE],
+  keeper: signify.Keeper,
+  ecrAid: signify.HabState,
+  signedDirPrefixed: string,
 ): Promise<string[]> {
   let zipsProcessed = 0;
   let signedReports = [] as string[];
@@ -169,7 +172,12 @@ async function createSignedReports(
         if (!foundPath) {
           throw new Error(`No reports directory found in ${fullTemp}`);
         }
-        const complexManifest = await buildManifest(foundPath, false);
+        const complexManifest = await buildManifest(
+          foundPath,
+          false,
+          keeper,
+          ecrAid,
+        );
         const complexManJson = JSON.stringify(complexManifest, null, 2);
         if (reportTypes.includes(EXTERNAL_MAN_TYPE)) {
           console.log(
@@ -227,7 +235,12 @@ async function createSignedReports(
           filePath,
           path.join(fullTemp, path.basename(filePath)),
         );
-        const simpleManifest = await buildManifest(fullTemp, true);
+        const simpleManifest = await buildManifest(
+          fullTemp,
+          true,
+          keeper,
+          ecrAid,
+        );
         const simpleManJson = JSON.stringify(simpleManifest, null, 2);
 
         const manifestPath = path.join(fullTemp, "META-INF", "reports.json");
@@ -257,6 +270,8 @@ async function createSignedReports(
 async function buildManifest(
   repDirPath: string,
   simple: boolean,
+  keeper: signify.Keeper,
+  ecrAid: signify.HabState,
 ): Promise<Manifest> {
   const reportEntries = await fs.promises.readdir(repDirPath, {
     withFileTypes: true,
@@ -281,7 +296,7 @@ async function buildManifest(
     const digested = await addDigestToReport(reportPath, signature, simple);
     assert(digested, `Failed to add digest for ${reportPath}`);
 
-    const signed = await addSignatureToReport(signature, keeper);
+    const signed = await addSignatureToReport(signature, keeper, ecrAid);
     assert(signed, `Failed to add signature for ${reportPath}`);
 
     docInfo.signatures.push(signature);
@@ -484,6 +499,7 @@ async function removeMetaInfReportsJson(
 async function addSignatureToReport(
   signatureBlock: Signature,
   keeper: signify.Keeper,
+  ecrAid: signify.HabState,
 ): Promise<boolean> {
   const sigs = [] as string[];
   for (const signer of keeper.signers as Signer[]) {
@@ -619,27 +635,6 @@ async function getRepPath(fullTemp: string): Promise<string> {
     );
   }
   return repDirPath;
-}
-
-function getDefaultOrigReports(): string[] {
-  console.log(
-    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${origDir}`,
-  );
-
-  // Loop over the files in the ./data/orig_reports directory
-  const origReportsDir = path.join(__dirname, "data", origDir);
-
-  const reports = fs.readdirSync(origReportsDir);
-  console.log("Available reports: ", reports);
-
-  const unsignedReps = [] as string[];
-  for (const reportFile of reports) {
-    // const file = reports[0];
-    const filePath = path.join(origReportsDir, reportFile);
-    unsignedReps.push(filePath);
-  }
-
-  return unsignedReps;
 }
 
 async function createExternalManifestZip(

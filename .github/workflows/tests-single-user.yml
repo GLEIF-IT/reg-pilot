@@ -37,19 +37,12 @@ jobs:
         run: npm run pretty:check
         
       - name: Run docker
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --docker=proxy-verify 
+        run: ./test-workflow.sh --docker=proxy 
       
       - name: Build
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --build
+        run: ./test-workflow.sh --build
 
-      - name: Issue Credentials
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --data
+      - name: Issue Credentials, Generate reports, API test, Verifier test
+        run: WORKFLOW=singlesig-single-user.yaml CONFIGURATION=configuration-singlesig-single-user.json ./test-workflow.sh --data-report-verify-proxy
 
-      - name: Generate Reports
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --report
 
-      - name: Run API tests
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --verify
-
-      - name: Run Verifier tests
-        run: WORKFLOW=issue-credentials-singlesig-single-user.yaml SECRETS_JSON_CONFIG=singlesig-single-aid ./test.sh --proxy

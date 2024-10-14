@@ -79,10 +79,17 @@ import path from "path";
 import { buildTestData, EcrTestData } from "./utils/generate-test-data";
 
 export class VleiIssuance {
-  secretsJsonPath: string = "config/";
-  secretsJsonFile: string;
-  secretsJson: any;
+  configPath: string = "config/";
+  configFile: string;
+  configJson: any;
   users: Array<User> = new Array<User>();
+  clients: Map<string, Array<SignifyClient>> = new Map<
+    string,
+    Array<SignifyClient>
+  >();
+  aids: Map<string, Array<any>> = new Map<string, Array<any>>();
+  oobis: Map<string, Array<any>> = new Map<string, Array<any>>();
+
   credentialsInfo: Map<string, CredentialInfo> = new Map<
     string,
     CredentialInfo
@@ -95,20 +102,27 @@ export class VleiIssuance {
   schemas: any = SCHEMAS;
   rules: any = RULES;
   credentialData: Map<string, any> = new Map<string, any>();
+  aidsInfo: Map<string, any> = new Map<string, any>();
+
+  kargsAID = {
+    toad: witnessIds.length,
+    wits: witnessIds,
+  };
 
   constructor(secretsJsonFile: string) {
-    this.secretsJsonFile = secretsJsonFile;
-    this.secretsJson = JSON.parse(
+    this.configFile = secretsJsonFile;
+    this.configJson = JSON.parse(
       fs.readFileSync(
-        path.join(__dirname, this.secretsJsonPath) + secretsJsonFile,
+        path.join(__dirname, this.configPath) + secretsJsonFile,
         "utf-8",
       ),
     );
   }
 
   public async prepareClients() {
-    this.users = await buildUserData(this.secretsJson);
-    this.credentialsInfo = await buildCredentials(this.secretsJson);
+    this.users = await buildUserData(this.configJson);
+    this.credentialsInfo = await buildCredentials(this.configJson);
+
     await this.createClients();
     await this.createAids();
     await this.fetchOobis();
@@ -121,19 +135,24 @@ export class VleiIssuance {
       OOR_AUTH_SCHEMA_URL,
       OOR_SCHEMA_URL,
     ]);
+    await this.createMultisigAids();
   }
 
   // Create clients dynamically for each user
   protected async createClients() {
+    console.log("Creating Clients");
     for (const user of this.users) {
-      for (const [key, values] of user.secrets) {
-        for (const value of values.split(",")) {
-          const client = await getOrCreateClients(1, [value], false);
-          if (user.clients.has(key)) {
-            user.clients.get(key)?.push(client[0]);
-          } else {
-            user.clients.set(key, [client[0]]);
-          }
+      for (const identifier of user.identifiers) {
+        if (!identifier.agent) continue;
+        const client = await getOrCreateClients(
+          1,
+          [identifier.agent.secret],
+          false,
+        );
+        if (this.clients.has(identifier.agent)) {
+          this.clients.get(identifier.agent)?.push(client[0]);
+        } else {
+          this.clients.set(identifier.agent.name, [client[0]]);
         }
       }
     }
@@ -141,19 +160,36 @@ export class VleiIssuance {
 
   // Create AIDs for each client
   protected async createAids() {
-    const kargsAID = {
-      toad: witnessIds.length,
-      wits: witnessIds,
-    };
+    console.log("Creating AIDs");
     for (const user of this.users) {
-      for (const [role, clientList] of user.clients) {
-        for (let i = 0; i < clientList.length; i++) {
-          const client = clientList[i];
-          const aid = await getOrCreateAID(client, `${role}${i + 1}`, kargsAID);
-          if (user.aids.has(role)) {
-            user.aids.get(role)?.push(aid);
+      for (const identifier of user.identifiers) {
+        let aid: any;
+        if (!identifier.identifiers) {
+          this.aidsInfo.set(identifier.name, identifier);
+          const client = this.clients.get(identifier.agent.name)![0];
+          aid = await getOrCreateAID(client, identifier.name, this.kargsAID);
+          if (this.aids.has(identifier.name)) {
+            this.aids.get(identifier.name)?.push(aid);
           } else {
-            user.aids.set(role, [aid]);
+            this.aids.set(identifier.name, [aid]);
+          }
+        }
+      }
+    }
+  }
+
+  protected async createMultisigAids() {
+    console.log("Creating Multisig AIDs");
+    for (const user of this.users) {
+      for (const identifier of user.identifiers) {
+        let aid: any;
+        if (identifier.identifiers) {
+          this.aidsInfo.set(identifier.name, identifier);
+          aid = await this.createAidMultisig(identifier);
+          if (this.aids.has(identifier.name)) {
+            this.aids.get(identifier.name)?.push(aid);
+          } else {
+            this.aids.set(identifier.name, [aid]);
           }
         }
       }
@@ -162,16 +198,16 @@ export class VleiIssuance {
 
   // Fetch OOBIs for each client
   protected async fetchOobis() {
+    console.log("Fetching OOBIs");
     for (const user of this.users) {
-      for (const [role, clientList] of user.clients) {
-        for (let i = 0; i < clientList.length; i++) {
-          const client = clientList[i];
-          const oobi = await client.oobis().get(`${role}${i + 1}`, "agent");
-          if (user.oobis.has(role)) {
-            user.oobis.get(role)?.push(oobi);
-          } else {
-            user.oobis.set(role, [oobi]);
-          }
+      for (const identifier of user.identifiers) {
+        if (!identifier.agent) continue;
+        const client = this.clients.get(identifier.agent.name)![0];
+        const oobi = await client.oobis().get(identifier.name, "agent");
+        if (this.oobis.has(identifier.name)) {
+          this.oobis.get(identifier.name)?.push(oobi);
+        } else {
+          this.oobis.set(identifier.name, [oobi]);
         }
       }
     }
@@ -179,22 +215,21 @@ export class VleiIssuance {
 
   // Create contacts between clients
   protected async createContacts() {
+    console.log("Creating Contacts");
     const contactPromises: Promise<string>[] = [];
-    for (const user of this.users) {
-      for (const [roleA, clientListA] of user.clients) {
-        for (let i = 0; i < clientListA.length; i++) {
-          for (const [roleB, clientListB] of user.clients) {
-            for (let j = 0; j < clientListB.length; j++) {
-              if (roleA !== roleB || i !== j) {
-                // Skip self-referencing
-                contactPromises.push(
-                  getOrCreateContact(
-                    clientListA[i],
-                    `${roleB}${j + 1}`,
-                    user.oobis.get(roleB)?.[j].oobis[0],
-                  ),
-                );
-              }
+    for (const userA of this.users) {
+      for (const identifierA of userA.identifiers) {
+        for (const userB of this.users) {
+          for (const identifierB of userB.identifiers) {
+            if (!identifierA.agent || !identifierB.agent) continue;
+            if (identifierA.name !== identifierB.name) {
+              contactPromises.push(
+                getOrCreateContact(
+                  this.clients.get(identifierA.agent.name)![0],
+                  identifierB.name,
+                  this.oobis.get(identifierB.name)?.[0].oobis[0],
+                ),
+              );
             }
           }
         }
@@ -205,68 +240,37 @@ export class VleiIssuance {
 
   // Resolve OOBIs for each client and schema
   protected async resolveOobis(schemaUrls: string[]) {
+    console.log("Resolving OOBIs");
     const resolveOobiPromises: Promise<void>[] = [];
+    for (const [role, clientList] of this.clients) {
+      for (const client of clientList) {
+        schemaUrls.forEach(async (schemaUrl) => {
+          await resolveOobi(client, schemaUrl);
+        });
+      }
+    }
+  }
+
+  public async createRegistries() {
+    console.log("Creating Registries");
     for (const user of this.users) {
-      for (const [role, clientList] of user.clients) {
-        for (const client of clientList) {
-          schemaUrls.forEach((schemaUrl) => {
-            resolveOobiPromises.push(resolveOobi(client, schemaUrl));
-          });
+      for (const identifier of user.identifiers) {
+        let registry;
+        if (identifier.identifiers) {
+          registry = await this.createRegistryMultisig(
+            this.aids.get(identifier.name)![0],
+            identifier,
+          );
+        } else {
+          const client = this.clients.get(identifier.agent.name)![0];
+          registry = await this.getOrCreateRegistry(
+            client,
+            this.aids.get(identifier.name)![0],
+            `${user.alias}Registry`,
+          );
         }
-      }
-    }
-    await Promise.all(resolveOobiPromises);
-  }
 
-  // Issue credentials for all users
-  public async issueCredentials() {
-    await this.prepareClients();
-    for (const user of this.users) {
-      if (
-        user.clients.get("gleif")!.length > 1 ||
-        user.clients.get("qvi")!.length > 1 ||
-        user.clients.get("le")!.length > 1
-      ) {
-        let subclassInstance = new MultiSigVleiIssuance(this.secretsJsonFile);
-        Object.assign(subclassInstance, this);
-        Object.assign(this, subclassInstance);
-        Object.setPrototypeOf(this, MultiSigVleiIssuance.prototype);
-      } else {
-        let subclassInstance = new SingleSigVleiIssuance(this.secretsJsonFile);
-        Object.assign(subclassInstance, this);
-        Object.assign(this, subclassInstance);
-        Object.setPrototypeOf(this, SingleSigVleiIssuance.prototype);
-      }
-      await this.vleiIssuance(user);
-    }
-  }
-
-  protected async vleiIssuance(user: User) {}
-}
-
-export class SingleSigVleiIssuance extends VleiIssuance {
-  qviData: any;
-  leData: any;
-  ecrData: any;
-  ecrAuthData: any;
-  oorData: any;
-  oorAuthData: any;
-  kargsAID: any;
-
-  constructor(secretsJsonFile: string) {
-    super(secretsJsonFile);
-  }
-
-  public async createRegistries(user: User) {
-    for (const [role, clientList] of user.clients) {
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
-        const registry = await this.getOrCreateRegistry(
-          client,
-          user.aids.get(role)![0],
-          `${role}Registry`,
-        );
-        this.registries.set(role, registry);
+        this.registries.set(identifier.name, registry);
       }
     }
   }
@@ -277,6 +281,282 @@ export class SingleSigVleiIssuance extends VleiIssuance {
     registryName: string,
   ) {
     return await getOrCreateRegistry(client, aid, registryName);
+  }
+
+  public async createAidMultisig(aidInfo: any) {
+    let multisigAids: HabState[] = [];
+    const aidIdentifierNames: Array<string> = aidInfo.identifiers;
+
+    let issuerAids =
+      (await Promise.all(
+        aidIdentifierNames.map(
+          (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+        ),
+      )) || [];
+
+    try {
+      for (const aidIdentifierName of aidIdentifierNames) {
+        const client = this.clients.get(
+          this.aidsInfo.get(aidIdentifierName).agent.name,
+        )![0];
+        multisigAids.push(await client.identifiers().get(aidInfo.name));
+      }
+      const multisigAid = multisigAids[0];
+      console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
+      return multisigAid;
+    } catch {
+      multisigAids = [];
+    }
+    if (multisigAids.length == 0) {
+      const rstates = issuerAids.map((aid) => aid.state);
+      const states = rstates;
+
+      let kargsMultisigAID: CreateIdentiferArgs = {
+        algo: signify.Algos.group,
+        isith: aidInfo.isith,
+        nsith: aidInfo.nsith,
+        toad: this.kargsAID.toad,
+        wits: this.kargsAID.wits,
+        states: states,
+        rstates: rstates,
+      };
+      // if (aidInfo.delpre != null){
+      //   kargsMultisigAID.delpre = this.aids.get(aidInfo.delpre)![0].prefix;
+      // }
+      let multisigOps: any[] = [];
+      for (let index = 0; index < issuerAids.length; index++) {
+        const aid = issuerAids[index];
+        const kargsMultisigAIDClone = { ...kargsMultisigAID, mhab: aid };
+        const otherAids = issuerAids.filter((aidTmp) => aid !== aidTmp);
+        const client = this.clients.get(
+          this.aidsInfo.get(aid.name).agent.name,
+        )![0];
+
+        const op = await createAIDMultisig(
+          client,
+          aid,
+          otherAids,
+          aidInfo.name,
+          kargsMultisigAIDClone,
+          index === 0, // Set true for the first operation
+        );
+
+        multisigOps.push(op);
+      }
+      // Wait for all multisig operations to complete
+      for (let index = 0; index < multisigOps.length; index++) {
+        const client = this.clients.get(
+          this.aidsInfo.get(issuerAids[index].name).agent.name,
+        )![0];
+        await waitOperation(client, multisigOps[index]);
+      }
+
+      // Wait for multisig inception notifications for all clients
+      await waitAndMarkNotification(
+        this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
+        "/multisig/icp",
+      );
+      // await Promise.all(
+      //   issuerAids.map((aid) => {
+      //     const client = this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0];
+      //     return waitAndMarkNotification(client, "/multisig/icp");
+      //   })
+      // );
+
+      // Retrieve the newly created AIDs for all clients
+      multisigAids = await Promise.all(
+        issuerAids.map((aid) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return client.identifiers().get(aidInfo.name);
+        }),
+      );
+
+      assert(
+        multisigAids.every((aid) => aid.prefix === multisigAids[0].prefix),
+      );
+      assert(multisigAids.every((aid) => aid.name === multisigAids[0].name));
+      const multisigAid = multisigAids[0];
+
+      // Skip if they have already been authorized.
+      let oobis: Array<any> = await Promise.all(
+        issuerAids.map((aid) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return client.oobis().get(multisigAid.name, "agent");
+        }),
+      );
+
+      if (oobis.some((oobi) => oobi.oobis.length == 0)) {
+        const timestamp = createTimestamp();
+
+        // Add endpoint role for all clients
+        const roleOps = await Promise.all(
+          issuerAids.map((aid, index) => {
+            const otherAids = issuerAids.filter((_, i) => i !== index);
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return addEndRoleMultisig(
+              client,
+              multisigAid.name,
+              aid,
+              otherAids,
+              multisigAid,
+              timestamp,
+              index === 0,
+            );
+          }),
+        );
+
+        // Wait for all role operations to complete for each client
+        for (let i = 0; i < roleOps.length; i++) {
+          for (let j = 0; j < roleOps[i].length; j++) {
+            const client = this.clients.get(
+              this.aidsInfo.get(issuerAids[i].name).agent.name,
+            )![0];
+            await waitOperation(client, roleOps[i][j]);
+          }
+        }
+
+        // Wait for role resolution notifications for all clients
+        // await waitAndMarkNotification(this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0], "/multisig/rpy");
+        await Promise.all(
+          issuerAids.map((aid) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return waitAndMarkNotification(client, "/multisig/rpy");
+          }),
+        );
+
+        // Retrieve the OOBI again after the operation for all clients
+        oobis = await Promise.all(
+          issuerAids.map((aid) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return client.oobis().get(multisigAid.name, "agent");
+          }),
+        );
+      }
+
+      // Ensure that all OOBIs are consistent across all clients
+      assert(oobis.every((oobi) => oobi.role === oobis[0].role));
+      assert(oobis.every((oobi) => oobi.oobis[0] === oobis[0].oobis[0]));
+
+      const oobi = oobis[0].oobis[0].split("/agent/")[0];
+      const clients = Array.from(this.clients.values()).flat();
+
+      await Promise.all(
+        clients.map((client) =>
+          getOrCreateContact(client, multisigAid.name, oobi),
+        ),
+      );
+      console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
+      return multisigAid;
+    }
+  }
+
+  public async createRegistryMultisig(multisigAid: HabState, aidInfo: any) {
+    const registryIdentifierName = `${aidInfo.name}Registry`;
+    const aidIdentifierNames: Array<string> = aidInfo.identifiers;
+    let registries: Array<any> = new Array<any>();
+    let issuerAids =
+      (await Promise.all(
+        aidIdentifierNames.map(
+          (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+        ),
+      )) || [];
+    // Check if the registries already exist
+    for (const aidIdentifierName of aidIdentifierNames) {
+      const client = this.clients.get(
+        this.aidsInfo.get(aidIdentifierName).agent.name,
+      )![0];
+      let tmpRegistry = await client.registries().list(multisigAid.name);
+      tmpRegistry = tmpRegistry.filter(
+        (reg: { name: string }) => reg.name == `${aidInfo.name}Registry`,
+      );
+      registries.push(tmpRegistry);
+    }
+
+    // Check if registries exist
+    const allEmpty = registries.every((registry) => registry.length === 0);
+
+    if (allEmpty) {
+      const nonce = randomNonce();
+      const registryOps = [];
+      for (let i = 0; i < issuerAids!.length; i++) {
+        const otherAids = issuerAids!.filter((_, index) => index !== i);
+        const client = this.clients.get(
+          this.aidsInfo.get(issuerAids![i].name).agent.name,
+        )![0];
+        const registryOp = createRegistryMultisig(
+          client,
+          issuerAids![i],
+          otherAids,
+          multisigAid,
+          registryIdentifierName,
+          nonce,
+          i === 0, // Use true for the first operation, false for others
+        );
+        registryOps.push(registryOp);
+      }
+
+      // Await all registry creation operations
+      const createdOps = await Promise.all(registryOps);
+
+      // Wait for all operations to complete across multiple clients
+      await Promise.all(
+        createdOps.map((op, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(issuerAids![index].name).agent.name,
+          )![0];
+          return waitOperation(client, op);
+        }),
+      );
+
+      // Wait for multisig inception notification for each client
+      await waitAndMarkNotification(
+        this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
+        "/multisig/vcp",
+      );
+      // await Promise.all(
+      //   issuerAids!.map((aid, index) => {
+      //     const client = this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0];
+      //     return waitAndMarkNotification(client, "/multisig/vcp");
+      //   })
+      // );
+
+      // Recheck the registries for each client
+      const updatedRegistries = await Promise.all(
+        issuerAids!.map((aid, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return client.registries().list(multisigAid.name);
+        }),
+      );
+
+      // Update the `registries` array with the new values
+      registries.splice(0, registries.length, ...updatedRegistries);
+
+      // Ensure that all registries match the first one
+      const firstRegistry = registries[0][0];
+      registries.forEach((registry) => {
+        assert.equal(registry[0].regk, firstRegistry.regk);
+        assert.equal(registry[0].name, firstRegistry.name);
+      });
+
+      // Save the first registry and return it
+      this.registries.set(multisigAid.name, firstRegistry);
+      console.log(`${multisigAid.name} Registry created`);
+      return firstRegistry;
+    } else {
+      return registries[0][0];
+    }
   }
 
   public buildCredSource(credType: string, cred: any, o?: string) {
@@ -295,42 +575,80 @@ export class SingleSigVleiIssuance extends VleiIssuance {
   }
 
   public async getOrIssueCredential(
-    user: User,
+    credId: string,
     credName: string,
+    attributes: any,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    credSourceId?: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test",
+  ): Promise<any> {
+    const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
+    if (issuerAidInfo.identifiers) {
+      return this.getOrIssueCredentialMultiSig(
+        credId,
+        credName,
+        attributes,
+        issuerAidKey,
+        issueeAidKey,
+        credSourceId,
+        generateTestData,
+        testName,
+      );
+    } else {
+      return this.getOrIssueCredentialSingleSig(
+        credId,
+        credName,
+        attributes,
+        issuerAidKey,
+        issueeAidKey,
+        credSourceId,
+        generateTestData,
+        testName,
+      );
+    }
+  }
+
+  public async getOrIssueCredentialSingleSig(
+    credId: string,
+    credName: string,
+    attributes: any,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    credSourceId?: string,
     generateTestData: boolean = false,
     testName: string = "default_test",
   ): Promise<any> {
     const credInfo: CredentialInfo = this.credentialsInfo.get(credName)!;
-    const issuerClient = user.clients.get(credInfo.issuer)![0];
-    const recipientClient = user.clients.get(credInfo.issuee)![0];
-    const issuerAID = user.aids.get(credInfo.issuer)![0];
-    const recipientAID = user.aids.get(credInfo.issuee)![0];
-    const issuerRegistry = this.registries.get(credInfo.issuer)!;
-    const credData = credInfo.attributes;
+    const issuerAID = this.aids.get(issuerAidKey)![0];
+    const recipientAID = this.aids.get(issueeAidKey)![0];
+    const issuerAIDInfo = this.aidsInfo.get(issuerAidKey)!;
+    const recipientAIDInfo = this.aidsInfo.get(issueeAidKey)!;
+    const issuerClient = this.clients.get(issuerAIDInfo.agent.name)![0];
+    const recipientClient = this.clients.get(recipientAIDInfo.agent.name)![0];
+
+    const issuerRegistry = this.registries.get(issuerAIDInfo.name)!;
     const schema = this.schemas[credInfo.schema];
     const rules = this.rules[credInfo.rules!];
     const privacy = credInfo.privacy;
     let credSource = null;
-    if (credInfo.credSource != null) {
+    if (credSourceId != null) {
       const credType = credInfo.credSource["type"];
-      const issuerCred = this.credentials.get(credInfo.credSource["name"]);
+      const issuerCred = this.credentials.get(credSourceId);
       const credO = credInfo.credSource["o"] || null;
       credSource = this.buildCredSource(credType, issuerCred, credO);
     }
-    if (credInfo.attributes["AID"] != null) {
-      const roleAid = user.aids.get(credInfo.attributes["AID"])![0];
-      credData.AID = roleAid.prefix;
+    if (attributes["AID"] != null) {
+      attributes.AID = this.aids.get(attributes["AID"])![0].prefix;
     }
-    const credDataTmp = JSON.parse(JSON.stringify(credData));
-    if (credDataTmp.LEI == null) {
-      credDataTmp.LEI = user.LE;
-    }
+    const credData = { ...credInfo.attributes, ...attributes };
     const cred = await getOrIssueCredential(
       issuerClient,
       issuerAID,
       recipientAID,
       issuerRegistry,
-      credDataTmp,
+      credData,
       schema,
       rules || undefined,
       credSource || undefined,
@@ -356,1381 +674,277 @@ export class SingleSigVleiIssuance extends VleiIssuance {
     assert.equal(credHolder.sad.a.i, recipientAID.prefix);
     assert.equal(credHolder.status.s, "0");
     assert(credHolder.atc !== undefined);
-    this.credentials.set(credName, cred);
+    this.credentials.set(credId, cred);
     if (generateTestData) {
       let tmpCred = cred;
       tmpCred.cesr = await recipientClient.credentials().get(cred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
-        lei: credDataTmp.LEI,
+        lei: credData.LEI,
         credential: tmpCred,
-        engagementContextRole: credDataTmp.engagementContextRole,
+        engagementContextRole: credData.engagementContextRole,
       };
       await buildTestData(testData, testName);
     }
     return cred;
   }
-}
 
-export class MultiSigVleiIssuance extends VleiIssuance {
-  constructor(secretsJsonFile: string) {
-    super(secretsJsonFile);
-  }
-  protected async vleiIssuance(user: User) {
-    /**
-     * The abbreviations used in this script follows GLEIF vLEI
-     * ecosystem governance framework (EGF).
-     *      GEDA: GLEIF External Delegated AID
-     *      QVI:  Qualified vLEI Issuer
-     *      LE:   Legal Entity
-     *      GAR:  GLEIF Authorized Representative
-     *      QAR:  Qualified vLEI Issuer Authorized Representative
-     *      LAR:  Legal Entity Authorized Representative
-     *      ECR:  Engagement Context Role Person
-     */
-    const qviData = {
-      LEI: "254900OPPU84GM83MG36",
-    };
-
-    const leData = {
-      LEI: user.LE,
-    };
-    const ecrData = {
-      LEI: leData.LEI,
-      personLegalName: "John Doe",
-      engagementContextRole: user.contextRole,
-    };
-    const kargsAID = {
-      toad: witnessIds.length,
-      wits: witnessIds,
-    };
-    // Create a multisig AID for the GEDA.
-    // Skip if a GEDA AID has already been incepted.
-    let aidGEDAbyGAR1, aidGEDAbyGAR2: HabState;
-    try {
-      aidGEDAbyGAR1 = await user.clients
-        .get("gleif")![0]
-        .identifiers()
-        .get("GEDA");
-      aidGEDAbyGAR2 = await user.clients
-        .get("gleif")![1]
-        .identifiers()
-        .get("GEDA");
-    } catch {
-      const rstates = [
-        user.aids.get("gleif")![0].state,
-        user.aids.get("gleif")![1].state,
-      ];
-      const states = rstates;
-
-      const kargsMultisigAID: CreateIdentiferArgs = {
-        algo: signify.Algos.group,
-        isith: ["1/2", "1/2"],
-        nsith: ["1/2", "1/2"],
-        toad: kargsAID.toad,
-        wits: kargsAID.wits,
-        states: states,
-        rstates: rstates,
-      };
-
-      kargsMultisigAID.mhab = user.aids.get("gleif")![0];
-      const multisigAIDOp1 = await createAIDMultisig(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        "GEDA",
-        kargsMultisigAID,
-        true,
-      );
-      kargsMultisigAID.mhab = user.aids.get("gleif")![1];
-      const multisigAIDOp2 = await createAIDMultisig(
-        user.clients.get("gleif")![1],
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        "GEDA",
-        kargsMultisigAID,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("gleif")![0], multisigAIDOp1),
-        waitOperation(user.clients.get("gleif")![1], multisigAIDOp2),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
-        "/multisig/icp",
-      );
-
-      aidGEDAbyGAR1 = await user.clients
-        .get("gleif")![0]
-        .identifiers()
-        .get("GEDA");
-      aidGEDAbyGAR2 = await user.clients
-        .get("gleif")![1]
-        .identifiers()
-        .get("GEDA");
-    }
-    assert.equal(aidGEDAbyGAR1.prefix, aidGEDAbyGAR2.prefix);
-    assert.equal(aidGEDAbyGAR1.name, aidGEDAbyGAR2.name);
-    const aidGEDA = aidGEDAbyGAR1;
-
-    // Add endpoint role authorization for all GARs' agents.
-    // Skip if they have already been authorized.
-    let [oobiGEDAbyGAR1, oobiGEDAbyGAR2] = await Promise.all([
-      user.clients.get("gleif")![0].oobis().get(aidGEDA.name, "agent"),
-      user.clients.get("gleif")![1].oobis().get(aidGEDA.name, "agent"),
-    ]);
-    if (oobiGEDAbyGAR1.oobis.length == 0 || oobiGEDAbyGAR2.oobis.length == 0) {
-      const timestamp = createTimestamp();
-      const opList1 = await addEndRoleMultisig(
-        user.clients.get("gleif")![0],
-        aidGEDA.name,
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        aidGEDA,
-        timestamp,
-        true,
-      );
-      const opList2 = await addEndRoleMultisig(
-        user.clients.get("gleif")![1],
-        aidGEDA.name,
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        aidGEDA,
-        timestamp,
-      );
-
-      await Promise.all(
-        opList1.map((op: any) =>
-          waitOperation(user.clients.get("gleif")![0], op),
+  public async getOrIssueCredentialMultiSig(
+    credId: string,
+    credName: string,
+    attributes: any,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    credSourceId?: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test",
+  ) {
+    const credInfo: CredentialInfo = this.credentialsInfo.get(credName)!;
+    const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
+    const recipientAidInfo = this.aidsInfo.get(issueeAidKey)!;
+    const issuerAidIdentifierName = issuerAidInfo.name;
+    const recipientAidIdentifierName = recipientAidInfo.name;
+    const issuerAIDMultisig = this.aids.get(issuerAidKey)![0];
+    const recipientAID = this.aids.get(issueeAidKey)![0];
+    const credData = credInfo.attributes;
+    const schema = this.schemas[credInfo.schema];
+    let rules = this.rules[credInfo.rules!];
+    const privacy = credInfo.privacy;
+    const registryName = issuerAidInfo.name;
+    let issuerRegistry = this.registries.get(registryName)!;
+    const issuerAids =
+      (await Promise.all(
+        issuerAidInfo.identifiers.map(
+          (identifier: any) => this.aids.get(identifier)![0],
         ),
-      );
-      await Promise.all(
-        opList2.map((op: any) =>
-          waitOperation(user.clients.get("gleif")![1], op),
-        ),
-      );
+      )) || [];
+    let recepientAids = [];
 
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
-        "/multisig/rpy",
-      );
-
-      [oobiGEDAbyGAR1, oobiGEDAbyGAR2] = await Promise.all([
-        user.clients.get("gleif")![0].oobis().get(aidGEDA.name, "agent"),
-        user.clients.get("gleif")![1].oobis().get(aidGEDA.name, "agent"),
-      ]);
+    if (recipientAidInfo.identifiers) {
+      recepientAids =
+        (await Promise.all(
+          recipientAidInfo.identifiers.map(
+            (identifier: any) => this.aids.get(identifier)![0],
+          ),
+        )) || [];
+    } else {
+      recepientAids = [this.aids.get(recipientAidInfo.name)![0]];
     }
-    assert.equal(oobiGEDAbyGAR1.role, oobiGEDAbyGAR2.role);
-    assert.equal(oobiGEDAbyGAR1.oobis[0], oobiGEDAbyGAR2.oobis[0]);
 
-    // QARs, LARs, ECR resolve GEDA's OOBI
-    const oobiGEDA = oobiGEDAbyGAR1.oobis[0].split("/agent/")[0];
-    await Promise.all([
-      getOrCreateContact(user.clients.get("qvi")![0], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("qvi")![1], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("qvi")![2], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("le")![0], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("le")![1], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("le")![2], aidGEDA.name, oobiGEDA),
-      getOrCreateContact(user.clients.get("ecr")![0], aidGEDA.name, oobiGEDA),
-    ]);
-
-    // Create a multisig AID for the QVI.
-    // Skip if a QVI AID has already been incepted.
-    let aidQVIbyQAR1, aidQVIbyQAR2, aidQVIbyQAR3: HabState;
-    try {
-      aidQVIbyQAR1 = await user.clients
-        .get("qvi")![0]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
-      aidQVIbyQAR2 = await user.clients
-        .get("qvi")![1]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
-      aidQVIbyQAR3 = await user.clients
-        .get("qvi")![2]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
-    } catch {
-      const rstates = [
-        user.aids.get("qvi")![0].state,
-        user.aids.get("qvi")![1].state,
-        user.aids.get("qvi")![2].state,
-      ];
-      const states = rstates;
-
-      const kargsMultisigAID: CreateIdentiferArgs = {
-        algo: signify.Algos.group,
-        isith: ["2/3", "1/2", "1/2"],
-        nsith: ["2/3", "1/2", "1/2"],
-        toad: kargsAID.toad,
-        wits: kargsAID.wits,
-        states: states,
-        rstates: rstates,
-        delpre: aidGEDA.prefix,
-      };
-
-      kargsMultisigAID.mhab = user.aids.get("qvi")![0];
-      const multisigAIDOp1 = await createAIDMultisig(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        QVI_INTERNAL_NAME,
-        kargsMultisigAID,
-        true,
-      );
-      kargsMultisigAID.mhab = user.aids.get("qvi")![1];
-      const multisigAIDOp2 = await createAIDMultisig(
-        user.clients.get("qvi")![1],
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        QVI_INTERNAL_NAME,
-        kargsMultisigAID,
-      );
-      kargsMultisigAID.mhab = user.aids.get("qvi")![2];
-      const multisigAIDOp3 = await createAIDMultisig(
-        user.clients.get("qvi")![2],
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        QVI_INTERNAL_NAME,
-        kargsMultisigAID,
-      );
-
-      const aidQVIPrefix = multisigAIDOp1.name.split(".")[1];
-      assert.equal(multisigAIDOp2.name.split(".")[1], aidQVIPrefix);
-      assert.equal(multisigAIDOp3.name.split(".")[1], aidQVIPrefix);
-
-      // GEDA anchors delegation with an interaction event.
-      const anchor = {
-        i: aidQVIPrefix,
-        s: "0",
-        d: aidQVIPrefix,
-      };
-      const ixnOp1 = await delegateMultisig(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        aidGEDA,
-        anchor,
-        true,
-      );
-      const ixnOp2 = await delegateMultisig(
-        user.clients.get("gleif")![1],
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        aidGEDA,
-        anchor,
-      );
-      await Promise.all([
-        waitOperation(user.clients.get("gleif")![0], ixnOp1),
-        waitOperation(user.clients.get("gleif")![1], ixnOp2),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
-        "/multisig/ixn",
-      );
-
-      // QARs query the GEDA's key state
-      const queryOp1 = await user.clients
-        .get("qvi")![0]
-        .keyStates()
-        .query(aidGEDA.prefix, "1");
-      const queryOp2 = await user.clients
-        .get("qvi")![1]
-        .keyStates()
-        .query(aidGEDA.prefix, "1");
-      const queryOp3 = await user.clients
-        .get("qvi")![2]
-        .keyStates()
-        .query(aidGEDA.prefix, "1");
-
-      await Promise.all([
-        waitOperation(user.clients.get("qvi")![0], multisigAIDOp1),
-        waitOperation(user.clients.get("qvi")![1], multisigAIDOp2),
-        waitOperation(user.clients.get("qvi")![2], multisigAIDOp3),
-        waitOperation(user.clients.get("qvi")![0], queryOp1),
-        waitOperation(user.clients.get("qvi")![1], queryOp2),
-        waitOperation(user.clients.get("qvi")![2], queryOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/icp",
-      );
-
-      aidQVIbyQAR1 = await user.clients
-        .get("qvi")![0]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
-      aidQVIbyQAR2 = await user.clients
-        .get("qvi")![1]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
-      aidQVIbyQAR3 = await user.clients
-        .get("qvi")![2]
-        .identifiers()
-        .get(QVI_INTERNAL_NAME);
+    let credSource = null;
+    if (credSourceId != null) {
+      const credType = credInfo.credSource["type"];
+      const issuerCred = this.credentials.get(credSourceId);
+      const credO = credInfo.credSource["o"] || null;
+      credSource = this.buildCredSource(credType, issuerCred, credO);
+      credSource = credSource ? { e: credSource } : undefined;
     }
-    assert.equal(aidQVIbyQAR1.prefix, aidQVIbyQAR2.prefix);
-    assert.equal(aidQVIbyQAR1.prefix, aidQVIbyQAR3.prefix);
-    assert.equal(aidQVIbyQAR1.name, aidQVIbyQAR2.name);
-    assert.equal(aidQVIbyQAR1.name, aidQVIbyQAR3.name);
-    let aidQVI = aidQVIbyQAR1;
-
-    // Add endpoint role authorization for all QARs' agents.
-    // Skip if they have already been authorized.
-    let [oobiQVIbyQAR1, oobiQVIbyQAR2, oobiQVIbyQAR3] = await Promise.all([
-      user.clients.get("qvi")![0].oobis().get(aidQVI.name, "agent"),
-      user.clients.get("qvi")![1].oobis().get(aidQVI.name, "agent"),
-      user.clients.get("qvi")![2].oobis().get(aidQVI.name, "agent"),
-    ]);
-    if (
-      oobiQVIbyQAR1.oobis.length == 0 ||
-      oobiQVIbyQAR2.oobis.length == 0 ||
-      oobiQVIbyQAR3.oobis.length == 0
-    ) {
-      const timestamp = createTimestamp();
-      const opList1 = await addEndRoleMultisig(
-        user.clients.get("qvi")![0],
-        aidQVI.name,
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        aidQVI,
-        timestamp,
-        true,
-      );
-      const opList2 = await addEndRoleMultisig(
-        user.clients.get("qvi")![1],
-        aidQVI.name,
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        aidQVI,
-        timestamp,
-      );
-      const opList3 = await addEndRoleMultisig(
-        user.clients.get("qvi")![2],
-        aidQVI.name,
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        aidQVI,
-        timestamp,
-      );
-
-      await Promise.all(
-        opList1.map((op: any) =>
-          waitOperation(user.clients.get("qvi")![0], op),
-        ),
-      );
-      await Promise.all(
-        opList2.map((op: any) =>
-          waitOperation(user.clients.get("qvi")![1], op),
-        ),
-      );
-      await Promise.all(
-        opList3.map((op: any) =>
-          waitOperation(user.clients.get("qvi")![2], op),
-        ),
-      );
-
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/rpy",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![1],
-        "/multisig/rpy",
-      );
-
-      [oobiQVIbyQAR1, oobiQVIbyQAR2, oobiQVIbyQAR3] = await Promise.all([
-        user.clients.get("qvi")![0].oobis().get(aidQVI.name, "agent"),
-        user.clients.get("qvi")![1].oobis().get(aidQVI.name, "agent"),
-        user.clients.get("qvi")![2].oobis().get(aidQVI.name, "agent"),
-      ]);
-    }
-    assert.equal(oobiQVIbyQAR1.role, oobiQVIbyQAR2.role);
-    assert.equal(oobiQVIbyQAR1.role, oobiQVIbyQAR3.role);
-    assert.equal(oobiQVIbyQAR1.oobis[0], oobiQVIbyQAR2.oobis[0]);
-    assert.equal(oobiQVIbyQAR1.oobis[0], oobiQVIbyQAR3.oobis[0]);
-
-    // GARs, LARs, ECR resolve QVI AID's OOBI
-    const oobiQVI = oobiQVIbyQAR1.oobis[0].split("/agent/")[0];
-    await Promise.all([
-      getOrCreateContact(user.clients.get("gleif")![0], aidQVI.name, oobiQVI),
-      getOrCreateContact(user.clients.get("gleif")![1], aidQVI.name, oobiQVI),
-      getOrCreateContact(user.clients.get("le")![0], aidQVI.name, oobiQVI),
-      getOrCreateContact(user.clients.get("le")![1], aidQVI.name, oobiQVI),
-      getOrCreateContact(user.clients.get("le")![2], aidQVI.name, oobiQVI),
-      getOrCreateContact(user.clients.get("ecr")![0], aidQVI.name, oobiQVI),
-    ]);
-
-    // GARs creates a registry for GEDA.
-    // Skip if the registry has already been created.
-    let [gedaRegistrybyGAR1, gedaRegistrybyGAR2] = await Promise.all([
-      user.clients.get("gleif")![0].registries().list(aidGEDA.name),
-      user.clients.get("gleif")![1].registries().list(aidGEDA.name),
-    ]);
-    if (gedaRegistrybyGAR1.length == 0 && gedaRegistrybyGAR2.length == 0) {
-      const nonce = randomNonce();
-      const registryOp1 = await createRegistryMultisig(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        aidGEDA,
-        "gedaRegistry",
-        nonce,
-        true,
-      );
-      const registryOp2 = await createRegistryMultisig(
-        user.clients.get("gleif")![1],
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        aidGEDA,
-        "gedaRegistry",
-        nonce,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("gleif")![0], registryOp1),
-        waitOperation(user.clients.get("gleif")![1], registryOp2),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
-        "/multisig/vcp",
-      );
-
-      [gedaRegistrybyGAR1, gedaRegistrybyGAR2] = await Promise.all([
-        user.clients.get("gleif")![0].registries().list(aidGEDA.name),
-        user.clients.get("gleif")![1].registries().list(aidGEDA.name),
-      ]);
-    }
-    assert.equal(gedaRegistrybyGAR1[0].regk, gedaRegistrybyGAR2[0].regk);
-    assert.equal(gedaRegistrybyGAR1[0].name, gedaRegistrybyGAR2[0].name);
-    const gedaRegistry = gedaRegistrybyGAR1[0];
-
-    // GEDA issues a QVI vLEI credential to the QVI AID.
-    // Skip if the credential has already been issued.
-    let qviCredbyGAR1 = await getIssuedCredential(
-      user.clients.get("gleif")![0],
-      aidGEDA,
-      aidQVI,
-      QVI_SCHEMA_SAID,
+    rules = rules ? { r: rules } : undefined;
+    // Issuing a credential
+    let creds = await Promise.all(
+      issuerAids.map(
+        async (aid, index) =>
+          await getIssuedCredential(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            issuerAIDMultisig,
+            recipientAID,
+            schema,
+          ),
+      ),
     );
-    let qviCredbyGAR2 = await getIssuedCredential(
-      user.clients.get("gleif")![1],
-      aidGEDA,
-      aidQVI,
-      QVI_SCHEMA_SAID,
-    );
-    if (!(qviCredbyGAR1 && qviCredbyGAR2)) {
-      const kargsSub: CredentialSubject = {
-        i: aidQVI.prefix,
+
+    if (creds.every((cred) => !cred)) {
+      if (attributes["AID"] != null) {
+        attributes.AID = this.aids.get(attributes["AID"])![0].prefix;
+      }
+      const credData = { ...credInfo.attributes, ...attributes };
+
+      const kargsSub = {
+        i: recipientAID.prefix,
         dt: createTimestamp(),
-        ...qviData,
+        ...credData,
       };
-      const kargsIss: CredentialData = {
-        i: aidGEDA.prefix,
-        ri: gedaRegistry.regk,
-        s: QVI_SCHEMA_SAID,
+      if (!recipientAidInfo.identifiers) {
+        kargsSub.u = new Salter({}).qb64;
+      }
+
+      const kargsIss = {
+        i: issuerAIDMultisig.prefix,
+        ri: issuerRegistry.regk,
+        s: schema,
         a: kargsSub,
+        ...credSource!,
+        ...rules!,
       };
-      const IssOp1 = await issueCredentialMultisig(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        aidGEDA.name,
-        kargsIss,
-        true,
-      );
-      const IssOp2 = await issueCredentialMultisig(
-        user.clients.get("gleif")![1],
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        aidGEDA.name,
-        kargsIss,
+      if (!recipientAidInfo.identifiers) {
+        kargsIss.u = new Salter({}).qb64;
+      }
+
+      const IssOps = await Promise.all(
+        issuerAids.map((aid, index) =>
+          issueCredentialMultisig(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            aid,
+            issuerAids!.filter((_, i) => i !== index),
+            issuerAIDMultisig.name,
+            kargsIss,
+            index === 0,
+          ),
+        ),
       );
 
-      await Promise.all([
-        waitOperation(user.clients.get("gleif")![0], IssOp1),
-        waitOperation(user.clients.get("gleif")![1], IssOp2),
-      ]);
+      await Promise.all(
+        issuerAids.map(async (aid, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          await waitOperation(client, IssOps[index]);
+        }),
+      );
 
       await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
+        this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/iss",
       );
 
-      qviCredbyGAR1 = await getIssuedCredential(
-        user.clients.get("gleif")![0],
-        aidGEDA,
-        aidQVI,
-        QVI_SCHEMA_SAID,
-      );
-      qviCredbyGAR2 = await getIssuedCredential(
-        user.clients.get("gleif")![1],
-        aidGEDA,
-        aidQVI,
-        QVI_SCHEMA_SAID,
+      creds = await Promise.all(
+        issuerAids.map(async (aid, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return await getIssuedCredential(
+            client,
+            issuerAIDMultisig,
+            recipientAID,
+            schema,
+          );
+        }),
       );
 
       const grantTime = createTimestamp();
-      await grantMultisig(
-        user.clients.get("gleif")![0],
-        user.aids.get("gleif")![0],
-        [user.aids.get("gleif")![1]],
-        aidGEDA,
-        aidQVI,
-        qviCredbyGAR1,
-        grantTime,
-        true,
-      );
-      await grantMultisig(
-        user.clients.get("gleif")![1],
-        user.aids.get("gleif")![1],
-        [user.aids.get("gleif")![0]],
-        aidGEDA,
-        aidQVI,
-        qviCredbyGAR2,
-        grantTime,
+      await Promise.all(
+        creds.map(
+          async (cred, index) =>
+            await grantMultisig(
+              this.clients.get(
+                this.aidsInfo.get(issuerAids[index].name).agent.name,
+              )![0],
+              issuerAids[index],
+              issuerAids!.filter((_, i) => i !== index),
+              issuerAIDMultisig,
+              recipientAID,
+              cred,
+              grantTime,
+              index === 0,
+            ),
+        ),
       );
 
       await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
+        this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/exn",
       );
     }
-    assert.equal(qviCredbyGAR1.sad.d, qviCredbyGAR2.sad.d);
-    assert.equal(qviCredbyGAR1.sad.s, QVI_SCHEMA_SAID);
-    assert.equal(qviCredbyGAR1.sad.i, aidGEDA.prefix);
-    assert.equal(qviCredbyGAR1.sad.a.i, aidQVI.prefix);
-    assert.equal(qviCredbyGAR1.status.s, "0");
-    assert(qviCredbyGAR1.atc !== undefined);
-    const qviCred = qviCredbyGAR1;
+    const cred = creds[0];
+
+    // Exchange grant and admit messages.
+    // Check if the recipient is a singlesig AID
+    if (recipientAidInfo.identifiers) {
+      let credsReceived = await Promise.all(
+        recepientAids.map(async (aid, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return await getReceivedCredential(client, cred.sad.d);
+        }),
+      );
+
+      if (credsReceived.every((cred) => cred === undefined)) {
+        const admitTime = createTimestamp();
+
+        await Promise.all(
+          recepientAids.map(async (aid, index) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            await admitMultisig(
+              client,
+              aid,
+              recepientAids!.filter((_, i) => i !== index),
+              recipientAID,
+              issuerAIDMultisig,
+              admitTime,
+            );
+          }),
+        );
+        for (const aid of issuerAids) {
+          await waitAndMarkNotification(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            "/exn/ipex/admit",
+          );
+        }
+        for (const aid of recepientAids) {
+          await waitAndMarkNotification(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            "/multisig/exn",
+          );
+        }
+        for (const aid of recepientAids) {
+          await waitAndMarkNotification(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            "/exn/ipex/admit",
+          );
+        }
+
+        credsReceived = await Promise.all(
+          recepientAids.map(async (aid, index) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return await waitForCredential(client, cred.sad.d);
+          }),
+        );
+
+        // Assert received credential details
+        for (const credReceived of credsReceived) {
+          assert.equal(cred.sad.d, credReceived.sad.d);
+        }
+      }
+    } else {
+      let credReceived = await getReceivedCredential(
+        this.clients.get(
+          this.aidsInfo.get(recepientAids[0]!.name).agent.name,
+        )![0],
+        cred.sad.d,
+      );
+      if (!credReceived) {
+        await admitSinglesig(
+          this.clients.get(
+            this.aidsInfo.get(recepientAids[0]!.name).agent.name,
+          )![0],
+          this.aids.get(recepientAids[0]!.name)![0].name,
+          issuerAIDMultisig,
+        );
+        for (const aid of issuerAids) {
+          await waitAndMarkNotification(
+            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+            "/exn/ipex/admit",
+          );
+        }
+
+        credReceived = await waitForCredential(
+          this.clients.get(
+            this.aidsInfo.get(recepientAids[0]!.name).agent.name,
+          )![0],
+          cred.sad.d,
+        );
+      }
+      assert.equal(cred.sad.d, credReceived.sad.d);
+    }
     console.log(
-      "GEDA has issued a QVI vLEI credential with SAID:",
-      qviCred.sad.d,
+      `${issuerAIDMultisig.name} has issued a ${recipientAID.name} vLEI credential with SAID:`,
+      cred.sad.d,
     );
-
-    // GEDA and QVI exchange grant and admit messages.
-    // Skip if QVI has already received the credential.
-    let qviCredbyQAR1 = await getReceivedCredential(
-      user.clients.get("qvi")![0],
-      qviCred.sad.d,
-    );
-    let qviCredbyQAR2 = await getReceivedCredential(
-      user.clients.get("qvi")![1],
-      qviCred.sad.d,
-    );
-    let qviCredbyQAR3 = await getReceivedCredential(
-      user.clients.get("qvi")![2],
-      qviCred.sad.d,
-    );
-    if (!(qviCredbyQAR1 && qviCredbyQAR2 && qviCredbyQAR3)) {
-      const admitTime = createTimestamp();
-      await admitMultisig(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        aidQVI,
-        aidGEDA,
-        admitTime,
-      );
-      await admitMultisig(
-        user.clients.get("qvi")![1],
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        aidQVI,
-        aidGEDA,
-        admitTime,
-      );
-      await admitMultisig(
-        user.clients.get("qvi")![2],
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        aidQVI,
-        aidGEDA,
-        admitTime,
-      );
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![0],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("gleif")![1],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![1],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![2],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![1],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![2],
-        "/exn/ipex/admit",
-      );
-
-      qviCredbyQAR1 = await waitForCredential(
-        user.clients.get("qvi")![0],
-        qviCred.sad.d,
-      );
-      qviCredbyQAR2 = await waitForCredential(
-        user.clients.get("qvi")![1],
-        qviCred.sad.d,
-      );
-      qviCredbyQAR3 = await waitForCredential(
-        user.clients.get("qvi")![2],
-        qviCred.sad.d,
-      );
-    }
-    assert.equal(qviCred.sad.d, qviCredbyQAR1.sad.d);
-    assert.equal(qviCred.sad.d, qviCredbyQAR2.sad.d);
-    assert.equal(qviCred.sad.d, qviCredbyQAR3.sad.d);
-
-    // Create a multisig AID for the LE.
-    // Skip if a LE AID has already been incepted.
-    let aidLEbyLAR1, aidLEbyLAR2, aidLEbyLAR3: HabState;
-    try {
-      aidLEbyLAR1 = await user.clients
-        .get("le")![0]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-      aidLEbyLAR2 = await user.clients
-        .get("le")![1]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-      aidLEbyLAR3 = await user.clients
-        .get("le")![2]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-    } catch {
-      const rstates = [
-        user.aids.get("le")![0].state,
-        user.aids.get("le")![1].state,
-        user.aids.get("le")![2].state,
-      ];
-      const states = rstates;
-
-      const kargsMultisigAID: CreateIdentiferArgs = {
-        algo: signify.Algos.group,
-        isith: ["2/3", "1/2", "1/2"],
-        nsith: ["2/3", "1/2", "1/2"],
-        toad: kargsAID.toad,
-        wits: kargsAID.wits,
-        states: states,
-        rstates: rstates,
-      };
-
-      kargsMultisigAID.mhab = user.aids.get("le")![0];
-      const multisigAIDOp1 = await createAIDMultisig(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        LE_INTERNAL_NAME,
-        kargsMultisigAID,
-        true,
-      );
-      kargsMultisigAID.mhab = user.aids.get("le")![1];
-      const multisigAIDOp2 = await createAIDMultisig(
-        user.clients.get("le")![1],
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        LE_INTERNAL_NAME,
-        kargsMultisigAID,
-      );
-      kargsMultisigAID.mhab = user.aids.get("le")![2];
-      const multisigAIDOp3 = await createAIDMultisig(
-        user.clients.get("le")![2],
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        LE_INTERNAL_NAME,
-        kargsMultisigAID,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("le")![0], multisigAIDOp1),
-        waitOperation(user.clients.get("le")![1], multisigAIDOp2),
-        waitOperation(user.clients.get("le")![2], multisigAIDOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/icp",
-      );
-
-      aidLEbyLAR1 = await user.clients
-        .get("le")![0]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-      aidLEbyLAR2 = await user.clients
-        .get("le")![1]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-      aidLEbyLAR3 = await user.clients
-        .get("le")![2]
-        .identifiers()
-        .get(LE_INTERNAL_NAME);
-    }
-    assert.equal(aidLEbyLAR1.prefix, aidLEbyLAR2.prefix);
-    assert.equal(aidLEbyLAR1.prefix, aidLEbyLAR3.prefix);
-    assert.equal(aidLEbyLAR1.name, aidLEbyLAR2.name);
-    assert.equal(aidLEbyLAR1.name, aidLEbyLAR3.name);
-    const aidLE = aidLEbyLAR1;
-
-    // Add endpoint role authorization for all LARs' agents.
-    // Skip if they have already been authorized.
-    let [oobiLEbyLAR1, oobiLEbyLAR2, oobiLEbyLAR3] = await Promise.all([
-      user.clients.get("le")![0].oobis().get(aidLE.name, "agent"),
-      user.clients.get("le")![1].oobis().get(aidLE.name, "agent"),
-      user.clients.get("le")![2].oobis().get(aidLE.name, "agent"),
-    ]);
-    if (
-      oobiLEbyLAR1.oobis.length == 0 ||
-      oobiLEbyLAR2.oobis.length == 0 ||
-      oobiLEbyLAR3.oobis.length == 0
-    ) {
-      const timestamp = createTimestamp();
-      const opList1 = await addEndRoleMultisig(
-        user.clients.get("le")![0],
-        aidLE.name,
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        aidLE,
-        timestamp,
-        true,
-      );
-      const opList2 = await addEndRoleMultisig(
-        user.clients.get("le")![1],
-        aidLE.name,
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        aidLE,
-        timestamp,
-      );
-      const opList3 = await addEndRoleMultisig(
-        user.clients.get("le")![2],
-        aidLE.name,
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        aidLE,
-        timestamp,
-      );
-
-      await Promise.all(
-        opList1.map((op: any) => waitOperation(user.clients.get("le")![0], op)),
-      );
-      await Promise.all(
-        opList2.map((op: any) => waitOperation(user.clients.get("le")![1], op)),
-      );
-      await Promise.all(
-        opList3.map((op: any) => waitOperation(user.clients.get("le")![2], op)),
-      );
-
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/rpy",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![1],
-        "/multisig/rpy",
-      );
-
-      [oobiLEbyLAR1, oobiLEbyLAR2, oobiLEbyLAR3] = await Promise.all([
-        user.clients.get("le")![0].oobis().get(aidLE.name, "agent"),
-        user.clients.get("le")![1].oobis().get(aidLE.name, "agent"),
-        user.clients.get("le")![2].oobis().get(aidLE.name, "agent"),
-      ]);
-    }
-    assert.equal(oobiLEbyLAR1.role, oobiLEbyLAR2.role);
-    assert.equal(oobiLEbyLAR1.role, oobiLEbyLAR3.role);
-    assert.equal(oobiLEbyLAR1.oobis[0], oobiLEbyLAR2.oobis[0]);
-    assert.equal(oobiLEbyLAR1.oobis[0], oobiLEbyLAR3.oobis[0]);
-
-    // QARs, ECR resolve LE AID's OOBI
-    const oobiLE = oobiLEbyLAR1.oobis[0].split("/agent/")[0];
-    await Promise.all([
-      getOrCreateContact(user.clients.get("qvi")![0], aidLE.name, oobiLE),
-      getOrCreateContact(user.clients.get("qvi")![1], aidLE.name, oobiLE),
-      getOrCreateContact(user.clients.get("qvi")![2], aidLE.name, oobiLE),
-      getOrCreateContact(user.clients.get("ecr")![0], aidLE.name, oobiLE),
-    ]);
-
-    // QARs creates a registry for QVI AID.
-    // Skip if the registry has already been created.
-    let [qviRegistrybyQAR1, qviRegistrybyQAR2, qviRegistrybyQAR3] =
-      await Promise.all([
-        user.clients.get("qvi")![0].registries().list(aidQVI.name),
-        user.clients.get("qvi")![1].registries().list(aidQVI.name),
-        user.clients.get("qvi")![2].registries().list(aidQVI.name),
-      ]);
-    qviRegistrybyQAR1 = qviRegistrybyQAR1.filter(
-      (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
-    );
-    qviRegistrybyQAR2 = qviRegistrybyQAR2.filter(
-      (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
-    );
-    qviRegistrybyQAR3 = qviRegistrybyQAR3.filter(
-      (reg: { name: string }) => reg.name == `qviRegistry${aidLE.prefix}`,
-    );
-    if (
-      qviRegistrybyQAR1.length == 0 &&
-      qviRegistrybyQAR2.length == 0 &&
-      qviRegistrybyQAR3.length == 0
-    ) {
-      const nonce = randomNonce();
-      const registryOp1 = await createRegistryMultisig(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        aidQVI,
-        `qviRegistry${aidLE.prefix}`,
-        nonce,
-        true,
-      );
-      const registryOp2 = await createRegistryMultisig(
-        user.clients.get("qvi")![1],
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        aidQVI,
-        `qviRegistry${aidLE.prefix}`,
-        nonce,
-      );
-      const registryOp3 = await createRegistryMultisig(
-        user.clients.get("qvi")![2],
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        aidQVI,
-        `qviRegistry${aidLE.prefix}`,
-        nonce,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("qvi")![0], registryOp1),
-        waitOperation(user.clients.get("qvi")![1], registryOp2),
-        waitOperation(user.clients.get("qvi")![2], registryOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/vcp",
-      );
-
-      [qviRegistrybyQAR1, qviRegistrybyQAR2, qviRegistrybyQAR3] =
-        await Promise.all([
-          user.clients.get("qvi")![0].registries().list(aidQVI.name),
-          user.clients.get("qvi")![1].registries().list(aidQVI.name),
-          user.clients.get("qvi")![2].registries().list(aidQVI.name),
-        ]);
-    }
-    assert.equal(qviRegistrybyQAR1[0].regk, qviRegistrybyQAR2[0].regk);
-    assert.equal(qviRegistrybyQAR1[0].regk, qviRegistrybyQAR3[0].regk);
-    assert.equal(qviRegistrybyQAR1[0].name, qviRegistrybyQAR2[0].name);
-    assert.equal(qviRegistrybyQAR1[0].name, qviRegistrybyQAR3[0].name);
-    const qviRegistry = qviRegistrybyQAR1[0];
-
-    // QVI issues a LE vLEI credential to the LE.
-    // Skip if the credential has already been issued.
-    let leCredbyQAR1 = await getIssuedCredential(
-      user.clients.get("qvi")![0],
-      aidQVI,
-      aidLE,
-      LE_SCHEMA_SAID,
-    );
-    let leCredbyQAR2 = await getIssuedCredential(
-      user.clients.get("qvi")![1],
-      aidQVI,
-      aidLE,
-      LE_SCHEMA_SAID,
-    );
-    let leCredbyQAR3 = await getIssuedCredential(
-      user.clients.get("qvi")![2],
-      aidQVI,
-      aidLE,
-      LE_SCHEMA_SAID,
-    );
-    if (!(leCredbyQAR1 && leCredbyQAR2 && leCredbyQAR3)) {
-      const leCredSource = Saider.saidify({
-        d: "",
-        qvi: {
-          n: qviCred.sad.d,
-          s: qviCred.sad.s,
-        },
-      })[1];
-
-      const kargsSub: CredentialSubject = {
-        i: aidLE.prefix,
-        dt: createTimestamp(),
-        ...leData,
-      };
-      const kargsIss: CredentialData = {
-        i: aidQVI.prefix,
-        ri: qviRegistry.regk,
-        s: LE_SCHEMA_SAID,
-        a: kargsSub,
-        e: leCredSource,
-        r: LE_RULES,
-      };
-      const IssOp1 = await issueCredentialMultisig(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        aidQVI.name,
-        kargsIss,
-        true,
-      );
-      const IssOp2 = await issueCredentialMultisig(
-        user.clients.get("qvi")![1],
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        aidQVI.name,
-        kargsIss,
-      );
-      const IssOp3 = await issueCredentialMultisig(
-        user.clients.get("qvi")![2],
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        aidQVI.name,
-        kargsIss,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("qvi")![0], IssOp1),
-        waitOperation(user.clients.get("qvi")![1], IssOp2),
-        waitOperation(user.clients.get("qvi")![2], IssOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/iss",
-      );
-
-      leCredbyQAR1 = await getIssuedCredential(
-        user.clients.get("qvi")![0],
-        aidQVI,
-        aidLE,
-        LE_SCHEMA_SAID,
-      );
-      leCredbyQAR2 = await getIssuedCredential(
-        user.clients.get("qvi")![1],
-        aidQVI,
-        aidLE,
-        LE_SCHEMA_SAID,
-      );
-      leCredbyQAR3 = await getIssuedCredential(
-        user.clients.get("qvi")![2],
-        aidQVI,
-        aidLE,
-        LE_SCHEMA_SAID,
-      );
-
-      const grantTime = createTimestamp();
-      await grantMultisig(
-        user.clients.get("qvi")![0],
-        user.aids.get("qvi")![0],
-        [user.aids.get("qvi")![1], user.aids.get("qvi")![2]],
-        aidQVI,
-        aidLE,
-        leCredbyQAR1,
-        grantTime,
-        true,
-      );
-      await grantMultisig(
-        user.clients.get("qvi")![1],
-        user.aids.get("qvi")![1],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![2]],
-        aidQVI,
-        aidLE,
-        leCredbyQAR2,
-        grantTime,
-      );
-      await grantMultisig(
-        user.clients.get("qvi")![2],
-        user.aids.get("qvi")![2],
-        [user.aids.get("qvi")![0], user.aids.get("qvi")![1]],
-        aidQVI,
-        aidLE,
-        leCredbyQAR3,
-        grantTime,
-      );
-
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/multisig/exn",
-      );
-    }
-    assert.equal(leCredbyQAR1.sad.d, leCredbyQAR2.sad.d);
-    assert.equal(leCredbyQAR1.sad.d, leCredbyQAR3.sad.d);
-    assert.equal(leCredbyQAR1.sad.s, LE_SCHEMA_SAID);
-    assert.equal(leCredbyQAR1.sad.i, aidQVI.prefix);
-    assert.equal(leCredbyQAR1.sad.a.i, aidLE.prefix);
-    assert.equal(leCredbyQAR1.status.s, "0");
-    assert(leCredbyQAR1.atc !== undefined);
-    const leCred = leCredbyQAR1;
-    console.log("QVI has issued a LE vLEI credential with SAID:", leCred.sad.d);
-
-    // QVI and LE exchange grant and admit messages.
-    // Skip if LE has already received the credential.
-    let leCredbyLAR1 = await getReceivedCredential(
-      user.clients.get("le")![0],
-      leCred.sad.d,
-    );
-    let leCredbyLAR2 = await getReceivedCredential(
-      user.clients.get("le")![1],
-      leCred.sad.d,
-    );
-    let leCredbyLAR3 = await getReceivedCredential(
-      user.clients.get("le")![2],
-      leCred.sad.d,
-    );
-    if (!(leCredbyLAR1 && leCredbyLAR2 && leCredbyLAR3)) {
-      const admitTime = createTimestamp();
-      await admitMultisig(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        aidLE,
-        aidQVI,
-        admitTime,
-      );
-      await admitMultisig(
-        user.clients.get("le")![1],
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        aidLE,
-        aidQVI,
-        admitTime,
-      );
-      await admitMultisig(
-        user.clients.get("le")![2],
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        aidLE,
-        aidQVI,
-        admitTime,
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![0],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![1],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("qvi")![2],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![1],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![2],
-        "/multisig/exn",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![1],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![2],
-        "/exn/ipex/admit",
-      );
-
-      leCredbyLAR1 = await waitForCredential(
-        user.clients.get("le")![0],
-        leCred.sad.d,
-      );
-      leCredbyLAR2 = await waitForCredential(
-        user.clients.get("le")![1],
-        leCred.sad.d,
-      );
-      leCredbyLAR3 = await waitForCredential(
-        user.clients.get("le")![2],
-        leCred.sad.d,
-      );
-    }
-    assert.equal(leCred.sad.d, leCredbyLAR1.sad.d);
-    assert.equal(leCred.sad.d, leCredbyLAR2.sad.d);
-    assert.equal(leCred.sad.d, leCredbyLAR3.sad.d);
-
-    // LARs creates a registry for LE AID.
-    // Skip if the registry has already been created.
-    let [leRegistrybyLAR1, leRegistrybyLAR2, leRegistrybyLAR3] =
-      await Promise.all([
-        user.clients.get("le")![0].registries().list(aidLE.name),
-        user.clients.get("le")![1].registries().list(aidLE.name),
-        user.clients.get("le")![2].registries().list(aidLE.name),
-      ]);
-    leRegistrybyLAR1 = leRegistrybyLAR1.filter(
-      (reg: { name: string }) =>
-        reg.name == `leRegistry${user.aids.get("ecr")![0].prefix}`,
-    );
-    leRegistrybyLAR2 = leRegistrybyLAR2.filter(
-      (reg: { name: string }) =>
-        reg.name == `leRegistry${user.aids.get("ecr")![0].prefix}`,
-    );
-    leRegistrybyLAR3 = leRegistrybyLAR3.filter(
-      (reg: { name: string }) =>
-        reg.name == `leRegistry${user.aids.get("ecr")![0].prefix}`,
-    );
-    if (
-      leRegistrybyLAR1.length == 0 &&
-      leRegistrybyLAR2.length == 0 &&
-      leRegistrybyLAR3.length == 0
-    ) {
-      const nonce = randomNonce();
-      const registryOp1 = await createRegistryMultisig(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        aidLE,
-        `leRegistry${user.aids.get("ecr")![0].prefix}`,
-        nonce,
-        true,
-      );
-      const registryOp2 = await createRegistryMultisig(
-        user.clients.get("le")![1],
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        aidLE,
-        `leRegistry${user.aids.get("ecr")![0].prefix}`,
-        nonce,
-      );
-      const registryOp3 = await createRegistryMultisig(
-        user.clients.get("le")![2],
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        aidLE,
-        `leRegistry${user.aids.get("ecr")![0].prefix}`,
-        nonce,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("le")![0], registryOp1),
-        waitOperation(user.clients.get("le")![1], registryOp2),
-        waitOperation(user.clients.get("le")![2], registryOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/vcp",
-      );
-
-      [leRegistrybyLAR1, leRegistrybyLAR2, leRegistrybyLAR3] =
-        await Promise.all([
-          user.clients.get("le")![0].registries().list(aidLE.name),
-          user.clients.get("le")![1].registries().list(aidLE.name),
-          user.clients.get("le")![2].registries().list(aidLE.name),
-        ]);
-    }
-    assert.equal(leRegistrybyLAR1[0].regk, leRegistrybyLAR2[0].regk);
-    assert.equal(leRegistrybyLAR1[0].regk, leRegistrybyLAR3[0].regk);
-    assert.equal(leRegistrybyLAR1[0].name, leRegistrybyLAR2[0].name);
-    assert.equal(leRegistrybyLAR1[0].name, leRegistrybyLAR3[0].name);
-    const leRegistry = leRegistrybyLAR1[0];
-
-    // LE issues a ECR vLEI credential to the ECR Person.
-    // Skip if the credential has already been issued.
-    let ecrCredbyLAR1 = await getIssuedCredential(
-      user.clients.get("le")![0],
-      aidLE,
-      user.aids.get("ecr")![0],
-      ECR_SCHEMA_SAID,
-    );
-    let ecrCredbyLAR2 = await getIssuedCredential(
-      user.clients.get("le")![1],
-      aidLE,
-      user.aids.get("ecr")![0],
-      ECR_SCHEMA_SAID,
-    );
-    let ecrCredbyLAR3 = await getIssuedCredential(
-      user.clients.get("le")![2],
-      aidLE,
-      user.aids.get("ecr")![0],
-      ECR_SCHEMA_SAID,
-    );
-    if (!(ecrCredbyLAR1 && ecrCredbyLAR2 && ecrCredbyLAR3)) {
-      console.log("Issuing ECR vLEI Credential from LE");
-      const ecrCredSource = Saider.saidify({
-        d: "",
-        le: {
-          n: leCred.sad.d,
-          s: leCred.sad.s,
-        },
-      })[1];
-
-      const kargsSub: CredentialSubject = {
-        i: user.aids.get("ecr")![0].prefix,
-        dt: createTimestamp(),
-        u: new Salter({}).qb64,
-        ...ecrData,
-      };
-      const kargsIss: CredentialData = {
-        u: new Salter({}).qb64,
-        i: aidLE.prefix,
-        ri: leRegistry.regk,
-        s: ECR_SCHEMA_SAID,
-        a: kargsSub,
-        e: ecrCredSource,
-        r: ECR_RULES,
-      };
-
-      const IssOp1 = await issueCredentialMultisig(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        aidLE.name,
-        kargsIss,
-        true,
-      );
-      const IssOp2 = await issueCredentialMultisig(
-        user.clients.get("le")![1],
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        aidLE.name,
-        kargsIss,
-      );
-      const IssOp3 = await issueCredentialMultisig(
-        user.clients.get("le")![2],
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        aidLE.name,
-        kargsIss,
-      );
-
-      await Promise.all([
-        waitOperation(user.clients.get("le")![0], IssOp1),
-        waitOperation(user.clients.get("le")![1], IssOp2),
-        waitOperation(user.clients.get("le")![2], IssOp3),
-      ]);
-
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/iss",
-      );
-
-      ecrCredbyLAR1 = await getIssuedCredential(
-        user.clients.get("le")![0],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ECR_SCHEMA_SAID,
-      );
-      ecrCredbyLAR2 = await getIssuedCredential(
-        user.clients.get("le")![1],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ECR_SCHEMA_SAID,
-      );
-      ecrCredbyLAR3 = await getIssuedCredential(
-        user.clients.get("le")![2],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ECR_SCHEMA_SAID,
-      );
-
-      const grantTime = createTimestamp();
-      await grantMultisig(
-        user.clients.get("le")![0],
-        user.aids.get("le")![0],
-        [user.aids.get("le")![1], user.aids.get("le")![2]],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ecrCredbyLAR1,
-        grantTime,
-        true,
-      );
-      await grantMultisig(
-        user.clients.get("le")![1],
-        user.aids.get("le")![1],
-        [user.aids.get("le")![0], user.aids.get("le")![2]],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ecrCredbyLAR2,
-        grantTime,
-      );
-      await grantMultisig(
-        user.clients.get("le")![2],
-        user.aids.get("le")![2],
-        [user.aids.get("le")![0], user.aids.get("le")![1]],
-        aidLE,
-        user.aids.get("ecr")![0],
-        ecrCredbyLAR3,
-        grantTime,
-      );
-
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/multisig/exn",
-      );
-    }
-    assert.equal(ecrCredbyLAR1.sad.d, ecrCredbyLAR2.sad.d);
-    assert.equal(ecrCredbyLAR1.sad.d, ecrCredbyLAR3.sad.d);
-    assert.equal(ecrCredbyLAR1.sad.s, ECR_SCHEMA_SAID);
-    assert.equal(ecrCredbyLAR1.sad.i, aidLE.prefix);
-    assert.equal(ecrCredbyLAR1.sad.a.i, user.aids.get("ecr")![0].prefix);
-    assert.equal(ecrCredbyLAR1.status.s, "0");
-    assert(ecrCredbyLAR1.atc !== undefined);
-    const ecrCred = ecrCredbyLAR1;
-    console.log(
-      "LE has issued an ECR vLEI credential with SAID:",
-      ecrCred.sad.d,
-    );
-
-    // LE and ECR Person exchange grant and admit messages.
-    // Skip if ECR Person has already received the credential.
-    let ecrCredbyECR = await getReceivedCredential(
-      user.clients.get("ecr")![0],
-      ecrCred.sad.d,
-    );
-    if (!ecrCredbyECR) {
-      await admitSinglesig(
-        user.clients.get("ecr")![0],
-        user.aids.get("ecr")![0].name,
-        aidLE,
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![0],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![1],
-        "/exn/ipex/admit",
-      );
-      await waitAndMarkNotification(
-        user.clients.get("le")![2],
-        "/exn/ipex/admit",
-      );
-
-      ecrCredbyECR = await waitForCredential(
-        user.clients.get("ecr")![0],
-        ecrCred.sad.d,
-      );
-    }
-    assert.equal(ecrCred.sad.d, ecrCredbyECR.sad.d);
+    this.credentials.set(credId, cred);
   }
 }
