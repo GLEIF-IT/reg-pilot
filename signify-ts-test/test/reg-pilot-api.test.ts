@@ -530,7 +530,7 @@ export async function checkFailUpload(
     const failUpBody = await failUpResp.json();
     return true;
   } else if (fileName.includes("wrongAid")) {
-    failMessage = "signature from unknown AID";
+    failMessage = "signature from AID that is not a known";
   }
 
   assert.equal(failUpResp.status, 200);
