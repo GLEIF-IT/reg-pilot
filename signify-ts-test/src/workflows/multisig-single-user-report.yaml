@@ -1,0 +1,7 @@
+workflow:
+  steps:
+    gen_report_ecr1:
+      id: "gen_report_ecr1"
+      type: "generate_report"
+      aid: "ecr-aid-1"
+      description: "Generating reports for ecr-aid-1 user"

@@ -100,31 +100,6 @@ handle_users() {
     deduplicate_array sig_types
     deduplicate_array user_types
     echo "Finished setting sig_types ${sig_types[*]} and user_types ${user_types[*]}"
-
-    #     for id_type in "${id_types[@]}"; do
-    #         if [[ "${id_type}" == "single-aid" ]]; then
-    #             user_types+=("single-user")
-    #         fi
-    #         if [[ "${id_type}" == "multiple-aid" ]]; then
-    #             user_types+=("multi-user")
-    #         fi
-    #     done
-    # else
-    #     # Parse the workflow
-    #     # for instance issue-credentials-multisig-single-user.yaml should result in sig_types=multisig and user_types=single-user
-    #     echo "WORKFLOW is set ${WORKFLOW}, use test-workflow.sh instead"
-    #     exit 1
-    #     # for workflow in $(echo $WORKFLOW | sed "s/,/ /g"); do
-    #     #     IFS='-' read -r -a workflow_parts <<< "$workflow"
-    #     #     sig_types+=("${workflow_parts[0]}")
-    #     #     user_types+=("${workflow_parts[1]}-user")
-    #     # done
-    # fi
-
-    # Call deduplication function for each array
-    # deduplicate_array sig_types
-    # deduplicate_array user_types
-    # echo "Finished setting sig_types ${sig_types[*]} and user_types ${user_types[*]}"
 }
 
 handleEnv() {
@@ -257,38 +232,5 @@ for arg in "${args[@]}"; do
             done
             args=("${args[@]/$arg}")
             ;;
-        # --data
-        # --report)
-        #     npx jest ./report.test.ts
-        #     exitOnFail "$1"
-        #     args=("${args[@]/$arg}")
-        #     ;;
-        # --report=*)
-        #     report_type="${arg#*=}"
-        #     case $report_type in
-        #         external_manifest | simple | unfoldered | unzipped | fail)
-        #             export REPORT_TYPES="$report_type"
-        #             echo "REPORT_TYPE set to: $REPORT_TYPES"
-        #     esac
-        #     npx jest ./report.test.ts
-        #     exitOnFail "$1"
-        #     args=("${args[@]/$arg}")
-        #     ;;
-        # --verify)
-        #     npx jest ./reg-pilot-api.test.ts
-        #     exitOnFail "$1"
-        #     args=("${args[@]/$arg}")
-        #     ;;
-        # --proxy)
-        #     export REG_PILOT_API="${REG_PILOT_PROXY}"
-        #     echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
-        #     npx jest ./vlei-verification.test.ts
-        #     exitOnFail "$1"
-        #     args=("${args[@]/$arg}")
-        #     ;;
-        # *)
-        #     echo "Step argument unknown: $arg"
-        #     printHelp
-        #     ;;
     esac
 done
