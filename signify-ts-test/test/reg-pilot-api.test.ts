@@ -109,10 +109,10 @@ async function single_user_test(user: ApiUser) {
   assert.equal(cresp.status, 200);
   let cbody = await cresp.json();
   assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
-  // assert.equal(
-  //   cbody["msg"],
-  //   `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
-  // );
+  assert.equal(
+    cbody["msg"],
+    `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
+  );
   assert.equal(cbody["said"], user.ecrCred.sad.d);
 
   // try to get status without signed headers provided
@@ -346,10 +346,10 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     assert.equal(cresp.status, 200);
     let cbody = await cresp.json();
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
-    // assert.equal(
-    //   cbody["msg"],
-    //   `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
-    // );
+    assert.equal(
+      cbody["msg"],
+      `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
+    );
     assert.equal(cbody["said"], user.ecrCred.sad.d);
 
     // try to get status without signed headers provided
@@ -470,7 +470,7 @@ export async function checkSignedUpload(
   assert.equal(signedUpBody["status"], "verified");
   assert.equal(signedUpBody["submitter"], `${user.ecrAid.prefix}`);
   const expectedEnding = `files in report package, submitted by ${user.ecrAid.prefix}, have been signed by known AIDs from the LEI ${user.ecrCred.sad.a.LEI}.`;
-  // expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
+  expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
 
   assert.equal(signedUpBody["filename"], fileName);
   assert.equal(signedUpBody["contentType"], "application/zip");
@@ -530,7 +530,7 @@ export async function checkFailUpload(
     const failUpBody = await failUpResp.json();
     return true;
   } else if (fileName.includes("wrongAid")) {
-    failMessage = "signature from unknown AID";
+    failMessage = "signature from AID that is not a known";
   }
 
   assert.equal(failUpResp.status, 200);
