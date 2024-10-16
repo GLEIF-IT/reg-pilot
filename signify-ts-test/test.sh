@@ -22,12 +22,28 @@ deduplicate_array() {
     eval "$array_name=(\"\${unique[@]}\")"
 }
 
+# Updated deduplication function
+deduplicate_array() {
+    local array_name=$1
+    eval "local arr=(\"\${${array_name}[@]}\")"
+    local seen=()
+    local unique=()
+    for item in "${arr[@]}"; do
+        if [[ ! " ${seen[*]} " =~ " ${item} " ]]; then
+            unique+=("$item")
+            seen+=("$item")
+        fi
+    done
+    eval "$array_name=(\"\${unique[@]}\")"
+}
+
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
     echo "  --fast"
     echo "      Runs --all but with less rigor for the fastest runs"
     echo "  --all"
+    echo "      Runs --build --docker=verify --data --report --verify"
     echo "      Runs --build --docker=verify --data --report --verify"
     echo "  --docker=deps|verify|proxy-verify"
     echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers, you will need to specify the REG_PILOT_API and VLEI_VERIFIER environment variables"
@@ -38,10 +54,15 @@ printHelp() {
     echo "  --data"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "  --report"
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"
     echo "      run the reg-pilot-api and vlei-verifier integration tests using the keria instance to login and upload signed/failure reports"
+    echo "  --sigs"
+    echo "      use sigs=1 for singlesig, otherwise multisig configuration"
+    echo "  --users"
+    echo "      use users=1 for single-user, otherwise mutiple-user configuration"
     echo "  --sigs"
     echo "      use sigs=1 for singlesig, otherwise multisig configuration"
     echo "  --users"
@@ -175,6 +196,7 @@ args=("$@")
 checkArgs
 
 handle_users
+handle_users
 
 handle_arguments "--help" "" 'printHelp'
 handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
@@ -183,6 +205,7 @@ handle_arguments "--build" "" 'npm run build'
 
 
 handleEnv
+# Parse non-workflow arguments
 # Parse non-workflow arguments
 for arg in "${args[@]}"; do
     # echo "Processing step argument: $arg"
@@ -223,6 +246,7 @@ for arg in "${args[@]}"; do
             for sig_type in "${sig_types[@]}"; do
                 for user_type in "${user_types[@]}"; do
                     wfile="${sig_type}-${user_type}-${arg#--}.yaml"
+                    wfile="${sig_type}-${user_type}-${arg#--}.yaml"
                     wpath="$(pwd)/src/workflows/${wfile}"
                     cfile="configuration-${sig_type}-${user_type}.json"
                     cpath="$(pwd)/src/config/${cfile}"
@@ -237,6 +261,7 @@ for arg in "${args[@]}"; do
                             echo "SKIPPING - Configuration file ${cpath} does not exist"
                         fi
                     else
+                        echo "SKIPPING - Workflow file ${wpath} does not exist"
                         echo "SKIPPING - Workflow file ${wpath} does not exist"
                     fi
                 done

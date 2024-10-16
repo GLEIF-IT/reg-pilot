@@ -59,10 +59,10 @@ export const OOR_RULES = LE_RULES;
 export const OOR_AUTH_RULES = LE_RULES;
 
 export const CRED_RETRY_DEFAULTS = {
-  maxSleep: 90000,
-  minSleep: 5000,
+  maxSleep: 100000,
+  minSleep: 10000,
   maxRetries: undefined,
-  timeout: 300000,
+  timeout: 500000,
 };
 
 export const SCHEMAS = {
