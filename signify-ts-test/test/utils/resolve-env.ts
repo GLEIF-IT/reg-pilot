@@ -30,7 +30,7 @@ const WIL = "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM";
 const WES = "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX";
 
 export function resolveEnvironment(
-  input?: TestEnvironmentPreset
+  input?: TestEnvironmentPreset,
 ): TestEnvironment {
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
   let env;
@@ -139,10 +139,10 @@ export function resolveEnvironment(
           process.env.WITNESS_IDS === ""
             ? []
             : process.env.WITNESS_IDS?.split(",") || [
-          "BNZBr3xjR0Vtat_HxFJnfBwQcpDj3LGl4h_MCQdmyN-r",
-          "BH_XYb3mBmRB1nBVl8XrKjtuQkcIWYKALY4ZWLVOZjKg",
-          "BAPWdGXGfiFsi3sMvSCPDnoPnEhPp-ZWxK9RYrqCQTa_",
-        ],
+                "BNZBr3xjR0Vtat_HxFJnfBwQcpDj3LGl4h_MCQdmyN-r",
+                "BH_XYb3mBmRB1nBVl8XrKjtuQkcIWYKALY4ZWLVOZjKg",
+                "BAPWdGXGfiFsi3sMvSCPDnoPnEhPp-ZWxK9RYrqCQTa_",
+              ],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
