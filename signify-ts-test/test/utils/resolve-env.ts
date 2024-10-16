@@ -93,7 +93,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-dev.rootsid.cloud/docs/",
+          "https://reg-api-dev.rootsid.cloud",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
@@ -108,20 +108,24 @@ export function resolveEnvironment(
       env = {
         preset: preset,
         url:
-          process.env.KERIA || "https://keria-demoservice.rootsid.cloud/admin",
+          process.env.KERIA || "https://keria-test.rootsid.cloud/admin",
         bootUrl:
-          process.env.KERIA_BOOT || "https://keria-demoservice.rootsid.cloud",
+          process.env.KERIA_BOOT || "https://keria-test.rootsid.cloud",
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [
-          "https://witness-dev01.rootsid.cloud",
-          "https://witness-dev02.rootsid.cloud",
-          "https://witness-dev03.rootsid.cloud",
+          "http://wit1.rootsid.cloud:5501",
+          "http://wit2.rootsid.cloud:5503",
+          "http://wit3.rootsid.cloud:5505",          
         ],
-        witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
+        witnessIds: process.env.WITNESS_IDS?.split(",") || [
+          "BNZBr3xjR0Vtat_HxFJnfBwQcpDj3LGl4h_MCQdmyN-r",
+          "BH_XYb3mBmRB1nBVl8XrKjtuQkcIWYKALY4ZWLVOZjKg",
+          "BAPWdGXGfiFsi3sMvSCPDnoPnEhPp-ZWxK9RYrqCQTa_",     
+        ],               
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API ||
-          "https://reg-api-test.rootsid.cloud/docs/",
+          "https://reg-api-test.rootsid.cloud",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
