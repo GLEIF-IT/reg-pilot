@@ -161,6 +161,7 @@ export async function getOrCreateAID(
   try {
     return await client.identifiers().get(name);
   } catch {
+    console.log("Creating AID", name, ": ", kargs);
     const result: EventResult = await client.identifiers().create(name, kargs);
 
     await waitOperation(client, await result.op());

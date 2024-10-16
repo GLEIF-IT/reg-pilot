@@ -22,12 +22,28 @@ deduplicate_array() {
     eval "$array_name=(\"\${unique[@]}\")"
 }
 
+# Updated deduplication function
+deduplicate_array() {
+    local array_name=$1
+    eval "local arr=(\"\${${array_name}[@]}\")"
+    local seen=()
+    local unique=()
+    for item in "${arr[@]}"; do
+        if [[ ! " ${seen[*]} " =~ " ${item} " ]]; then
+            unique+=("$item")
+            seen+=("$item")
+        fi
+    done
+    eval "$array_name=(\"\${unique[@]}\")"
+}
+
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
     echo "  --fast"
     echo "      Runs --all but with less rigor for the fastest runs"
     echo "  --all"
+    echo "      Runs --build --docker=verify --data --report --verify"
     echo "      Runs --build --docker=verify --data --report --verify"
     echo "  --docker=deps|verify|proxy-verify"
     echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers, you will need to specify the REG_PILOT_API and VLEI_VERIFIER environment variables"
@@ -38,10 +54,15 @@ printHelp() {
     echo "  --data"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "  --report"
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"
     echo "      run the reg-pilot-api and vlei-verifier integration tests using the keria instance to login and upload signed/failure reports"
+    echo "  --sigs"
+    echo "      use sigs=1 for singlesig, otherwise multisig configuration"
+    echo "  --users"
+    echo "      use users=1 for single-user, otherwise mutiple-user configuration"
     echo "  --sigs"
     echo "      use sigs=1 for singlesig, otherwise multisig configuration"
     echo "  --users"
@@ -65,7 +86,7 @@ clearEnv() {
     unset WITNESS_URLS
     unset WITNESS_IDS
     unset VLEI_SERVER
-    unset SECRETS_JSON_CONFIG
+    unset CONFIGURATION
     unset SPEED
 }
 
@@ -82,19 +103,14 @@ handle_users() {
     handle_arguments "--sigs" "" 'sig_types+=("multisig")'
 
     # Check if arrays are empty
-    if [ ${#sig_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ] && [ -z "$SECRETS_JSON_CONFIG" ]; then
-        echo "No sig_types or user_types specified, and no SECRETS_JSON_CONFIG, so using default permutations"
+    if [ ${#sig_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ]; then
+        echo "No sig_types or user_types specified, so using default permutations"
         sig_types=("multisig" "singlesig")
-        user_types=("multiple-user" "single-user")
+        user_types=("multi-user" "single-user")
     else
         # Parse the secrets json config
         # for instance multisig-multiple-users should result in sig_types=multisig and user_types=multiple-user
-        echo "Argument or SECRETS_JSON_CONFIG is set"
-        for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
-            IFS='-' read -r -a secret_parts <<< "$secret"
-            sig_types+=("${secret_parts[0]}")
-            user_types+=("${secret_parts[1]}-user")
-        done
+        echo "Argument is set"
     fi
     # Call deduplication function for each array
     deduplicate_array sig_types
@@ -112,7 +128,7 @@ handleEnv() {
     fi
 
     # Export environment variables
-    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED
+    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER CONFIGURATION SPEED
 
     # Print environment variable values
     echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
@@ -180,13 +196,16 @@ args=("$@")
 checkArgs
 
 handle_users
+handle_users
 
 handle_arguments "--help" "" 'printHelp'
 handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
 handle_arguments "--fast" "" 'SPEED="fast"' 'export SPEED' 'echo "Using speed settings: ${SPEED}"'
 handle_arguments "--build" "" 'npm run build'
 
+
 handleEnv
+# Parse non-workflow arguments
 # Parse non-workflow arguments
 for arg in "${args[@]}"; do
     # echo "Processing step argument: $arg"
@@ -206,6 +225,14 @@ for arg in "${args[@]}"; do
             exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
+        --report=*)
+            report_type="${arg#*=}"
+            case $report_type in
+                external_manifest | simple | unfoldered | unzipped | fail)
+                    handle_arguments "${arg}" "--report" 'export REPORT_TYPES="$report_type"' 'echo "Completed processing ${arg[i]} and exported REPORT_TYPE as ${REPORT_TYPES}"'
+            esac
+            ;;
+            
     esac
 done
 
@@ -219,13 +246,22 @@ for arg in "${args[@]}"; do
             for sig_type in "${sig_types[@]}"; do
                 for user_type in "${user_types[@]}"; do
                     wfile="${sig_type}-${user_type}-${arg#--}.yaml"
+                    wfile="${sig_type}-${user_type}-${arg#--}.yaml"
                     wpath="$(pwd)/src/workflows/${wfile}"
+                    cfile="configuration-${sig_type}-${user_type}.json"
+                    cpath="$(pwd)/src/config/${cfile}"
                     if [ -f "$wpath" ]; then
                         export WORKFLOW="$wfile"
-                        echo "LAUNCHING - Workflow file ${wpath} exists"
-                        npx jest ./run-workflow.test.ts
-                        exitOnFail "$1"
+                        if [ -f "$cpath" ]; then
+                            export CONFIGURATION="$cfile"
+                            echo "LAUNCHING - Workflow file ${wpath} exists and Configuration file ${cpath} exists"
+                            npx jest ./run-workflow.test.ts
+                            exitOnFail "$1"
+                        else
+                            echo "SKIPPING - Configuration file ${cpath} does not exist"
+                        fi
                     else
+                        echo "SKIPPING - Workflow file ${wpath} does not exist"
                         echo "SKIPPING - Workflow file ${wpath} does not exist"
                     fi
                 done
