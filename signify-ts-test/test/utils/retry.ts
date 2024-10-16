@@ -39,6 +39,7 @@ export async function retry<T>(
         minSleep,
         Math.min(maxSleep, 2 ** retries * increaseFactor),
       );
+      console.log(`Retrying in ${delay}ms`);
       retries++;
       await setTimeout(delay, undefined, { signal: options.signal });
     }

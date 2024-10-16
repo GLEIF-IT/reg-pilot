@@ -65,7 +65,7 @@ clearEnv() {
     unset WITNESS_URLS
     unset WITNESS_IDS
     unset VLEI_SERVER
-    unset SECRETS_JSON_CONFIG
+    unset CONFIGURATION
     unset SPEED
 }
 
@@ -82,19 +82,14 @@ handle_users() {
     handle_arguments "--sigs" "" 'sig_types+=("multisig")'
 
     # Check if arrays are empty
-    if [ ${#sig_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ] && [ -z "$SECRETS_JSON_CONFIG" ]; then
-        echo "No sig_types or user_types specified, and no SECRETS_JSON_CONFIG, so using default permutations"
+    if [ ${#sig_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ]; then
+        echo "No sig_types or user_types specified, so using default permutations"
         sig_types=("multisig" "singlesig")
-        user_types=("multiple-user" "single-user")
+        user_types=("multi-user" "single-user")
     else
         # Parse the secrets json config
         # for instance multisig-multiple-users should result in sig_types=multisig and user_types=multiple-user
-        echo "Argument or SECRETS_JSON_CONFIG is set"
-        for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
-            IFS='-' read -r -a secret_parts <<< "$secret"
-            sig_types+=("${secret_parts[0]}")
-            user_types+=("${secret_parts[1]}-user")
-        done
+        echo "Argument is set"
     fi
     # Call deduplication function for each array
     deduplicate_array sig_types
@@ -112,7 +107,7 @@ handleEnv() {
     fi
 
     # Export environment variables
-    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED
+    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER CONFIGURATION SPEED
 
     # Print environment variable values
     echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
@@ -186,6 +181,7 @@ handle_arguments "--all" '--build --docker=verify --data --report --verify' 'ech
 handle_arguments "--fast" "" 'SPEED="fast"' 'export SPEED' 'echo "Using speed settings: ${SPEED}"'
 handle_arguments "--build" "" 'npm run build'
 
+
 handleEnv
 # Parse non-workflow arguments
 for arg in "${args[@]}"; do
@@ -206,6 +202,14 @@ for arg in "${args[@]}"; do
             exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
+        --report=*)
+            report_type="${arg#*=}"
+            case $report_type in
+                external_manifest | simple | unfoldered | unzipped | fail)
+                    handle_arguments "${arg}" "--report" 'export REPORT_TYPES="$report_type"' 'echo "Completed processing ${arg[i]} and exported REPORT_TYPE as ${REPORT_TYPES}"'
+            esac
+            ;;
+            
     esac
 done
 
@@ -220,11 +224,18 @@ for arg in "${args[@]}"; do
                 for user_type in "${user_types[@]}"; do
                     wfile="${sig_type}-${user_type}-${arg#--}.yaml"
                     wpath="$(pwd)/src/workflows/${wfile}"
+                    cfile="configuration-${sig_type}-${user_type}.json"
+                    cpath="$(pwd)/src/config/${cfile}"
                     if [ -f "$wpath" ]; then
                         export WORKFLOW="$wfile"
-                        echo "LAUNCHING - Workflow file ${wpath} exists"
-                        npx jest ./run-workflow.test.ts
-                        exitOnFail "$1"
+                        if [ -f "$cpath" ]; then
+                            export CONFIGURATION="$cfile"
+                            echo "LAUNCHING - Workflow file ${wpath} exists and Configuration file ${cpath} exists"
+                            npx jest ./run-workflow.test.ts
+                            exitOnFail "$1"
+                        else
+                            echo "SKIPPING - Configuration file ${cpath} does not exist"
+                        fi
                     else
                         echo "SKIPPING - Workflow file ${wpath} does not exist"
                     fi
