@@ -21,7 +21,6 @@ export interface TestEnvironment {
   verifierBaseUrl: string;
   workflow: string;
   configuration: string;
-  generateTestData: boolean;
 }
 
 const WAN = "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha";
@@ -53,7 +52,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "local":
@@ -75,7 +73,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_dev":
@@ -88,7 +85,7 @@ export function resolveEnvironment(
           "https://witness-dev02.rootsid.cloud",
           "https://witness-dev03.rootsid.cloud",
         ],
-        witnessIds: process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
+        witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
@@ -101,16 +98,13 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_test":
       env = {
         preset: preset,
-        url:
-          process.env.KERIA || "https://keria-demoservice.rootsid.cloud/admin",
-        bootUrl:
-          process.env.KERIA_BOOT || "https://keria-demoservice.rootsid.cloud",
+        url: process.env.KERIA || "https://keria-test.rootsid.cloud/admin",
+        bootUrl: process.env.KERIA_BOOT || "https://keria-test.rootsid.cloud/",
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [
           "https://witness-dev01.rootsid.cloud",
           "https://witness-dev02.rootsid.cloud",
@@ -120,8 +114,7 @@ export function resolveEnvironment(
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
-          process.env.REG_PILOT_API ||
-          "https://reg-api-test.rootsid.cloud/docs/",
+          process.env.REG_PILOT_API || "https://reg-api-test.rootsid.cloud/",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
@@ -130,7 +123,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dev":
@@ -163,7 +155,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_demo":
@@ -197,7 +188,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dry":
@@ -225,7 +215,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     default:
