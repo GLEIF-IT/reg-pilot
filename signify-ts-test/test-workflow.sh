@@ -48,7 +48,7 @@ while [[ $# -gt 0 ]]; do
             case $docker_action in
                 deps | verify)
                     docker compose down -v
-                    docker compose up $docker_action -d
+                    docker compose up $docker_action -d --pull always
                     ;;
                 *)
                     echo "Unknown docker action: $docker_action"
@@ -61,12 +61,12 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data-report-verify-proxy)
-            npx jest ./run-workflow.test.ts --detectOpenHandles
+            npx jest ./run-workflow.test.ts
             shift # past argument
             ;;        
         *)
             echo "Unknown argument: $1"
-            shift # past argument
+            exit 1
             ;;
     esac
 done
