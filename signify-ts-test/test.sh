@@ -255,7 +255,7 @@ for arg in "${args[@]}"; do
                         if [ -f "$cpath" ]; then
                             export CONFIGURATION="$cfile"
                             echo "LAUNCHING - Workflow file ${wpath} exists and Configuration file ${cpath} exists"
-                            npx jest ./run-workflow.test.ts
+                            npx jest ./run-workflow.test.ts --runInBand --detectOpenHandles --forceExit
                             exitOnFail "$1"
                         else
                             echo "SKIPPING - Configuration file ${cpath} does not exist"

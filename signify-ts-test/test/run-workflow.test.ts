@@ -13,7 +13,12 @@ const yaml = require("js-yaml");
 
 let env: TestEnvironment;
 
-beforeAll(async () => {
+
+afterAll(done => {
+  done();
+})
+beforeAll(done => {
+  done();
   env = resolveEnvironment();
 });
 
