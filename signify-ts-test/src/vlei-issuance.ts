@@ -270,9 +270,10 @@ export class VleiIssuance {
     let multisigAids: HabState[] = [];
     const aidIdentifierNames: Array<string> = aidInfo.identifiers;
 
-    let issuerAids = aidIdentifierNames.map(
-      (aidIdentifierName) => this.aids.get(aidIdentifierName)![0]
-    ) || [];
+    let issuerAids =
+      aidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
 
     try {
       for (const aidIdentifierName of aidIdentifierNames) {
@@ -424,9 +425,8 @@ export class VleiIssuance {
       const clients = Array.from(this.clients.values()).flat();
 
       await Promise.all(
-        clients.map(
-          (client) =>
-            getOrCreateContact(client, multisigAid.name, oobi),
+        clients.map((client) =>
+          getOrCreateContact(client, multisigAid.name, oobi),
         ),
       );
       console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
@@ -438,9 +438,10 @@ export class VleiIssuance {
     const registryIdentifierName = `${aidInfo.name}Registry`;
     const aidIdentifierNames: Array<string> = aidInfo.identifiers;
     let registries: Array<any> = new Array<any>();
-    let issuerAids = aidIdentifierNames.map(
-      (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
-    ) || [];
+    let issuerAids =
+      aidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
     // Check if the registries already exist
     for (const aidIdentifierName of aidIdentifierNames) {
       const client = this.clients.get(
@@ -493,7 +494,6 @@ export class VleiIssuance {
         "/multisig/vcp",
       );
 
-
       // Recheck the registries for each client
       const updatedRegistries = await Promise.all(
         issuerAids.map((aid) => {
@@ -501,7 +501,7 @@ export class VleiIssuance {
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
           return client.registries().list(multisigAid.name);
-        })
+        }),
       );
 
       // Update the `registries` array with the new values
@@ -710,8 +710,8 @@ export class VleiIssuance {
           issuerAIDMultisig,
           recipientAID,
           schema,
-        )
-      )
+        ),
+      ),
     );
 
     if (creds.every((cred) => !cred)) {
@@ -750,7 +750,7 @@ export class VleiIssuance {
             issuerAIDMultisig.name,
             kargsIss,
             index === 0,
-          )
+          ),
         ),
       );
 
@@ -781,7 +781,6 @@ export class VleiIssuance {
           );
         }),
       );
-
 
       const grantTime = createTimestamp();
       await Promise.all(

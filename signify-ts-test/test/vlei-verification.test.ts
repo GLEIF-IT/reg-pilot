@@ -74,25 +74,32 @@ async function vlei_verification(user: ApiUser) {
       data: filingIndicatorsData,
       sig: sig.qb64,
     }).toString();
-    
+
     heads = new Headers();
     heads.set("method", "POST");
-    
+
     let vurl = `${env.verifierBaseUrl}/request/verify/${user.ecrAid.prefix}?${params}`;
-    let vreq = await user.roleClient.createSignedRequest(user.idAlias, vurl, { headers: heads, method: "POST", body: null });
+    let vreq = await user.roleClient.createSignedRequest(user.idAlias, vurl, {
+      headers: heads,
+      method: "POST",
+      body: null,
+    });
     let vresp = await fetch(vreq);
     assert.equal(202, vresp.status);
 
     heads.set("Content-Type", "application/json");
     let aurl = `${env.verifierBaseUrl}/authorizations/${user.ecrAid.prefix}`;
-    let aresp = await user.roleClient.createSignedRequest(user.idAlias, aurl, { headers: heads, method: "GET", body: null });
+    let aresp = await user.roleClient.createSignedRequest(user.idAlias, aurl, {
+      headers: heads,
+      method: "GET",
+      body: null,
+    });
     let authResp = await fetch(aresp);
     assert.equal(200, authResp.status);
     let body = await authResp.json();
-    
+
     assert.equal(body["aid"], `${user.ecrAid.prefix}`);
     assert.equal(body["said"], `${user.ecrCred.sad.d}`);
-    
   } catch (error) {
     console.error("Verification failed:", error);
     throw error;
