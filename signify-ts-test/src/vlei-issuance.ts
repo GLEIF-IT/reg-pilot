@@ -89,10 +89,8 @@ export class VleiIssuance {
   credentialData: Map<string, any> = new Map<string, any>();
   aidsInfo: Map<string, any> = new Map<string, any>();
 
-  kargsAID = {
-    toad: witnessIds.length,
-    wits: witnessIds,
-  };
+  kargsAID =
+    witnessIds.length > 0 ? { toad: witnessIds.length, wits: witnessIds } : {};
 
   constructor(secretsJsonFile: string) {
     this.configFile = secretsJsonFile;

@@ -7,13 +7,44 @@ exitOnFail() {
     fi
 }
 
+# Updated deduplication function
+deduplicate_array() {
+    local array_name=$1
+    eval "local arr=(\"\${${array_name}[@]}\")"
+    local seen=()
+    local unique=()
+    for item in "${arr[@]}"; do
+        if [[ ! " ${seen[*]} " =~ " ${item} " ]]; then
+            unique+=("$item")
+            seen+=("$item")
+        fi
+    done
+    eval "$array_name=(\"\${unique[@]}\")"
+}
+
+# Updated deduplication function
+deduplicate_array() {
+    local array_name=$1
+    eval "local arr=(\"\${${array_name}[@]}\")"
+    local seen=()
+    local unique=()
+    for item in "${arr[@]}"; do
+        if [[ ! " ${seen[*]} " =~ " ${item} " ]]; then
+            unique+=("$item")
+            seen+=("$item")
+        fi
+    done
+    eval "$array_name=(\"\${unique[@]}\")"
+}
+
 printHelp() {
     echo "Usage: test.sh [options]"
     echo "Options:"
     echo "  --fast"
     echo "      Runs --all but with less rigor for the fastest runs"
     echo "  --all"
-    echo "      Runs --build, --docker=verify, --data, --report, and --verify"
+    echo "      Runs --build --docker=verify --data --report --verify"
+    echo "      Runs --build --docker=verify --data --report --verify"
     echo "  --docker=deps|verify|proxy-verify"
     echo "      deps: Setup only keria, witnesses, vlei-server services in local docker containers, you will need to specify the REG_PILOT_API and VLEI_VERIFIER environment variables"
     echo "      verify: Setup all services (keria, witnesses, vlei-server, reg-pilot-api, and vlei-verifier) in local docker containers"
@@ -22,10 +53,20 @@ printHelp() {
     echo "      build the typescript tests"
     echo "  --data"
     echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
+    echo "      run the test data generation to populate keria identifiers/credentials. will become either --data-single or --data-multi Setting JSON_SECRETS_CONFIG will override the default permutations of multisig and singlesig with multiple-aid and single-aid"
     echo "  --report"
     echo "      create signed/failure reports from original reports, see the 'signed' directory for the generated signed reports that can be uploaded"
     echo "  --verify"
     echo "      run the reg-pilot-api and vlei-verifier integration tests using the keria instance to login and upload signed/failure reports"
+    echo "  --sigs"
+    echo "      use sigs=1 for singlesig, otherwise multisig configuration"
+    echo "  --users"
+    echo "      use users=1 for single-user, otherwise mutiple-user configuration"
+    echo "  --sigs"
+    echo "      use sigs=1 for singlesig, otherwise multisig configuration"
+    echo "  --users"
+    echo "      use users=1 for single-user, otherwise mutiple-user configuration"
     echo "  --proxy"
     echo "      add a proxy service between the tests and the reg-pilot-api to test forwarded communications"
     echo "  --help"
@@ -33,44 +74,48 @@ printHelp() {
     exit 0
 }
 
-sig_types=("multisg" "singlesig")
-id_types=("multiple-aid" "single-aid")
+clearEnv() {
+    # Clear all specified environment variables
+    unset TEST_ENVIRONMENT
+    unset ID_ALIAS
+    unset REG_PILOT_API
+    unset REG_PILOT_PROXY
+    unset VLEI_VERIFIER
+    unset KERIA
+    unset KERIA_BOOT
+    unset WITNESS_URLS
+    unset WITNESS_IDS
+    unset VLEI_SERVER
+    unset CONFIGURATION
+    unset SPEED
+}
+
+# Call the clearEnv function to clear the environment variables
+# clearEnv
+
+sig_types=()
 user_types=()
-handleUsers() {
-    # Check if SECRETS_JSON_CONFIG is set
-    if [ -z "$SECRETS_JSON_CONFIG" ]; then
-        echo "SECRETS_JSON_CONFIG is not set, using permutations of ${sig_types[*]} and ${id_types[*]}"    
+handle_users() {
+    # check if users=1, then, otherwise all other numbers y
+    handle_arguments "--users=1" "" 'user_types+=("single-user")'
+    handle_arguments "--users" "" 'user_types+=("multi-user")'
+    handle_arguments "--sigs=1" "" 'sig_types+=("singlesig")'
+    handle_arguments "--sigs" "" 'sig_types+=("multisig")'
+
+    # Check if arrays are empty
+    if [ ${#sig_types[@]} -eq 0 ] && [ ${#user_types[@]} -eq 0 ]; then
+        echo "No sig_types or user_types specified, so using default permutations"
+        sig_types=("multisig" "singlesig")
+        user_types=("multi-user" "single-user")
     else
         # Parse the secrets json config
-        # for instance multisig-multiple-aid should result in sig_types=multisig and id_types=multiple-aid
-        sig_types=()
-        id_types=()
-        for secret in $(echo $SECRETS_JSON_CONFIG | sed "s/,/ /g"); do
-            IFS='-' read -r -a secret_parts <<< "$secret"
-            sig_types+=("${secret_parts[0]}")
-            id_types+=("${id_type[1]}")
-        done
+        # for instance multisig-multiple-users should result in sig_types=multisig and user_types=multiple-user
+        echo "Argument is set"
     fi
-
-    if [[ -z "$WORKFLOW" ]]; then
-        echo "WORKFLOW is not set, using sig_types ${sig_types[*]} and id_types ${id_types[*]} to set workflows"
-        if [[ "${id_types[1]}" == "single-aid" ]]; then
-            user_types+=("single-user")
-        fi
-        if [[ "${id_types[1]}" == "multiple-aid" ]]; then
-            user_types+=("multi-user")
-        fi
-    else
-        # Parse the workflow
-        # for instance issue-credentials-multisig-single-user.yaml should result in sig_types=multisig and user_types=single-user
-        for workflow in $(echo $WORKFLOW | sed "s/,/ /g"); do
-            IFS='-' read -r -a workflow_parts <<< "$workflow"
-            sig_types+=("${workflow_parts[2]}")
-            user_types+=("${user_type[3]}")
-        done
-    fi
-
-    echo "Finished setting sig_types ${sig_types[*]} and id_types ${id_types[*]} and user_types ${user_types[*]}"
+    # Call deduplication function for each array
+    deduplicate_array sig_types
+    deduplicate_array user_types
+    echo "Finished setting sig_types ${sig_types[*]} and user_types ${user_types[*]}"
 }
 
 handleEnv() {
@@ -83,7 +128,7 @@ handleEnv() {
     fi
 
     # Export environment variables
-    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER SECRETS_JSON_CONFIG SPEED WORKFLOW
+    export TEST_ENVIRONMENT ID_ALIAS REG_PILOT_API REG_PILOT_PROXY VLEI_VERIFIER KERIA KERIA_BOOT WITNESS_URLS WITNESS_IDS VLEI_SERVER CONFIGURATION SPEED
 
     # Print environment variable values
     echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
@@ -98,13 +143,12 @@ handleEnv() {
     echo "VLEI_SERVER=$VLEI_SERVER"
     echo "UNSIGNED_REPORTS=$UNSIGNED_REPORTS"
     echo "SPEED=$SPEED"
-    echo "WORKFLOW=$WORKFLOW"
 }
 
 checkArgs() {
     for arg in "${args[@]}"; do
         case $arg in
-            --help|--all|--fast|--build|--docker=*|--data|--data=*|--report|--report=*|--verify|--proxy)
+            --help|--all|--fast|--build|--docker=*|--data|--report|--report=*|--verify|--proxy|--users|--users=1|--sigs|--sigs=1)
                 ;;
             *)
                 echo "Unknown argument: $arg"
@@ -151,15 +195,18 @@ fi
 args=("$@")
 checkArgs
 
-handleUsers
+handle_users
+handle_users
 
 handle_arguments "--help" "" 'printHelp'
 handle_arguments "--all" '--build --docker=verify --data --report --verify' 'echo "--all replaced with --build --docker=verify --data --report --verify"' 
 handle_arguments "--fast" "" 'SPEED="fast"' 'export SPEED' 'echo "Using speed settings: ${SPEED}"'
 handle_arguments "--build" "" 'npm run build'
 
+
 handleEnv
-# Parse arguments
+# Parse non-workflow arguments
+# Parse non-workflow arguments
 for arg in "${args[@]}"; do
     # echo "Processing step argument: $arg"
     case $arg in
@@ -178,67 +225,48 @@ for arg in "${args[@]}"; do
             exitOnFail "$1"
             args=("${args[@]/$arg}")
             ;;
-        --data)
-            for sig_type in "${sig_types[@]}"; do
-                for user_type in "${user_types[@]}"; do
-                    wfile="issue-credentials-${sig_type}-${user_type}.yaml"
-                    wpath="$(pwd)/src/workflows/${wfile}"
-                    if [ -f "$wpath" ]; then
-                        export WORKFLOW="$wfile"
-                        npx jest ./run-vlei-issuance-workflow.test.ts
-                        exitOnFail "$1"
-                    else
-                        echo "SKIPPING - Workflow file $(pwd)/src/workflows/${wfile} does not exist"
-                    fi
-
-                done
-            done
-            args=("${args[@]/$arg}")
-            ;;
-        --data=*)
-            for sig_type in "${sig_types[@]}"; do
-                for id_type in "${id_types[@]}"; do
-                    export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
-                    npx jest ./vlei-issuance.test.ts
-                    exitOnFail "$1"
-                done
-            done
-            export SECRETS_JSON_CONFIG="${sig_type}-${id_type}"
-            npx jest ./vlei-issuance.test.ts
-            exitOnFail "$1"
-            args=("${args[@]/$arg}")
-            ;;
-        --report)
-            npx jest ./report.test.ts
-            exitOnFail "$1"
-            args=("${args[@]/$arg}")
-            ;;
         --report=*)
             report_type="${arg#*=}"
             case $report_type in
                 external_manifest | simple | unfoldered | unzipped | fail)
-                    export REPORT_TYPES="$report_type"
-                    echo "REPORT_TYPE set to: $REPORT_TYPES"
+                    handle_arguments "${arg}" "--report" 'export REPORT_TYPES="$report_type"' 'echo "Completed processing ${arg[i]} and exported REPORT_TYPE as ${REPORT_TYPES}"'
             esac
-            npx jest ./report.test.ts
-            exitOnFail "$1"
-            args=("${args[@]/$arg}")
             ;;
-        --verify)
-            npx jest ./reg-pilot-api.test.ts
-            exitOnFail "$1"
-            args=("${args[@]/$arg}")
-            ;;
-        --proxy)
-            export REG_PILOT_API="${REG_PILOT_PROXY}"
-            echo "Now setting api to proxy url REG_PILOT_API=$REG_PILOT_API"
-            npx jest ./vlei-verification.test.ts
-            exitOnFail "$1"
-            args=("${args[@]/$arg}")
-            ;;
+            
+    esac
+done
+
+# Parse workflow arguments
+for arg in "${args[@]}"; do
+    case $arg in
         *)
-            echo "Step argument unknown: $arg"
-            printHelp
+            echo "Processing workflow argument: $arg"
+            # setting="${arg#*=}"
+            # echo "Processing workflow setting: $setting"
+            for sig_type in "${sig_types[@]}"; do
+                for user_type in "${user_types[@]}"; do
+                    wfile="${sig_type}-${user_type}-${arg#--}.yaml"
+                    wfile="${sig_type}-${user_type}-${arg#--}.yaml"
+                    wpath="$(pwd)/src/workflows/${wfile}"
+                    cfile="configuration-${sig_type}-${user_type}.json"
+                    cpath="$(pwd)/src/config/${cfile}"
+                    if [ -f "$wpath" ]; then
+                        export WORKFLOW="$wfile"
+                        if [ -f "$cpath" ]; then
+                            export CONFIGURATION="$cfile"
+                            echo "LAUNCHING - Workflow file ${wpath} exists and Configuration file ${cpath} exists"
+                            npx jest ./run-workflow.test.ts
+                            exitOnFail "$1"
+                        else
+                            echo "SKIPPING - Configuration file ${cpath} does not exist"
+                        fi
+                    else
+                        echo "SKIPPING - Workflow file ${wpath} does not exist"
+                        echo "SKIPPING - Workflow file ${wpath} does not exist"
+                    fi
+                done
+            done
+            args=("${args[@]/$arg}")
             ;;
     esac
 done

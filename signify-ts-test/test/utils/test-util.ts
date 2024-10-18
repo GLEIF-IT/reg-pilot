@@ -161,6 +161,7 @@ export async function getOrCreateAID(
   try {
     return await client.identifiers().get(name);
   } catch {
+    console.log("Creating AID", name, ": ", kargs);
     const result: EventResult = await client.identifiers().create(name, kargs);
 
     await waitOperation(client, await result.op());
@@ -282,10 +283,10 @@ export async function getOrCreateIdentifier(
     id = identfier.prefix;
   } catch {
     const env = resolveEnvironment();
-    kargs ??= {
-      toad: env.witnessIds.length,
-      wits: env.witnessIds,
-    };
+    kargs ??=
+      env.witnessIds.length > 0
+        ? { toad: env.witnessIds.length, wits: env.witnessIds }
+        : {};
     const result: EventResult = await client.identifiers().create(name, kargs);
     let op = await result.op();
     op = await waitOperation(client, op);
