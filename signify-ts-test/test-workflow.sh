@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data-report-verify-proxy)
-            npx jest ./run-workflow.test.ts
+            npx jest ./run-workflow.test.ts --detectOpenHandles
             shift # past argument
             ;;        
         *)
