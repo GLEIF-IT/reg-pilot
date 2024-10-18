@@ -41,28 +41,13 @@ import {
 import { boolean, sec } from "mathjs";
 import { retry } from "../test/utils/retry";
 import {
-  QVI_SCHEMA_SAID,
-  LE_SCHEMA_SAID,
-  ECR_AUTH_SCHEMA_SAID,
-  ECR_SCHEMA_SAID,
-  OOR_AUTH_SCHEMA_SAID,
-  OOR_SCHEMA_SAID,
-  vLEIServerHostUrl,
   QVI_SCHEMA_URL,
   LE_SCHEMA_URL,
   ECR_AUTH_SCHEMA_URL,
   ECR_SCHEMA_URL,
   OOR_AUTH_SCHEMA_URL,
   OOR_SCHEMA_URL,
-  LE_RULES,
-  ECR_RULES,
-  ECR_AUTH_RULES,
-  OOR_RULES,
-  OOR_AUTH_RULES,
   CRED_RETRY_DEFAULTS,
-  QVI_INTERNAL_NAME,
-  LE_INTERNAL_NAME,
-  vleiServerUrl,
   witnessIds,
   SCHEMAS,
   RULES,
@@ -354,20 +339,13 @@ export class VleiIssuance {
         this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/icp",
       );
-      // await Promise.all(
-      //   issuerAids.map((aid) => {
-      //     const client = this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0];
-      //     return waitAndMarkNotification(client, "/multisig/icp");
-      //   })
-      // );
-
       // Retrieve the newly created AIDs for all clients
       multisigAids = await Promise.all(
-        issuerAids.map((aid) => {
+        issuerAids.map(async (aid) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return client.identifiers().get(aidInfo.name);
+          return await client.identifiers().get(aidInfo.name);
         }),
       );
 
@@ -379,11 +357,11 @@ export class VleiIssuance {
 
       // Skip if they have already been authorized.
       let oobis: Array<any> = await Promise.all(
-        issuerAids.map((aid) => {
+        issuerAids.map(async (aid) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return client.oobis().get(multisigAid.name, "agent");
+          return await client.oobis().get(multisigAid.name, "agent");
         }),
       );
 
@@ -392,12 +370,12 @@ export class VleiIssuance {
 
         // Add endpoint role for all clients
         const roleOps = await Promise.all(
-          issuerAids.map((aid, index) => {
+          issuerAids.map(async (aid, index) => {
             const otherAids = issuerAids.filter((_, i) => i !== index);
             const client = this.clients.get(
               this.aidsInfo.get(aid.name).agent.name,
             )![0];
-            return addEndRoleMultisig(
+            return await addEndRoleMultisig(
               client,
               multisigAid.name,
               aid,
@@ -432,11 +410,11 @@ export class VleiIssuance {
 
         // Retrieve the OOBI again after the operation for all clients
         oobis = await Promise.all(
-          issuerAids.map((aid) => {
+          issuerAids.map(async (aid) => {
             const client = this.clients.get(
               this.aidsInfo.get(aid.name).agent.name,
             )![0];
-            return client.oobis().get(multisigAid.name, "agent");
+            return await client.oobis().get(multisigAid.name, "agent");
           }),
         );
       }
@@ -449,8 +427,9 @@ export class VleiIssuance {
       const clients = Array.from(this.clients.values()).flat();
 
       await Promise.all(
-        clients.map((client) =>
-          getOrCreateContact(client, multisigAid.name, oobi),
+        clients.map(
+          async (client) =>
+            await getOrCreateContact(client, multisigAid.name, oobi),
         ),
       );
       console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
@@ -508,11 +487,11 @@ export class VleiIssuance {
 
       // Wait for all operations to complete across multiple clients
       await Promise.all(
-        createdOps.map((op, index) => {
+        createdOps.map(async (op, index) => {
           const client = this.clients.get(
             this.aidsInfo.get(issuerAids![index].name).agent.name,
           )![0];
-          return waitOperation(client, op);
+          return await waitOperation(client, op);
         }),
       );
 
@@ -530,11 +509,11 @@ export class VleiIssuance {
 
       // Recheck the registries for each client
       const updatedRegistries = await Promise.all(
-        issuerAids!.map((aid, index) => {
+        issuerAids!.map(async (aid, index) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return client.registries().list(multisigAid.name);
+          return await client.registries().list(multisigAid.name);
         }),
       );
 
@@ -584,7 +563,7 @@ export class VleiIssuance {
   ): Promise<any> {
     const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
     if (issuerAidInfo.identifiers) {
-      return this.getOrIssueCredentialMultiSig(
+      return await this.getOrIssueCredentialMultiSig(
         credId,
         credName,
         attributes,
@@ -595,7 +574,7 @@ export class VleiIssuance {
         testName,
       );
     } else {
-      return this.getOrIssueCredentialSingleSig(
+      return await this.getOrIssueCredentialSingleSig(
         credId,
         credName,
         attributes,
@@ -675,11 +654,13 @@ export class VleiIssuance {
     this.credentials.set(credId, cred);
     if (generateTestData) {
       let tmpCred = cred;
-      tmpCred.cesr = await recipientClient.credentials().get(cred.sad.d, true);
+      const credCesr = await recipientClient
+        .credentials()
+        .get(cred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
         lei: credData.LEI,
-        credential: tmpCred,
+        credential: { raw: tmpCred, cesr: credCesr },
         engagementContextRole: credData.engagementContextRole,
       };
       await buildTestData(testData, testName);

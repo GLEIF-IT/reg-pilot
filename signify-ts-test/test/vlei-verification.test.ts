@@ -66,9 +66,9 @@ async function vlei_verification(user: ApiUser) {
 
   let raw = new TextEncoder().encode(filingIndicatorsData);
 
-  const keeper = user.roleClient.manager!.get(user.ecrAid);
-  const signer = keeper.signers[0];
-  const sig = signer.sign(raw);
+  const keeper = await user.roleClient.manager!.get(user.ecrAid);
+  const signer = await keeper.signers[0];
+  const sig = await signer.sign(raw);
 
   let params = new URLSearchParams({
     data: filingIndicatorsData,
