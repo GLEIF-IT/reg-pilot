@@ -75,6 +75,7 @@ async function vlei_verification(user: ApiUser) {
       sig: sig.qb64,
     }).toString();
 
+
     heads = new Headers();
     heads.set("method", "POST");
 
