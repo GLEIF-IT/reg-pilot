@@ -482,8 +482,8 @@ export async function waitAndMarkNotification(
   const notes = await waitForNotifications(client, route);
 
   await Promise.all(
-    notes.map(async (note) => {
-      await client.notifications().mark(note.i);
+    notes.map((note) => {
+      client.notifications().mark(note.i);
     }),
   );
 

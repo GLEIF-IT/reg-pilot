@@ -199,7 +199,7 @@ export class VleiIssuance {
   // Create contacts between clients
   protected async createContacts() {
     console.log("Creating Contacts");
-    const contactPromises: Promise<string>[] = [];
+    const contactPromises: Promise<any>[] = [];
     for (const userA of this.users) {
       for (const identifierA of userA.identifiers) {
         for (const userB of this.users) {
@@ -271,11 +271,9 @@ export class VleiIssuance {
     const aidIdentifierNames: Array<string> = aidInfo.identifiers;
 
     let issuerAids =
-      (await Promise.all(
-        aidIdentifierNames.map(
-          (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
-        ),
-      )) || [];
+      aidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
 
     try {
       for (const aidIdentifierName of aidIdentifierNames) {
@@ -442,11 +440,9 @@ export class VleiIssuance {
     const aidIdentifierNames: Array<string> = aidInfo.identifiers;
     let registries: Array<any> = new Array<any>();
     let issuerAids =
-      (await Promise.all(
-        aidIdentifierNames.map(
-          (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
-        ),
-      )) || [];
+      aidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
     // Check if the registries already exist
     for (const aidIdentifierName of aidIdentifierNames) {
       const client = this.clients.get(
@@ -464,23 +460,21 @@ export class VleiIssuance {
 
     if (allEmpty) {
       const nonce = randomNonce();
-      const registryOps = [];
-      for (let i = 0; i < issuerAids!.length; i++) {
-        const otherAids = issuerAids!.filter((_, index) => index !== i);
+      const registryOps = issuerAids!.map((aid, index) => {
+        const otherAids = issuerAids!.filter((_, i) => i !== index);
         const client = this.clients.get(
-          this.aidsInfo.get(issuerAids![i].name).agent.name,
+          this.aidsInfo.get(aid.name).agent.name,
         )![0];
-        const registryOp = createRegistryMultisig(
+        return createRegistryMultisig(
           client,
-          issuerAids![i],
+          aid,
           otherAids,
           multisigAid,
           registryIdentifierName,
           nonce,
-          i === 0, // Use true for the first operation, false for others
+          index === 0, // Use true for the first operation, false for others
         );
-        registryOps.push(registryOp);
-      }
+      });
 
       // Await all registry creation operations
       const createdOps = await Promise.all(registryOps);
@@ -500,20 +494,14 @@ export class VleiIssuance {
         this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/vcp",
       );
-      // await Promise.all(
-      //   issuerAids!.map((aid, index) => {
-      //     const client = this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0];
-      //     return waitAndMarkNotification(client, "/multisig/vcp");
-      //   })
-      // );
 
       // Recheck the registries for each client
       const updatedRegistries = await Promise.all(
-        issuerAids!.map(async (aid, index) => {
+        issuerAids.map((aid) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return await client.registries().list(multisigAid.name);
+          return client.registries().list(multisigAid.name);
         }),
       );
 
@@ -692,20 +680,16 @@ export class VleiIssuance {
     const registryName = issuerAidInfo.name;
     let issuerRegistry = this.registries.get(registryName)!;
     const issuerAids =
-      (await Promise.all(
-        issuerAidInfo.identifiers.map(
-          (identifier: any) => this.aids.get(identifier)![0],
-        ),
-      )) || [];
+      issuerAidInfo.identifiers.map(
+        (identifier: any) => this.aids.get(identifier)![0],
+      ) || [];
     let recepientAids = [];
 
     if (recipientAidInfo.identifiers) {
       recepientAids =
-        (await Promise.all(
-          recipientAidInfo.identifiers.map(
-            (identifier: any) => this.aids.get(identifier)![0],
-          ),
-        )) || [];
+        recipientAidInfo.identifiers.map(
+          (identifier: any) => this.aids.get(identifier)![0],
+        ) || [];
     } else {
       recepientAids = [this.aids.get(recipientAidInfo.name)![0]];
     }
@@ -721,14 +705,13 @@ export class VleiIssuance {
     rules = rules ? { r: rules } : undefined;
     // Issuing a credential
     let creds = await Promise.all(
-      issuerAids.map(
-        async (aid, index) =>
-          await getIssuedCredential(
-            this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
-            issuerAIDMultisig,
-            recipientAID,
-            schema,
-          ),
+      issuerAids.map((aid: any, index: any) =>
+        getIssuedCredential(
+          this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
+          issuerAIDMultisig,
+          recipientAID,
+          schema,
+        ),
       ),
     );
 
@@ -760,11 +743,11 @@ export class VleiIssuance {
       }
 
       const IssOps = await Promise.all(
-        issuerAids.map((aid, index) =>
+        issuerAids.map((aid: any, index: any) =>
           issueCredentialMultisig(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
             aid,
-            issuerAids!.filter((_, i) => i !== index),
+            issuerAids.filter((_: any, i: any) => i !== index),
             issuerAIDMultisig.name,
             kargsIss,
             index === 0,
@@ -773,11 +756,11 @@ export class VleiIssuance {
       );
 
       await Promise.all(
-        issuerAids.map(async (aid, index) => {
+        issuerAids.map((aid: any, index: any) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          await waitOperation(client, IssOps[index]);
+          return waitOperation(client, IssOps[index]);
         }),
       );
 
@@ -787,11 +770,11 @@ export class VleiIssuance {
       );
 
       creds = await Promise.all(
-        issuerAids.map(async (aid, index) => {
+        issuerAids.map((aid: any, index: any) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return await getIssuedCredential(
+          return getIssuedCredential(
             client,
             issuerAIDMultisig,
             recipientAID,
@@ -802,21 +785,21 @@ export class VleiIssuance {
 
       const grantTime = createTimestamp();
       await Promise.all(
-        creds.map(
-          async (cred, index) =>
-            await grantMultisig(
-              this.clients.get(
-                this.aidsInfo.get(issuerAids[index].name).agent.name,
-              )![0],
-              issuerAids[index],
-              issuerAids!.filter((_, i) => i !== index),
-              issuerAIDMultisig,
-              recipientAID,
-              cred,
-              grantTime,
-              index === 0,
-            ),
-        ),
+        creds.map((cred, index) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(issuerAids[index].name).agent.name,
+          )![0];
+          return grantMultisig(
+            client,
+            issuerAids[index],
+            issuerAids.filter((_: any, i: any) => i !== index),
+            issuerAIDMultisig,
+            recipientAID,
+            cred,
+            grantTime,
+            index === 0,
+          );
+        }),
       );
 
       await waitAndMarkNotification(
@@ -830,11 +813,11 @@ export class VleiIssuance {
     // Check if the recipient is a singlesig AID
     if (recipientAidInfo.identifiers) {
       let credsReceived = await Promise.all(
-        recepientAids.map(async (aid, index) => {
+        recepientAids.map((aid: any) => {
           const client = this.clients.get(
             this.aidsInfo.get(aid.name).agent.name,
           )![0];
-          return await getReceivedCredential(client, cred.sad.d);
+          return getReceivedCredential(client, cred.sad.d);
         }),
       );
 
@@ -842,20 +825,21 @@ export class VleiIssuance {
         const admitTime = createTimestamp();
 
         await Promise.all(
-          recepientAids.map(async (aid, index) => {
+          recepientAids.map((aid: any, index: any) => {
             const client = this.clients.get(
               this.aidsInfo.get(aid.name).agent.name,
             )![0];
-            await admitMultisig(
+            return admitMultisig(
               client,
               aid,
-              recepientAids!.filter((_, i) => i !== index),
+              recepientAids.filter((_: any, i: any) => i !== index),
               recipientAID,
               issuerAIDMultisig,
               admitTime,
             );
           }),
         );
+
         for (const aid of issuerAids) {
           await waitAndMarkNotification(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
@@ -876,11 +860,11 @@ export class VleiIssuance {
         }
 
         credsReceived = await Promise.all(
-          recepientAids.map(async (aid, index) => {
+          recepientAids.map((aid: any) => {
             const client = this.clients.get(
               this.aidsInfo.get(aid.name).agent.name,
             )![0];
-            return await waitForCredential(client, cred.sad.d);
+            return waitForCredential(client, cred.sad.d);
           }),
         );
 

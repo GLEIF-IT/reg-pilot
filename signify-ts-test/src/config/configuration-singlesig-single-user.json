@@ -1,12 +1,12 @@
 {
   "secrets": {
-    "gleif1": "D_PbQb01zuzQgK-kDWjqy",
-    "qvi1": "BTaqgh1eeOjXO5iQJp6mb",
-    "le1": "Akv4TFoiYeHNqzj3N8gEg",
-    "le2": "Lf8nafHfan8fnafnnnfad",
-    "ecr1": "nf98hUHUy8Vt5tvdyaYV7",
-    "ecr2": "CbII3tno87wn3uGBP12qm",
-    "ecr3": "defh7b7g7gfaBuf83bf0f"
+    "gleif1": "D_PbQb01zuzQgK-kDWjq1",
+    "qvi1": "BTaqgh1eeOjXO5iQJp6m1",
+    "le1": "Akv4TFoiYeHNqzj3N8gE1",
+    "le2": "Lf8nafHfan8fnafnnnfa2",
+    "ecr1": "nf98hUHUy8Vt5tvdyaYV1",
+    "ecr2": "CbII3tno87wn3uGBP12q2",
+    "ecr3": "defh7b7g7gfaBuf83bf03"
   },
   "credentials": {
     "gleif_to_qvi_vlei_cred": {
