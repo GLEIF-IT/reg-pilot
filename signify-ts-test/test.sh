@@ -214,6 +214,7 @@ for arg in "${args[@]}"; do
             docker_action="${arg#*=}"
             case $docker_action in
                 deps | verify | proxy-verify)
+                    echo "Running docker compose $docker_action"
                     docker compose down -v
                     docker compose up "$docker_action" -d --pull always
                     ;;
