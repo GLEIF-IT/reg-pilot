@@ -214,6 +214,7 @@ for arg in "${args[@]}"; do
             docker_action="${arg#*=}"
             case $docker_action in
                 deps | verify | proxy-verify)
+                    echo "Running docker compose $docker_action"
                     docker compose down -v
                     docker compose up "$docker_action" -d --pull always
                     ;;
@@ -255,7 +256,7 @@ for arg in "${args[@]}"; do
                         if [ -f "$cpath" ]; then
                             export CONFIGURATION="$cfile"
                             echo "LAUNCHING - Workflow file ${wpath} exists and Configuration file ${cpath} exists"
-                            npx jest ./run-workflow.test.ts
+                            npx jest ./run-workflow.test.ts --runInBand --detectOpenHandles --forceExit
                             exitOnFail "$1"
                         else
                             echo "SKIPPING - Configuration file ${cpath} does not exist"

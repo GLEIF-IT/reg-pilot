@@ -22,7 +22,6 @@ export interface TestEnvironment {
   verifierBaseUrl: string;
   workflow: string;
   configuration: string;
-  generateTestData: boolean;
 }
 
 const WAN = "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha";
@@ -60,7 +59,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "local":
@@ -88,7 +86,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_dev":
@@ -119,7 +116,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "rootsid_test":
@@ -155,7 +151,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dev":
@@ -194,7 +189,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_demo":
@@ -234,7 +228,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     case "nordlei_dry":
@@ -268,7 +261,6 @@ export function resolveEnvironment(
         configuration:
           process.env.CONFIGURATION ||
           "configuration-singlesig-single-user.json",
-        generateTestData: Boolean(process.env.GENERATE_TEST_DATA) || false,
       };
       break;
     default:

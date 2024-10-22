@@ -283,10 +283,10 @@ export async function getOrCreateIdentifier(
     id = identfier.prefix;
   } catch {
     const env = resolveEnvironment();
-    kargs ??= {
-      toad: env.witnessIds.length,
-      wits: env.witnessIds,
-    };
+    kargs ??=
+      env.witnessIds.length > 0
+        ? { toad: env.witnessIds.length, wits: env.witnessIds }
+        : {};
     const result: EventResult = await client.identifiers().create(name, kargs);
     let op = await result.op();
     op = await waitOperation(client, op);
@@ -482,8 +482,8 @@ export async function waitAndMarkNotification(
   const notes = await waitForNotifications(client, route);
 
   await Promise.all(
-    notes.map(async (note) => {
-      await client.notifications().mark(note.i);
+    notes.map((note) => {
+      client.notifications().mark(note.i);
     }),
   );
 

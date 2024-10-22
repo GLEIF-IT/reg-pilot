@@ -37,7 +37,7 @@ jobs:
         run: npm run pretty:check
         
       - name: Run docker
-        run: ./test-workflow.sh --docker=proxy 
+        run: ./test-workflow.sh --docker=verify 
       
       - name: Build
         run: ./test-workflow.sh --build

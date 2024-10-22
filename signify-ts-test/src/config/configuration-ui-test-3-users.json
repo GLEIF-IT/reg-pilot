@@ -1,12 +1,12 @@
 {
   "secrets": {
-    "gleif1": "D_PbQb01zuzQgK-kDWjq1",
-    "qvi1": "BTaqgh1eeOjXO5iQJp6m1",
-    "le1": "Akv4TFoiYeHNqzj3N8gE1",
-    "le2": "Lf8nafHfan8fnafnnnfa2",
-    "ecr1": "nf98hUHUy8Vt5tvdyaYV1",
-    "ecr2": "CbII3tno87wn3uGBP12q2",
-    "ecr3": "defh7b7g7gfaBuf83bf03"
+    "gleif1": "D_PbQb01zuzQgK-kDWj21",
+    "qvi1": "BTaqgh1eeOjXO5iQJp621",
+    "le1": "Akv4TFoiYeHNqzj3N8g21",
+    "le2": "Akv4TFoiYeHNqzj3N8g22",
+    "ecr1": "CbII3tno87wn3uGBP1221",
+    "ecr2": "CbII3tno87wn3uGBP1222",
+    "ecr3": "CbII3tno87wn3uGBP1223"
   },
   "credentials": {
     "gleif_to_qvi_vlei_cred": {
@@ -37,54 +37,16 @@
         "engagementContextRole": "EBA Data Submitter"
       }
     },
-    "le_to_qvi_ecr_auth_cred": {
+    "le_to_ecr_vlei_cred_invalid_role": {
       "credSource": {
         "type": "le"
-      },
-      "type": "direct",
-      "schema": "ECR_AUTH_SCHEMA_SAID",
-      "rules": "ECR_AUTH_RULES",
-      "privacy": false,
-      "attributes": {
-        "engagementContextRole": "EBA Data Submitter"
-      }
-    },
-    "qvi_to_ecr_vlei_cred_from_le_to_qvi_ecr_auth_cred": {
-      "credSource": {
-        "type": "auth",
-        "o": "I2I"
       },
       "type": "direct",
       "schema": "ECR_SCHEMA_SAID",
       "rules": "ECR_RULES",
       "privacy": true,
       "attributes": {
-        "engagementContextRole": "EBA Data Submitter"
-      }
-    },
-    "le_to_qvi_oor_auth_cred": {
-      "credSource": {
-        "type": "le"
-      },
-      "type": "direct",
-      "schema": "OOR_AUTH_SCHEMA_SAID",
-      "rules": "OOR_AUTH_RULES",
-      "privacy": false,
-      "attributes": {
-        "officialRole": "HR Manager"
-      }
-    },
-    "qvi_to_ecr_vlei_oor_cred_from_le_to_qvi_oor_auth_cred": {
-      "credSource": {
-        "type": "auth",
-        "o": "I2I"
-      },
-      "type": "direct",
-      "schema": "OOR_SCHEMA_SAID",
-      "rules": "OOR_RULES",
-      "privacy": false,
-      "attributes": {
-        "officialRole": "HR Manager"
+        "engagementContextRole": "Incorrect Role"
       }
     }
   },
@@ -98,8 +60,17 @@
     "le-agent-1": {
       "secret": "le1"
     },
+    "le-agent-2": {
+      "secret": "le2"
+    },
     "ecr-agent-1": {
       "secret": "ecr1"
+    },
+    "ecr-agent-2": {
+      "secret": "ecr2"
+    },
+    "ecr-agent-3": {
+      "secret": "ecr3"
     }
   },
   "identifiers": {
@@ -115,9 +86,21 @@
       "agent": "le-agent-1",
       "name": "le-aid-1"
     },
+    "le-aid-2": {
+      "agent": "le-agent-2",
+      "name": "le-aid-2"
+    },
     "ecr-aid-1": {
       "agent": "ecr-agent-1",
       "name": "ecr-aid-1"
+    },
+    "ecr-aid-2": {
+      "agent": "ecr-agent-2",
+      "name": "ecr-aid-2"
+    },
+    "ecr-aid-3": {
+      "agent": "ecr-agent-3",
+      "name": "ecr-aid-3"
     }
   },
   "users": [
@@ -137,9 +120,24 @@
       "identifiers": ["le-aid-1"]
     },
     {
+      "type": "LE",
+      "alias": "le-user-2",
+      "identifiers": ["le-aid-2"]
+    },
+    {
       "type": "ECR",
       "alias": "ecr-user-1",
       "identifiers": ["ecr-aid-1"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-2",
+      "identifiers": ["ecr-aid-2"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-3",
+      "identifiers": ["ecr-aid-3"]
     }
   ]
 }

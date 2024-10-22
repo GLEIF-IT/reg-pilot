@@ -106,12 +106,12 @@ async function single_user_test(user: ApiUser) {
   let creq = { headers: heads, method: "GET", body: null };
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
   let cresp = await fetch(env.apiBaseUrl + cpath, creq);
-  assert.equal(cresp.status, 200);
   let cbody = await cresp.json();
+  assert.equal(cresp.status, 200);
   assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
   assert.equal(
     cbody["msg"],
-    `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
+    `AID ${user.ecrAid.prefix} w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
   );
   assert.equal(cbody["said"], user.ecrCred.sad.d);
 
@@ -348,7 +348,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
     assert.equal(
       cbody["msg"],
-      `AID w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
+      `AID ${user.ecrAid.prefix} w/ lei ${user.ecrCred.sad.a.LEI} presented valid credential`,
     );
     assert.equal(cbody["said"], user.ecrCred.sad.d);
 
