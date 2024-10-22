@@ -46,14 +46,23 @@ export async function getApiTestData(
     let ecrCreds = creds.filter(
       (cred: any) =>
         cred.sad.s === ECR_SCHEMA_SAID &&
-        cred.sad.a.engagementContextRole === "EBA Data Submitter" &&
         cred.sad.a.i === ecrAid.prefix,
     );
 
-    const ecrCred = ecrCreds[0];
+    let ecrCred;
+    for (let ecred of ecrCreds) {
+      if (ecred.sad.a.engagementContextRole === "EBA Data Submitter") { 
+        ecrCred = ecred;
+      } else if (ecred.sad.a.engagementContextRole === "Other ECR") {
+        apiUser.otherCred = ecred;
+      }
+    }
     apiUser.ecrCred = ecrCred;
     const ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
     const ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
+    if (apiUser.otherCred) {
+      apiUser.otherCredCesr = await roleClient.credentials().get(apiUser.otherCred.sad.d, true);
+    }
     apiUser.ecrCredCesr = ecrCredCesr;
     apiUser.lei = ecrCred.sad.a.LEI;
     apiUsers.push(apiUser);
@@ -133,7 +142,9 @@ export interface ApiUser {
   roleClient: any;
   ecrAid: any;
   ecrCred: any;
+  otherCred?: any;
   ecrCredCesr: any;
+  otherCredCesr?: any;
   lei: string;
   uploadDig: string;
   idAlias: string;

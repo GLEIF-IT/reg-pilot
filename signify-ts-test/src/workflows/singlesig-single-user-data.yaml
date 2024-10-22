@@ -30,6 +30,18 @@ workflow:
       description: "LE issues ECR vLEI credential"
       credential: "le_to_ecr_vlei_cred"
       credential_source: "le_cred"
+    ecr_other_cred:
+      id: "ecr_other_cred"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+        engagementContextRole: "Other ECR"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-aid-1"
+      description: "LE issues other ECR vLEI credential"
+      credential: "le_to_other_ecr_vlei_cred"
+      credential_source: "le_cred"
     ecr_auth_cred:
       id: "ecr_auth_cred"
       type: "issue_credential"

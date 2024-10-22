@@ -79,6 +79,44 @@ async function single_user_test(user: ApiUser) {
     user.roleClient,
   );
 
+  if (user.otherCred) {
+    // login with the other ecr credential
+    let heads = new Headers();
+    heads.set("Content-Type", "application/json");
+    let lbody = {
+      vlei: user.otherCredCesr,
+      said: user.otherCred.sad.d,
+    };
+    let lreq = {
+      headers: heads,
+      method: "POST",
+      body: JSON.stringify(lbody),
+    };
+
+    let lpath = `/login`;
+    let lresp = await fetch(env.apiBaseUrl + lpath, lreq);
+    console.log("login response", lresp);
+    assert.equal(lresp.status, 202);
+    let ljson = await lresp.json();
+    const credJson = JSON.parse(ljson["creds"]);
+    assert.equal(credJson.length, 1);
+    assert.equal(credJson[0].sad.a.i, `${user.ecrAid.prefix}`);
+
+    heads = new Headers();
+    heads.set("Content-Type", "application/json");
+    let creq = { headers: heads, method: "GET", body: null };
+    let cpath = `/checklogin/${user.ecrAid.prefix}`;
+    let cresp = await fetch(env.apiBaseUrl + cpath, creq);
+    let cbody = await cresp.json();
+    assert.equal(cresp.status, 200);
+    assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
+    assert.equal(
+      cbody["msg"],
+      `AID ${user.ecrAid.prefix} w/ lei ${user.otherCred.sad.a.LEI} presented valid credential`,
+    );
+    assert.equal(cbody["said"], user.otherCred.sad.d);
+  }
+
   // login with the ecr credential
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
