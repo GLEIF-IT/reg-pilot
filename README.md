@@ -10,6 +10,9 @@ Reg-pilot related information, issues, discussions, and more.
 * [reg-pilot-api github](https://github.com/GLEIF-IT/reg-pilot-api) and development [reg-pilot-api docker](https://hub.docker.com/r/gleif/reg-pilot-api/tags) development images
 * [vlei-verifier github](https://github.com/GLEIF-IT/vlei-verifier) and development [vlei-verifier docker](https://hub.docker.com/r/gleif/vlei-verifier/tags) development images
 
+## Demo walk through
+* You might find these visual instructions useful from a [Oct 2024 demo walkthrough](https://github.com/2byrds/reg-pilot/tree/demo_oct_2024/demo)
+
 ## Demo test instances
 * Demo keria instance url = ```https://keria-dev.rootsid.cloud/admin``` and boot url = ```https://keria-dev.rootsid.cloud```
 * Demo signify passcode = ```Ap31Xt-FGcNXpkxmBYMQn```

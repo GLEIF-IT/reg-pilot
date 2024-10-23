@@ -37,6 +37,18 @@
         "engagementContextRole": "EBA Data Submitter"
       }
     },
+    "le_to_other_ecr_vlei_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "ECR_SCHEMA_SAID",
+      "rules": "ECR_RULES",
+      "privacy": true,
+      "attributes": {
+        "engagementContextRole": "Other ECR"
+      }
+    },
     "le_to_qvi_ecr_auth_cred": {
       "credSource": {
         "type": "le"
