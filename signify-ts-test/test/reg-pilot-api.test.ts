@@ -6,7 +6,7 @@ import { HabState, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { ApiUser, getApiTestData, isEcr } from "./utils/test-data";
+import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ECR_SCHEMA_SAID } from "../src/constants";
 
@@ -85,7 +85,7 @@ async function single_user_test(user: ApiUser) {
   let ecrLei;
   let ecrCredCesr;
   for (let i = 0; i < user.creds.length; i++) {
-    const foundEcr = isEcr(user.creds[i], user.ecrAid.prefix)
+    const foundEcr = isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix)
     if (foundEcr) {
       ecrCred = user.creds[i];
       ecrLei = ecrCred.sad.a.LEI;
@@ -309,7 +309,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     for (let i = 0; i < user.creds.length; i++) {
       login(user, user.creds[i], user.credsCesr[i]);
 
-      if (isEcr(ecrCred, user.ecrAid.prefix)) {
+      if (isEbaDataSubmitter(ecrCred, user.ecrAid.prefix)) {
         ecrCred = user.creds[i];
         ecrLei = ecrCred.sad.a.LEI;
         ecrCredCesr = user.credsCesr[i];
@@ -561,7 +561,7 @@ async function checkLogin(user: ApiUser, cred: any) {
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
   let cresp = await fetch(env.apiBaseUrl + cpath, creq);
   let cbody = await cresp.json();
-  if (isEcr(cred, user.ecrAid.prefix)) {
+  if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     assert.equal(cresp.status, 200);
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
     assert.equal(
@@ -591,7 +591,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
   let lpath = `/login`;
   let lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
-  if (isEcr(cred, user.ecrAid.prefix)) {
+  if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     assert.equal(lresp.status, 202);
     let ljson = await lresp.json();
     const credJson = JSON.parse(ljson["creds"]);

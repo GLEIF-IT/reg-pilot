@@ -132,7 +132,7 @@ export interface ApiUser {
   idAlias: string;
 }
 
-export function isEcr(cred: any, aid: string): boolean {
+export function isEbaDataSubmitter(cred: any, aid: string): boolean {
   return (
     cred.sad.s === ECR_SCHEMA_SAID &&
     cred.sad.a.i === aid &&

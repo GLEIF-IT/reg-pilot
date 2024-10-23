@@ -3,7 +3,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";
-import { ApiUser, getApiTestData, isEcr } from "./utils/test-data";
+import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 
 const secretsJsonPath = "../src/config/";
@@ -60,7 +60,7 @@ async function vlei_verification(user: ApiUser) {
     let ecrLei;
     let ecrCredCesr;
     for (let i = 0; i < user.creds.length; i++) {
-      if (isEcr(ecrCred, user.ecrAid.prefix)) {
+      if (isEbaDataSubmitter(ecrCred, user.ecrAid.prefix)) {
         ecrCred = user.creds[i];
         ecrLei = ecrCred.sad.a.LEI;
         ecrCredCesr = user.credsCesr[i];
