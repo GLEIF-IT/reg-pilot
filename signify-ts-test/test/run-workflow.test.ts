@@ -107,7 +107,7 @@ async function runWorkflow(workflow: any) {
 
 test("workflow", async function run() {
   const workflowsDir = "../src/workflows/";
-  const workflowFile = env.workflow;
+  const workflowFile = "singlesig-single-user-verify.yaml";
   const workflow = loadWorkflow(
     path.join(__dirname, `${workflowsDir}${workflowFile}`),
   );

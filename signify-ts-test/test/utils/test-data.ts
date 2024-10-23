@@ -32,8 +32,8 @@ export async function getApiTestData(
     const roleClient = clients[clients.length - 1];
     let apiUser: ApiUser = {
       ecrAid: null,
-      ecrCred: null,
-      ecrCredCesr: {},
+      creds: [],
+      credsCesr: [],
       roleClient: null,
       lei: "",
       uploadDig: "",
@@ -42,29 +42,13 @@ export async function getApiTestData(
     apiUser.roleClient = roleClient;
     const ecrAid = await roleClient.identifiers().get(aid);
     apiUser.ecrAid = ecrAid;
-    let creds = await roleClient.credentials().list();
-    let ecrCreds = creds.filter(
-      (cred: any) =>
-        cred.sad.s === ECR_SCHEMA_SAID &&
-        cred.sad.a.i === ecrAid.prefix,
-    );
 
-    let ecrCred;
-    for (let ecred of ecrCreds) {
-      if (ecred.sad.a.engagementContextRole === "EBA Data Submitter") { 
-        ecrCred = ecred;
-      } else if (ecred.sad.a.engagementContextRole === "Other ECR") {
-        apiUser.otherCred = ecred;
-      }
+    apiUser.creds = await roleClient.credentials().list();
+    // const ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
+    for (const cred of apiUser.creds) {
+      apiUser.credsCesr.push(await roleClient.credentials().get(cred.sad.d, true));
     }
-    apiUser.ecrCred = ecrCred;
-    const ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-    const ecrCredCesr = await roleClient.credentials().get(ecrCred.sad.d, true);
-    if (apiUser.otherCred) {
-      apiUser.otherCredCesr = await roleClient.credentials().get(apiUser.otherCred.sad.d, true);
-    }
-    apiUser.ecrCredCesr = ecrCredCesr;
-    apiUser.lei = ecrCred.sad.a.LEI;
+
     apiUsers.push(apiUser);
   }
   return apiUsers;
@@ -141,11 +125,17 @@ export function getDefaultOrigReports(): string[] {
 export interface ApiUser {
   roleClient: any;
   ecrAid: any;
-  ecrCred: any;
-  otherCred?: any;
-  ecrCredCesr: any;
-  otherCredCesr?: any;
+  creds: Array<any>;
+  credsCesr: Array<any>;
   lei: string;
   uploadDig: string;
   idAlias: string;
+}
+
+export function isEcr(cred: any, aid: string): boolean {
+  return (
+    cred.sad.s === ECR_SCHEMA_SAID &&
+    cred.sad.a.i === aid &&
+    cred.sad.a.engagementContextRole === "EBA Data Submitter"
+  );
 }
