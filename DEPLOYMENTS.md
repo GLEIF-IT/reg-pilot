@@ -38,6 +38,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 6  | 2024-10-08 | 1.2.0-rc3      | [35660f5]        | 
 | 7  | 2024-10-18 | 1.2.0-rc3      | [33bc081]        | 
 | 8  | 2024-10-22 | 1.2.0-rc4      | [e9cf7da]        | 
+| 9  | 2024-10-25 | 1.2.0-rc4      | [e17090f]        | 
 
 #### b. test domain
 
@@ -49,6 +50,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 4  | 2024-10-08 | 1.2.0-rc3      | [35660f5]        | 
 | 5  | 2024-10-18 | 1.2.0-rc3      | [33bc081]        |
 | 6  | 2024-10-22 | 1.2.0-rc4      | [e9cf7da]        |
+| 7  | 2024-10-25 | 1.2.0-rc4      | [e17090f]        |
 
 
 
