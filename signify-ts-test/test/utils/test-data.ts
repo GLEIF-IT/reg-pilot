@@ -136,6 +136,6 @@ export function isEbaDataSubmitter(cred: any, aid: string): boolean {
   return (
     cred.sad.s === ECR_SCHEMA_SAID &&
     cred.sad.a.i === aid &&
-    cred.sad.a.engagementContextRole === "EBA Data Submitter"
+    cred.sad.a?.engagementContextRole === "EBA Data Submitter"
   );
 }

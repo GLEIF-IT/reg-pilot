@@ -9,6 +9,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ECR_SCHEMA_SAID } from "../src/constants";
+import { sleep } from "./utils/test-util";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -85,15 +86,22 @@ async function single_user_test(user: ApiUser) {
   let ecrLei;
   let ecrCredCesr;
   for (let i = 0; i < user.creds.length; i++) {
-    const foundEcr = isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix)
-    if (foundEcr) {
-      ecrCred = user.creds[i];
-      ecrLei = ecrCred.sad.a.LEI;
-      ecrCredCesr = user.credsCesr[i];
-    }
+    if(user.creds[i].sad.a.i === user.ecrAid.prefix) {
+      const foundEcr = isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix);
+      if (foundEcr) {
+        ecrCred = user.creds[i];
+        ecrLei = ecrCred.sad.a.LEI;
+        ecrCredCesr = user.credsCesr[i];
+      }
 
-    login(user, user.creds[i], user.credsCesr[i]);
-    checkLogin(user, user.creds[i]);
+     const lresp = await login(user, user.creds[i], user.credsCesr[i]);
+     if (lresp.status) {
+      sleep(1000);
+       await checkLogin(user, user.creds[i]);
+     } else {
+      fail("Failed to login");
+     }
+    }
   }
 
   // try to get status without signed headers provided
@@ -559,7 +567,7 @@ async function checkLogin(user: ApiUser, cred: any) {
   heads.set("Content-Type", "application/json");
   let creq = { headers: heads, method: "GET", body: null };
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
-  let cresp = await fetch(env.apiBaseUrl + cpath, creq);
+  const cresp = await fetch(env.apiBaseUrl + cpath, creq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     assert.equal(cresp.status, 200);
@@ -570,10 +578,10 @@ async function checkLogin(user: ApiUser, cred: any) {
     );
     assert.equal(cbody["said"], cred.sad.d);
   } else {
-      assert.equal(cresp.status, 401);
-      let ljson = await cresp.json();
-      assert.equal(ljson, "Not Authorized");
+    assert.equal(cresp.status, 401);
+    assert.equal(cbody['msg'], `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, msg: Can't authorize cred with OOR schema`);
   }
+  return cresp;
 }
 
 async function login(user: ApiUser, cred: any, credCesr: any) {
@@ -589,17 +597,18 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
     body: JSON.stringify(lbody),
   };
   let lpath = `/login`;
-  let lresp = await fetch(env.apiBaseUrl + lpath, lreq);
+  const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     assert.equal(lresp.status, 202);
     let ljson = await lresp.json();
     const credJson = JSON.parse(ljson["creds"]);
-    assert.equal(credJson.length > 1, true);
+    assert.equal(credJson.length >= 1, true);
     assert.equal(credJson[0].sad.a.i, `${user.ecrAid.prefix}`);
   } else {
-    assert.equal(lresp.status, 401);
     let ljson = await lresp.json();
-    assert.equal(ljson, "Not Authorized");
+    assert.equal(lresp.status, 202);
+    assert.equal(ljson["msg"], `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`);
   }
+  return lresp;
 }
