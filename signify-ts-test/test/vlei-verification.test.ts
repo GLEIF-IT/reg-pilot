@@ -3,7 +3,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";
-import { ApiUser, getApiTestData } from "./utils/test-data";
+import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 
 const secretsJsonPath = "../src/config/";
@@ -55,10 +55,22 @@ async function vlei_verification(user: ApiUser) {
     let hresp = await fetch(env.verifierBaseUrl + hpath, hreq);
     assert.equal(200, hresp.status);
 
+    // login with the ecr credential
+    let ecrCred;
+    let ecrLei;
+    let ecrCredCesr;
+    for (let i = 0; i < user.creds.length; i++) {
+      if (isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix)) {
+        ecrCred = user.creds[i];
+        ecrLei = ecrCred.sad.a.LEI;
+        ecrCredCesr = user.credsCesr[i];
+      }
+    }
+
     let heads = new Headers();
     heads.set("Content-Type", "application/json+cesr");
-    let preq = { headers: heads, method: "PUT", body: user.ecrCredCesr };
-    let ppath = `/presentations/${user.ecrCred.sad.d}`;
+    let preq = { headers: heads, method: "PUT", body: ecrCredCesr };
+    let ppath = `/presentations/${ecrCred.sad.d}`;
     let presp = await fetch(env.verifierBaseUrl + ppath, preq);
     assert.equal(presp.status, 202);
 
@@ -99,7 +111,7 @@ async function vlei_verification(user: ApiUser) {
     let body = await authResp.json();
 
     assert.equal(body["aid"], `${user.ecrAid.prefix}`);
-    assert.equal(body["said"], `${user.ecrCred.sad.d}`);
+    assert.equal(body["said"], `${ecrCred.sad.d}`);
   } catch (error) {
     console.error("Verification failed:", error);
     throw error;
