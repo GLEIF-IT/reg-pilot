@@ -31,15 +31,15 @@ if (require.main === module) {
     const configJson = JSON.parse(
       fs.readFileSync(
         path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8"
-      )
+        "utf-8",
+      ),
     );
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(
       configJson,
       env,
-      users.map((user) => user.identifiers[0].name)
+      users.map((user) => user.identifiers[0].name),
     );
     await run_api_test(apiUsers);
   }, 200000);
@@ -53,7 +53,7 @@ export async function run_api_test(apiUsers: ApiUser[]) {
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
     console.log(
-      `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`
+      `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
     );
 }
 
@@ -64,7 +64,7 @@ async function single_user_test(user: ApiUser) {
     __dirname,
     "data",
     signedDir,
-    user.ecrAid.prefix
+    user.ecrAid.prefix,
   );
   const signedReports = getSignedReports(signedDirPrefixed);
   failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
@@ -78,7 +78,7 @@ async function single_user_test(user: ApiUser) {
   let sresp = await apiAdapter.getReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient
+    user.roleClient,
   );
 
   // login with the ecr credential
@@ -86,7 +86,7 @@ async function single_user_test(user: ApiUser) {
   let ecrLei;
   let ecrCredCesr;
   for (let i = 0; i < user.creds.length; i++) {
-    if(user.creds[i].sad.a.i === user.ecrAid.prefix) {
+    if (user.creds[i].sad.a.i === user.ecrAid.prefix) {
       const foundEcr = isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix);
       if (foundEcr) {
         ecrCred = user.creds[i];
@@ -94,13 +94,13 @@ async function single_user_test(user: ApiUser) {
         ecrCredCesr = user.credsCesr[i];
       }
 
-     const lresp = await login(user, user.creds[i], user.credsCesr[i]);
-     if (lresp.status) {
-      sleep(1000);
-       await checkLogin(user, user.creds[i]);
-     } else {
-      fail("Failed to login");
-     }
+      const lresp = await login(user, user.creds[i], user.credsCesr[i]);
+      if (lresp.status) {
+        sleep(1000);
+        await checkLogin(user, user.creds[i]);
+      } else {
+        fail("Failed to login");
+      }
     }
   }
 
@@ -114,14 +114,14 @@ async function single_user_test(user: ApiUser) {
   const dresp = await apiAdapter.dropReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient
+    user.roleClient,
   );
   if (dresp.status < 300) {
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient
+      user.roleClient,
     );
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
@@ -166,7 +166,7 @@ async function single_user_test(user: ApiUser) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient
+        user.roleClient,
       );
       console.log(`Processing file: ${signedReport}`);
       const signedZipBuf = fs.readFileSync(`${signedReport}`);
@@ -177,14 +177,14 @@ async function single_user_test(user: ApiUser) {
         signedReport,
         signedZipBuf,
         signedZipDig,
-        user.roleClient
+        user.roleClient,
       );
       await checkSignedUpload(
         signedUpResp,
         path.basename(signedReport),
         signedZipDig,
         user,
-        ecrCred
+        ecrCred,
       );
     }
   }
@@ -199,7 +199,7 @@ async function single_user_test(user: ApiUser) {
         await apiAdapter.dropReportStatusByAid(
           user.idAlias,
           user.ecrAid.prefix,
-          user.roleClient
+          user.roleClient,
         );
         console.log(`Processing file: ${filePath}`);
         const failZipBuf = fs.readFileSync(`${filePath}`);
@@ -210,14 +210,14 @@ async function single_user_test(user: ApiUser) {
           failReport,
           failZipBuf,
           failZipDig,
-          user.roleClient
+          user.roleClient,
         );
         await checkFailUpload(
           user.roleClient,
           failUpResp,
           failReport,
           failZipDig,
-          user.ecrAid
+          user.ecrAid,
         );
       }
     }
@@ -229,7 +229,7 @@ async function single_user_test(user: ApiUser) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient
+        user.roleClient,
       );
       console.log(`Processing file: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
@@ -240,7 +240,7 @@ async function single_user_test(user: ApiUser) {
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        user.roleClient
+        user.roleClient,
       );
       await checkBadDigestUpload(badDigestUpResp);
     }
@@ -252,7 +252,7 @@ async function single_user_test(user: ApiUser) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient
+        user.roleClient,
       );
       console.log(`Processing file: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
@@ -263,7 +263,7 @@ async function single_user_test(user: ApiUser) {
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        user.roleClient
+        user.roleClient,
       );
       await checkNonPrefixedDigestUpload(badDigestUpResp);
     }
@@ -294,7 +294,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
       __dirname,
       "data",
       signedDir,
-      user.ecrAid.prefix
+      user.ecrAid.prefix,
     );
     // try to ping the api
     let ppath = "/ping";
@@ -307,7 +307,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     let sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient
+      user.roleClient,
     );
 
     // login with the ecr credential
@@ -336,13 +336,13 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     await apiAdapter.dropReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient
+      user.roleClient,
     );
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient
+      user.roleClient,
     );
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
@@ -364,7 +364,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
         await apiAdapter.dropReportStatusByAid(
           user.idAlias,
           user.ecrAid.prefix,
-          user.roleClient
+          user.roleClient,
         );
         console.log(`Processing file: ${signedReport}`);
         const signedZipBuf = fs.readFileSync(`${signedReport}`);
@@ -375,14 +375,14 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
           signedReport,
           signedZipBuf,
           signedZipDig,
-          user.roleClient
+          user.roleClient,
         );
         await checkSignedUpload(
           signedUpResp,
           path.basename(signedReport),
           signedZipDig,
           user,
-          ecrCred
+          ecrCred,
         );
         user.uploadDig = signedZipDig;
         break;
@@ -393,7 +393,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   let sresp = await apiAdapter.getReportStatusByAid(
     user1.idAlias,
     user1.ecrAid.prefix,
-    user1.roleClient
+    user1.roleClient,
   );
   assert.equal(sresp.status, 202);
   let sbody = await sresp.json();
@@ -402,7 +402,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sresp = await apiAdapter.getReportStatusByAid(
     user1.idAlias,
     user3.ecrAid.prefix,
-    user1.roleClient
+    user1.roleClient,
   );
   assert.equal(sresp.status, 401);
 
@@ -411,7 +411,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     user1.idAlias,
     user3.ecrAid.prefix,
     user3.uploadDig,
-    user1.roleClient
+    user1.roleClient,
   );
   assert.equal(sresp.status, 401);
 
@@ -420,7 +420,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     user2.idAlias,
     user2.ecrAid.prefix,
     user1.uploadDig,
-    user2.roleClient
+    user2.roleClient,
   );
   assert.equal(sresp.status, 200);
 
@@ -428,7 +428,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sresp = await apiAdapter.getLeiReportStatusesByAid(
     user1.idAlias,
     user1.ecrAid.prefix,
-    user1.roleClient
+    user1.roleClient,
   );
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
@@ -439,7 +439,7 @@ export async function checkSignedUpload(
   fileName: string,
   signedZipDig: string,
   user: ApiUser,
-  ecrCred: any
+  ecrCred: any,
 ): Promise<boolean> {
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
@@ -456,7 +456,7 @@ export async function checkSignedUpload(
     user.idAlias,
     user.ecrAid.prefix,
     signedZipDig,
-    user.roleClient
+    user.roleClient,
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
@@ -471,7 +471,7 @@ export async function checkSignedUpload(
   sresp = await apiAdapter.getReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient
+    user.roleClient,
   );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
@@ -493,7 +493,7 @@ export async function checkFailUpload(
   failUpResp: Response,
   fileName: string,
   failZipDig: string,
-  ecrAid: HabState
+  ecrAid: HabState,
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
@@ -521,7 +521,7 @@ export async function checkFailUpload(
     ecrAid.name,
     ecrAid.prefix,
     failZipDig,
-    roleClient
+    roleClient,
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
@@ -534,7 +534,7 @@ export async function checkFailUpload(
 }
 
 export async function checkBadDigestUpload(
-  badDigestUpResp: Response
+  badDigestUpResp: Response,
 ): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
@@ -544,7 +544,7 @@ export async function checkBadDigestUpload(
 }
 
 export async function checkNonPrefixedDigestUpload(
-  badDigestUpResp: Response
+  badDigestUpResp: Response,
 ): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
@@ -574,12 +574,15 @@ async function checkLogin(user: ApiUser, cred: any) {
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
     assert.equal(
       cbody["msg"],
-      `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} presented valid credential`
+      `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} presented valid credential`,
     );
     assert.equal(cbody["said"], cred.sad.d);
   } else {
     assert.equal(cresp.status, 401);
-    assert.equal(cbody['msg'], `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, msg: Can't authorize cred with OOR schema`);
+    assert.equal(
+      cbody["msg"],
+      `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, msg: Can't authorize cred with OOR schema`,
+    );
   }
   return cresp;
 }
@@ -608,7 +611,10 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
   } else {
     let ljson = await lresp.json();
     assert.equal(lresp.status, 202);
-    assert.equal(ljson["msg"], `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`);
+    assert.equal(
+      ljson["msg"],
+      `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
+    );
   }
   return lresp;
 }

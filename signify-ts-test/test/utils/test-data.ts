@@ -46,7 +46,9 @@ export async function getApiTestData(
     apiUser.creds = await roleClient.credentials().list();
     // const ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
     for (const cred of apiUser.creds) {
-      apiUser.credsCesr.push(await roleClient.credentials().get(cred.sad.d, true));
+      apiUser.credsCesr.push(
+        await roleClient.credentials().get(cred.sad.d, true),
+      );
     }
 
     apiUsers.push(apiUser);
