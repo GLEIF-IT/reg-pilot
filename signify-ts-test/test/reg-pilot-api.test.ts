@@ -574,14 +574,14 @@ async function checkLogin(user: ApiUser, cred: any) {
     assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
     assert.equal(
       cbody["msg"],
-      `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} presented valid credential`,
+      `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
     );
     assert.equal(cbody["said"], cred.sad.d);
   } else {
     assert.equal(cresp.status, 401);
     assert.equal(
       cbody["msg"],
-      `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, msg: Can't authorize cred with OOR schema`,
+      `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, info: Can't authorize cred with OOR schema`,
     );
   }
   return cresp;
