@@ -1,12 +1,12 @@
 {
   "secrets": {
-    "gleif1": "D_PbQb01zuzQgK-kDWj21",
-    "qvi1": "BTaqgh1eeOjXO5iQJp621",
-    "le1": "Akv4TFoiYeHNqzj3N8g21",
-    "le2": "Akv4TFoiYeHNqzj3N8g22",
-    "ecr1": "CbII3tno87wn3uGBP1221",
-    "ecr2": "CbII3tno87wn3uGBP1222",
-    "ecr3": "CbII3tno87wn3uGBP1223"
+    "gleif1": "D_PbQb01zuzQgK-kDWj23",
+    "qvi1": "BTaqgh1eeOjXO5iQJp623",
+    "le1": "Akv4TFoiYeHNqzj3N8g25",
+    "le2": "Akv4TFoiYeHNqzj3N8g26",
+    "ecr1": "CbII3tno87wn3uGBP1277",
+    "ecr2": "CbII3tno87wn3uGBP1228",
+    "ecr3": "CbII3tno87wn3uGBP1229"
   },
   "credentials": {
     "gleif_to_qvi_vlei_cred": {
@@ -47,6 +47,31 @@
       "privacy": true,
       "attributes": {
         "engagementContextRole": "Incorrect Role"
+      }
+    },
+    "le_to_qvi_oor_auth_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "OOR_AUTH_SCHEMA_SAID",
+      "rules": "OOR_AUTH_RULES",
+      "privacy": false,
+      "attributes": {
+        "officialRole": "HR Manager"
+      }
+    },
+    "qvi_to_ecr_vlei_oor_cred_incorrect_schema": {
+      "credSource": {
+        "type": "auth",
+        "o": "I2I"
+      },
+      "type": "direct",
+      "schema": "OOR_SCHEMA_SAID",
+      "rules": "OOR_RULES",
+      "privacy": false,
+      "attributes": {
+        "officialRole": "HR Manager"
       }
     }
   },

@@ -5,6 +5,8 @@ const path = require("path");
 export async function buildTestData(
   testData: EcrTestData,
   testName: string,
+  issueName: string,
+  fileNamePrefix: string = "",
 ): Promise<string> {
   let testDataDirPrefixed = path.join(
     __dirname,
@@ -16,8 +18,9 @@ export async function buildTestData(
   if (!fs.existsSync(testDataDirPrefixed)) {
     fs.mkdirSync(testDataDirPrefixed);
   }
+  testData.credential["issueName"] = issueName;
   const testDataJson = JSON.stringify(testData);
-  const fileName = `${testData.lei}_${testData.aid}_${testData.engagementContextRole}.json`;
+  const fileName = `${fileNamePrefix}${testData.lei}_${testData.aid}_${testData.engagementContextRole}.json`;
   await fs.writeFile(
     `${testDataDirPrefixed}/${fileName}`,
     testDataJson,

@@ -19,16 +19,6 @@ workflow:
       description: "QVI issues LE vLEI credential"
       credential: "qvi_to_le_vlei_cred"
       credential_source: "qvi_cred"
-    le_cred2:
-      id: "le_cred2"
-      type: "issue_credential"
-      attributes:
-        LEI: "875500ELOZEL05BVXV38"
-      issuer_aid: "qvi-aid-1"
-      issuee_aid: "le-aid-2"
-      description: "QVI issues LE vLEI credential"
-      credential: "qvi_to_le_vlei_cred"
-      credential_source: "qvi_cred"
     ecr_cred:
       id: "ecr_cred"
       type: "issue_credential"
@@ -41,33 +31,54 @@ workflow:
       credential: "le_to_ecr_vlei_cred"
       credential_source: "le_cred"
       generate_test_data: true
-      test_name: 3-user-check-upload
-    ecr_cred2:
-      id: "ecr_cred2"
-      type: "issue_credential"
-      attributes:
-        personLegalName: "John Doe"
-        LEI: "875500ELOZEL05BVXV37"
+      test_name: 3-user-check-upload-rev
+    # ecr_cred2:
+    #   id: "ecr_cred2"
+    #   type: "issue_credential"
+    #   attributes:
+    #     personLegalName: "John Doe"
+    #     LEI: "875500ELOZEL05BVXV37"
+    #   issuer_aid: "le-aid-1"
+    #   issuee_aid: "ecr-aid-2"
+    #   description: "LE issues ECR vLEI credential with invalid role"
+    #   credential: "le_to_ecr_vlei_cred_invalid_role"
+    #   credential_source: "le_cred"
+    #   generate_test_data: true
+    #   test_name: 3-user-check-upload
+    # oor_auth_cred:
+    #   id: "oor_auth_cred"
+    #   type: "issue_credential"
+    #   attributes:
+    #     personLegalName: "David Clark"
+    #     LEI: "875500ELOZEL05BVXV37"
+    #     AID: "ecr-aid-1"
+    #   issuer_aid: "le-aid-1"
+    #   issuee_aid: "qvi-aid-1"
+    #   description: "LE issues OOR Auth credential to QVI"
+    #   credential: "le_to_qvi_oor_auth_cred"
+    #   credential_source: "le_cred"
+    # oor_cred:
+    #   id: "ecr_cred3"
+    #   type: "issue_credential"
+    #   attributes:
+    #     personLegalName: "David Clark"
+    #     LEI: "875500ELOZEL05BVXV37"
+    #   issuer_aid: "qvi-aid-1"
+    #   issuee_aid: "ecr-aid-1"
+    #   description: "QVI issues OOR vLEI credential"
+    #   credential: "qvi_to_ecr_vlei_oor_cred_incorrect_schema"
+    #   credential_source: "oor_auth_cred"
+    #   generate_test_data: true
+    #   test_name: 3-user-check-upload
+    ecr_cred_revoke:
+      id: "ecr_cred_revoke"
+      type: "revoke_credential"
       issuer_aid: "le-aid-1"
-      issuee_aid: "ecr-aid-2"
-      description: "LE issues ECR vLEI credential"
-      credential: "le_to_ecr_vlei_cred_invalid_role"
-      credential_source: "le_cred"
+      issuee_aid: "ecr-aid-1"
+      description: "LE revokes ECR vLEI credential"
+      credential: "ecr_cred"
       generate_test_data: true
-      test_name: 3-user-check-upload
-    ecr_cred3:
-      id: "ecr_cred3"
-      type: "issue_credential"
-      attributes:
-        personLegalName: "David Clark"
-        LEI: "875500ELOZEL05BVXV38"
-      issuer_aid: "le-aid-2"
-      issuee_aid: "ecr-aid-3"
-      description: "LE issues ECR vLEI credential"
-      credential: "le_to_ecr_vlei_cred"
-      credential_source: "le_cred2"
-      generate_test_data: true
-      test_name: 3-user-check-upload
+      test_name: 3-user-check-upload-rev
     # gen_report_ecr1:
     #   id: "gen_report_ecr1"
     #   type: "generate_report"
