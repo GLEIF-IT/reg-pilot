@@ -60,10 +60,10 @@ async function vlei_verification(user: ApiUser) {
     let ecrLei;
     let ecrCredCesr;
     for (let i = 0; i < user.creds.length; i++) {
-      if (isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix)) {
-        ecrCred = user.creds[i];
+      if (isEbaDataSubmitter(user.creds[i]["cred"], user.ecrAid.prefix)) {
+        ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
-        ecrCredCesr = user.credsCesr[i];
+        ecrCredCesr = user.creds[i]["credCesr"];
       }
     }
 

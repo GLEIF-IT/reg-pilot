@@ -39,20 +39,20 @@ async function runWorkflow(workflow: any) {
   const configJson = JSON.parse(
     fs.readFileSync(path.join(__dirname, configPath) + configFileName, "utf-8"),
   );
-  let vi: any;
+  let vi: VleiIssuance;
 
   for (const [k, v] of Object.entries(workflow.workflow.steps)) {
     await executeStep(k, v);
   }
 
   async function executeStep(stepName: string, step: any) {
-    console.log(`Executing: ${step.description}`);
     if (step.type == "issue_credential") {
       if (!vi) {
         vi = new VleiIssuance(configFileName);
         await vi.prepareClients();
         await vi.createRegistries();
       }
+      console.log(`Executing: ${step.description}`);
       await vi.getOrIssueCredential(
         stepName,
         step.credential,
@@ -63,7 +63,17 @@ async function runWorkflow(workflow: any) {
         Boolean(step.generate_test_data),
         step.test_name,
       );
+    } else if (step.type == "revoke_credential") {
+      console.log(`Executing: ${step.description}`);
+      await vi.revokeCredential(
+        step.credential,
+        step.issuer_aid,
+        step.issuee_aid,
+        Boolean(step.generate_test_data),
+        step.test_name,
+      );
     } else if (step.type == "generate_report") {
+      console.log(`Executing: ${step.description}`);
       const testData = getReportGenTestData();
       const aidData = await buildAidData(configJson);
       const clients = await getOrCreateClients(
@@ -95,9 +105,11 @@ async function runWorkflow(workflow: any) {
         testData["reportTypes"],
       );
     } else if (step.type == "api_test") {
+      console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       await run_api_test(apiUsers);
     } else if (step.type == "vlei_verification_test") {
+      console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       await run_vlei_verification_test(apiUsers);
     }
