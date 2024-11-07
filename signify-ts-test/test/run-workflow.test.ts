@@ -63,18 +63,16 @@ async function runWorkflow(workflow: any) {
         Boolean(step.generate_test_data),
         step.test_name,
       );
-    }
-    else if (step.type == "revoke_credential") {
+    } else if (step.type == "revoke_credential") {
       console.log(`Executing: ${step.description}`);
       await vi.revokeCredential(
         step.credential,
         step.issuer_aid,
-        step.issuee_aid,  
+        step.issuee_aid,
         Boolean(step.generate_test_data),
-        step.test_name,      
-      )
-    }
-    else if (step.type == "generate_report") {
+        step.test_name,
+      );
+    } else if (step.type == "generate_report") {
       console.log(`Executing: ${step.description}`);
       const testData = getReportGenTestData();
       const aidData = await buildAidData(configJson);

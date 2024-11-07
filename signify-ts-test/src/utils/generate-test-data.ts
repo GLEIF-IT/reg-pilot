@@ -6,7 +6,7 @@ export async function buildTestData(
   testData: EcrTestData,
   testName: string,
   issueName: string,
-  fileNamePrefix: string = ""
+  fileNamePrefix: string = "",
 ): Promise<string> {
   let testDataDirPrefixed = path.join(
     __dirname,

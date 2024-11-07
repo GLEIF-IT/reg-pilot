@@ -444,7 +444,7 @@ export async function multisigRevoke(
   memberName: string,
   groupName: string,
   rev: Serder,
-  anc: Serder
+  anc: Serder,
 ) {
   const leaderHab = await client.identifiers().get(memberName);
   const groupHab = await client.identifiers().get(groupName);
@@ -457,25 +457,25 @@ export async function multisigRevoke(
   const atc = ims.substring(anc.size);
 
   const embeds = {
-      iss: [rev, ''],
-      anc: [anc, atc],
+    iss: [rev, ""],
+    anc: [anc, atc],
   };
 
   const recipients = members.signing
-      .map((m: { aid: string }) => m.aid)
-      .filter((aid: string) => aid !== leaderHab.prefix);
+    .map((m: { aid: string }) => m.aid)
+    .filter((aid: string) => aid !== leaderHab.prefix);
 
   await client
-      .exchanges()
-      .send(
-          memberName,
-          'multisig',
-          leaderHab,
-          '/multisig/rev',
-          { gid: groupHab.prefix },
-          embeds,
-          recipients
-      );
+    .exchanges()
+    .send(
+      memberName,
+      "multisig",
+      leaderHab,
+      "/multisig/rev",
+      { gid: groupHab.prefix },
+      embeds,
+      recipients,
+    );
 }
 
 export async function startMultisigIncept(

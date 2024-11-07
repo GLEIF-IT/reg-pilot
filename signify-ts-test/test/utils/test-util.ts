@@ -355,11 +355,13 @@ export async function getOrIssueCredential(
 export async function revokeCredential(
   issuerClient: SignifyClient,
   issuerAid: Aid,
-  credentialSaid: string
+  credentialSaid: string,
 ): Promise<any> {
-  const credentialList = await issuerClient.credentials().list();  
+  const credentialList = await issuerClient.credentials().list();
 
-  const revResult = await issuerClient.credentials().revoke(issuerAid.name, credentialSaid);
+  const revResult = await issuerClient
+    .credentials()
+    .revoke(issuerAid.name, credentialSaid);
 
   await waitOperation(issuerClient, revResult.op);
   const credential = await issuerClient.credentials().get(credentialSaid);
@@ -540,7 +542,7 @@ export async function waitOperation<T = any>(
     op = await client.operations().get(op);
   }
 
-  const oplist = await client.operations().list()
+  const oplist = await client.operations().list();
   op = await client
     .operations()
     .wait(op, { signal: signal ?? AbortSignal.timeout(60000) });

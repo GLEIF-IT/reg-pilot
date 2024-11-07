@@ -584,7 +584,7 @@ export class VleiIssuance {
     issuerAidKey: string,
     issueeAidKey: string,
     generateTestData: boolean = false,
-    testName: string = "default_test"
+    testName: string = "default_test",
   ) {
     const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
     if (issuerAidInfo.identifiers) {
@@ -679,7 +679,8 @@ export class VleiIssuance {
         aid: recipientAID.prefix,
         lei: credData.LEI,
         credential: { raw: tmpCred, cesr: credCesr },
-        engagementContextRole: credData.engagementContextRole || credData.officialRole,
+        engagementContextRole:
+          credData.engagementContextRole || credData.officialRole,
       };
       await buildTestData(testData, testName, issueeAidKey);
     }
@@ -946,7 +947,7 @@ export class VleiIssuance {
     issuerAidKey: string,
     issueeAidKey: string,
     generateTestData: boolean = false,
-    testName: string = "default_test"
+    testName: string = "default_test",
   ) {
     const cred: any = this.credentials.get(credId)!;
     const issuerAID = this.aids.get(issuerAidKey)![0];
@@ -967,7 +968,8 @@ export class VleiIssuance {
         aid: recipientAID.prefix,
         lei: revCred.sad.a.LEI,
         credential: { raw: tmpCred, cesr: credCesr },
-        engagementContextRole: revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
+        engagementContextRole:
+          revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
@@ -979,7 +981,7 @@ export class VleiIssuance {
     issuerAidKey: string,
     issueeAidKey: string,
     generateTestData: boolean = false,
-    testName: string = "default_test"
+    testName: string = "default_test",
   ) {
     const recipientAID = this.aids.get(issueeAidKey)![0];
     const cred: any = this.credentials.get(credId)!;
@@ -993,33 +995,38 @@ export class VleiIssuance {
     let issuerClient: any;
     let revOps = [];
     let i = 0;
-    const REVTIME = new Date().toISOString().replace('Z', '000+00:00');
+    const REVTIME = new Date().toISOString().replace("Z", "000+00:00");
     for (const issuerAid of issuerAids) {
       const aidInfo = this.aidsInfo.get(issuerAid.name)!;
       issuerClient = this.clients.get(aidInfo.agent.name)![0];
       if (i != 0) {
-        const msgSaid = await waitAndMarkNotification(issuerClient, '/multisig/rev');
+        const msgSaid = await waitAndMarkNotification(
+          issuerClient,
+          "/multisig/rev",
+        );
         console.log(
-          `Multisig AID ${issuerAid.name} received exchange message to join the credential revocation event`
+          `Multisig AID ${issuerAid.name} received exchange message to join the credential revocation event`,
         );
         const res = await issuerClient.groups().getRequest(msgSaid);
       }
-      const revResult = await issuerClient.credentials().revoke(issuerAIDMultisig.name, cred.sad.d, REVTIME);
+      const revResult = await issuerClient
+        .credentials()
+        .revoke(issuerAIDMultisig.name, cred.sad.d, REVTIME);
       revOps.push([issuerClient, revResult.op]);
       await multisigRevoke(
         issuerClient,
         issuerAid.name,
         issuerAIDMultisig.name,
         revResult.rev,
-        revResult.anc
+        revResult.anc,
       );
       revCred = await issuerClient.credentials().get(cred.sad.d);
       i += 1;
     }
 
-    for (const [client, op] of revOps){
+    for (const [client, op] of revOps) {
       await waitOperation(client, op);
-    }    
+    }
 
     this.credentials.set(credId, revCred);
     if (generateTestData) {
@@ -1031,7 +1038,8 @@ export class VleiIssuance {
         aid: recipientAID.prefix,
         lei: revCred.sad.a.LEI,
         credential: { raw: tmpCred, cesr: credCesr },
-        engagementContextRole: revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
+        engagementContextRole:
+          revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
