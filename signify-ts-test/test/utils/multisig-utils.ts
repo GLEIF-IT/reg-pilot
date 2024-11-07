@@ -439,6 +439,45 @@ export async function issueCredentialMultisig(
   return op;
 }
 
+export async function multisigRevoke(
+  client: SignifyClient,
+  memberName: string,
+  groupName: string,
+  rev: Serder,
+  anc: Serder
+) {
+  const leaderHab = await client.identifiers().get(memberName);
+  const groupHab = await client.identifiers().get(groupName);
+  const members = await client.identifiers().members(groupName);
+
+  const keeper = client.manager!.get(groupHab);
+  const sigs = await keeper.sign(signify.b(anc.raw));
+  const sigers = sigs.map((sig: string) => new signify.Siger({ qb64: sig }));
+  const ims = signify.d(signify.messagize(anc, sigers));
+  const atc = ims.substring(anc.size);
+
+  const embeds = {
+      iss: [rev, ''],
+      anc: [anc, atc],
+  };
+
+  const recipients = members.signing
+      .map((m: { aid: string }) => m.aid)
+      .filter((aid: string) => aid !== leaderHab.prefix);
+
+  await client
+      .exchanges()
+      .send(
+          memberName,
+          'multisig',
+          leaderHab,
+          '/multisig/rev',
+          { gid: groupHab.prefix },
+          embeds,
+          recipients
+      );
+}
+
 export async function startMultisigIncept(
   client: SignifyClient,
   {

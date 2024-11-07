@@ -8,6 +8,7 @@ import signify, {
   Salter,
   HabState,
   SignifyClient,
+  Dict,
 } from "signify-ts";
 import {
   resolveOobi,
@@ -28,6 +29,8 @@ import {
   assertOperations,
   warnNotifications,
   Aid,
+  sleep,
+  revokeCredential,
 } from "../test/utils/test-util";
 import {
   addEndRoleMultisig,
@@ -37,6 +40,7 @@ import {
   delegateMultisig,
   grantMultisig,
   issueCredentialMultisig,
+  multisigRevoke,
 } from "../test/utils/multisig-utils";
 import { boolean, sec } from "mathjs";
 import { retry } from "../test/utils/retry";
@@ -575,6 +579,33 @@ export class VleiIssuance {
     }
   }
 
+  public async revokeCredential(
+    credId: string,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test"
+  ) {
+    const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
+    if (issuerAidInfo.identifiers) {
+      return await this.revokeCredentialMultiSig(
+        credId,
+        issuerAidKey,
+        issueeAidKey,
+        generateTestData,
+        testName,
+      );
+    } else {
+      return await this.revokeCredentialSingleSig(
+        credId,
+        issuerAidKey,
+        issueeAidKey,
+        generateTestData,
+        testName,
+      );
+    }
+  }
+
   public async getOrIssueCredentialSingleSig(
     credId: string,
     credName: string,
@@ -625,7 +656,6 @@ export class VleiIssuance {
     if (!credHolder) {
       await sendGrantMessage(issuerClient, issuerAID, recipientAID, cred);
       await sendAdmitMessage(recipientClient, recipientAID, issuerAID);
-
       credHolder = await retry(async () => {
         const cCred = await getReceivedCredential(recipientClient, cred.sad.d);
         assert(cCred !== undefined);
@@ -649,9 +679,9 @@ export class VleiIssuance {
         aid: recipientAID.prefix,
         lei: credData.LEI,
         credential: { raw: tmpCred, cesr: credCesr },
-        engagementContextRole: credData.engagementContextRole,
+        engagementContextRole: credData.engagementContextRole || credData.officialRole,
       };
-      await buildTestData(testData, testName);
+      await buildTestData(testData, testName, issueeAidKey);
     }
     return cred;
   }
@@ -909,5 +939,102 @@ export class VleiIssuance {
       cred.sad.d,
     );
     this.credentials.set(credId, cred);
+  }
+
+  public async revokeCredentialSingleSig(
+    credId: string,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test"
+  ) {
+    const cred: any = this.credentials.get(credId)!;
+    const issuerAID = this.aids.get(issuerAidKey)![0];
+    const recipientAID = this.aids.get(issueeAidKey)![0];
+    const issuerAIDInfo = this.aidsInfo.get(issuerAidKey)!;
+    const recipientAIDInfo = this.aidsInfo.get(issueeAidKey)!;
+    const recipientClient = this.clients.get(recipientAIDInfo.agent.name)![0];
+    const issuerClient = this.clients.get(issuerAIDInfo.agent.name)![0];
+
+    const revCred = await revokeCredential(issuerClient, issuerAID, cred.sad.d);
+    this.credentials.set(credId, revCred);
+    if (generateTestData) {
+      let tmpCred = revCred;
+      const credCesr = await recipientClient
+        .credentials()
+        .get(revCred.sad.d, true);
+      let testData: EcrTestData = {
+        aid: recipientAID.prefix,
+        lei: revCred.sad.a.LEI,
+        credential: { raw: tmpCred, cesr: credCesr },
+        engagementContextRole: revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
+      };
+      await buildTestData(testData, testName, issueeAidKey, "revoked_");
+    }
+    return revCred;
+  }
+
+  public async revokeCredentialMultiSig(
+    credId: string,
+    issuerAidKey: string,
+    issueeAidKey: string,
+    generateTestData: boolean = false,
+    testName: string = "default_test"
+  ) {
+    const recipientAID = this.aids.get(issueeAidKey)![0];
+    const cred: any = this.credentials.get(credId)!;
+    const issuerAidInfo = this.aidsInfo.get(issuerAidKey)!;
+    const issuerAIDMultisig = this.aids.get(issuerAidKey)![0];
+    const issuerAids =
+      issuerAidInfo.identifiers.map(
+        (identifier: any) => this.aids.get(identifier)![0],
+      ) || [];
+    let revCred: any;
+    let issuerClient: any;
+    let revOps = [];
+    let i = 0;
+    const REVTIME = new Date().toISOString().replace('Z', '000+00:00');
+    for (const issuerAid of issuerAids) {
+      const aidInfo = this.aidsInfo.get(issuerAid.name)!;
+      issuerClient = this.clients.get(aidInfo.agent.name)![0];
+      if (i != 0) {
+        const msgSaid = await waitAndMarkNotification(issuerClient, '/multisig/rev');
+        console.log(
+          `Multisig AID ${issuerAid.name} received exchange message to join the credential revocation event`
+        );
+        const res = await issuerClient.groups().getRequest(msgSaid);
+      }
+      const revResult = await issuerClient.credentials().revoke(issuerAIDMultisig.name, cred.sad.d, REVTIME);
+      revOps.push([issuerClient, revResult.op]);
+      await multisigRevoke(
+        issuerClient,
+        issuerAid.name,
+        issuerAIDMultisig.name,
+        revResult.rev,
+        revResult.anc
+      );
+      revCred = await issuerClient.credentials().get(cred.sad.d);
+      i += 1;
+    }
+
+    for (const [client, op] of revOps){
+      await waitOperation(client, op);
+    }    
+
+    this.credentials.set(credId, revCred);
+    if (generateTestData) {
+      let tmpCred = revCred;
+      const credCesr = await issuerClient
+        .credentials()
+        .get(revCred.sad.d, true);
+      let testData: EcrTestData = {
+        aid: recipientAID.prefix,
+        lei: revCred.sad.a.LEI,
+        credential: { raw: tmpCred, cesr: credCesr },
+        engagementContextRole: revCred.sad.a.engagementContextRole || revCred.sad.a.officialRole,
+      };
+      await buildTestData(testData, testName, issueeAidKey, "revoked_");
+    }
+    return revCred;
   }
 }

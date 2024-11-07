@@ -33,7 +33,6 @@ export async function getApiTestData(
     let apiUser: ApiUser = {
       ecrAid: null,
       creds: [],
-      credsCesr: [],
       roleClient: null,
       lei: "",
       uploadDig: "",
@@ -43,12 +42,14 @@ export async function getApiTestData(
     const ecrAid = await roleClient.identifiers().get(aid);
     apiUser.ecrAid = ecrAid;
 
-    apiUser.creds = await roleClient.credentials().list();
+    let userCreds = await roleClient.credentials().list();
+    userCreds = userCreds.filter((cred: any) => cred.sad.a.i === ecrAid.prefix);
     // const ecrCredHolder = await getGrantedCredential(roleClient, ecrCred.sad.d);
-    for (const cred of apiUser.creds) {
-      apiUser.credsCesr.push(
-        await roleClient.credentials().get(cred.sad.d, true),
-      );
+    for (const cred of userCreds) {
+      apiUser.creds.push({
+        cred: cred,
+        credCesr: await roleClient.credentials().get(cred.sad.d, true),
+      });
     }
 
     apiUsers.push(apiUser);
@@ -128,7 +129,6 @@ export interface ApiUser {
   roleClient: any;
   ecrAid: any;
   creds: Array<any>;
-  credsCesr: Array<any>;
   lei: string;
   uploadDig: string;
   idAlias: string;

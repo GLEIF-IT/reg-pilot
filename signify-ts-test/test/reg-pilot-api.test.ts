@@ -86,18 +86,25 @@ async function single_user_test(user: ApiUser) {
   let ecrLei;
   let ecrCredCesr;
   for (let i = 0; i < user.creds.length; i++) {
-    if (user.creds[i].sad.a.i === user.ecrAid.prefix) {
-      const foundEcr = isEbaDataSubmitter(user.creds[i], user.ecrAid.prefix);
+    if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
+      const foundEcr = isEbaDataSubmitter(
+        user.creds[i]["cred"],
+        user.ecrAid.prefix,
+      );
       if (foundEcr) {
-        ecrCred = user.creds[i];
+        ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
-        ecrCredCesr = user.credsCesr[i];
+        ecrCredCesr = user.creds[i]["credCesr"];
       }
 
-      const lresp = await login(user, user.creds[i], user.credsCesr[i]);
+      const lresp = await login(
+        user,
+        user.creds[i]["cred"],
+        user.creds[i]["credCesr"],
+      );
       if (lresp.status) {
         sleep(1000);
-        await checkLogin(user, user.creds[i]);
+        await checkLogin(user, user.creds[i]["cred"]);
       } else {
         fail("Failed to login");
       }
@@ -315,15 +322,15 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     let ecrLei;
     let ecrCredCesr;
     for (let i = 0; i < user.creds.length; i++) {
-      login(user, user.creds[i], user.credsCesr[i]);
+      login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
 
       if (isEbaDataSubmitter(ecrCred, user.ecrAid.prefix)) {
-        ecrCred = user.creds[i];
+        ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
-        ecrCredCesr = user.credsCesr[i];
+        ecrCredCesr = user.creds[i]["cred"];
       }
 
-      checkLogin(user, user.creds[i]);
+      checkLogin(user, user.creds[i]["cred"]);
     }
 
     // try to get status without signed headers provided
