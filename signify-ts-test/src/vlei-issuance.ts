@@ -1058,5 +1058,5 @@ export class VleiIssuance {
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
     return [revCred, null];
-  }
+  }    
 }
