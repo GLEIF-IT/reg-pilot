@@ -1,3 +1,21 @@
+## Quick Start Guide
+
+1. Install dependencies:
+```bash
+cd signify-ts-test
+npm install
+```
+
+2. Start verification services:
+```bash
+docker compose up verify -d
+```
+
+3. Run the workflow:
+```bash
+WORKFLOW=singlesig-single-user.yaml CONFIGURATION=configuration-singlesig-single-user.json ./test-workflow.sh --data-report-verify-proxy
+```
+
 # Credential Issuance Workflow and Configuration Documentation
 
 ## Overview
