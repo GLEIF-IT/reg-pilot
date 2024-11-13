@@ -66,6 +66,7 @@ import {
 import fs from "fs";
 import path from "path";
 import { buildTestData, EcrTestData } from "./utils/generate-test-data";
+import { ApiUser } from "../test/utils/test-data";
 
 export class VleiIssuance {
   configPath: string = "config/";
@@ -670,11 +671,9 @@ export class VleiIssuance {
     assert.equal(credHolder.status.s, "0");
     assert(credHolder.atc !== undefined);
     this.credentials.set(credId, cred);
+    const credCesr = await recipientClient.credentials().get(cred.sad.d, true);
     if (generateTestData) {
       let tmpCred = cred;
-      const credCesr = await recipientClient
-        .credentials()
-        .get(cred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
         lei: credData.LEI,
@@ -684,7 +683,15 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey);
     }
-    return cred;
+    const response: ApiUser = {
+      roleClient: recipientClient,
+      ecrAid: recipientAID,
+      creds: [{ cred: cred, credCesr: credCesr }],
+      lei: credData.LEI,
+      uploadDig: "",
+      idAlias: issueeAidKey,
+    };
+    return [response, credData.engagementContextRole];
   }
 
   public async getOrIssueCredentialMultiSig(
@@ -940,6 +947,7 @@ export class VleiIssuance {
       cred.sad.d,
     );
     this.credentials.set(credId, cred);
+    return [cred, null];
   }
 
   public async revokeCredentialSingleSig(
@@ -959,11 +967,9 @@ export class VleiIssuance {
 
     const revCred = await revokeCredential(issuerClient, issuerAID, cred.sad.d);
     this.credentials.set(credId, revCred);
+    const credCesr = await issuerClient.credentials().get(revCred.sad.d, true);
     if (generateTestData) {
       let tmpCred = revCred;
-      const credCesr = await recipientClient
-        .credentials()
-        .get(revCred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
         lei: revCred.sad.a.LEI,
@@ -973,7 +979,16 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
-    return revCred;
+
+    const response: ApiUser = {
+      roleClient: recipientClient,
+      ecrAid: recipientAID,
+      creds: [{ cred: revCred, credCesr: credCesr }],
+      lei: revCred.sad.a.LEI,
+      uploadDig: "",
+      idAlias: issueeAidKey,
+    };
+    return [response, revCred.sad.a.engagementContextRole];
   }
 
   public async revokeCredentialMultiSig(
@@ -1020,14 +1035,13 @@ export class VleiIssuance {
         revResult.rev,
         revResult.anc,
       );
-      revCred = await issuerClient.credentials().get(cred.sad.d);
       i += 1;
     }
 
     for (const [client, op] of revOps) {
       await waitOperation(client, op);
     }
-
+    revCred = await issuerClient.credentials().get(cred.sad.d);
     this.credentials.set(credId, revCred);
     if (generateTestData) {
       let tmpCred = revCred;
@@ -1043,6 +1057,6 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
-    return revCred;
+    return [revCred, null];
   }
 }

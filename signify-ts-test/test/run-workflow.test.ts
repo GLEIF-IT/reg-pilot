@@ -4,7 +4,11 @@ import { getOrCreateClients } from "./utils/test-util";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { buildAidData } from "../src/utils/handle-json-config";
 import { generate_reports } from "./report.test";
-import { getApiTestData, getReportGenTestData } from "./utils/test-data";
+import {
+  ApiUser,
+  getApiTestData,
+  getReportGenTestData,
+} from "./utils/test-data";
 import { run_api_test } from "./reg-pilot-api.test";
 import { run_vlei_verification_test } from "./vlei-verification.test";
 
@@ -36,6 +40,7 @@ async function runWorkflow(workflow: any) {
   let executedSteps = new Set();
   const configFileName = env.configuration;
   const configPath = "../src/config/";
+  let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
   const configJson = JSON.parse(
     fs.readFileSync(path.join(__dirname, configPath) + configFileName, "utf-8"),
   );
@@ -53,7 +58,7 @@ async function runWorkflow(workflow: any) {
         await vi.createRegistries();
       }
       console.log(`Executing: ${step.description}`);
-      await vi.getOrIssueCredential(
+      const cred = await vi.getOrIssueCredential(
         stepName,
         step.credential,
         step.attributes,
@@ -63,15 +68,17 @@ async function runWorkflow(workflow: any) {
         Boolean(step.generate_test_data),
         step.test_name,
       );
+      if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "revoke_credential") {
       console.log(`Executing: ${step.description}`);
-      await vi.revokeCredential(
+      const cred = await vi.revokeCredential(
         step.credential,
         step.issuer_aid,
         step.issuee_aid,
         Boolean(step.generate_test_data),
         step.test_name,
       );
+      if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "generate_report") {
       console.log(`Executing: ${step.description}`);
       const testData = getReportGenTestData();
@@ -107,7 +114,7 @@ async function runWorkflow(workflow: any) {
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
-      await run_api_test(apiUsers);
+      await run_api_test(apiUsers, step.test_case, creds);
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
