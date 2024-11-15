@@ -762,23 +762,19 @@ export class VleiIssuance {
       const kargsSub = {
         i: recipientAID.prefix,
         dt: createTimestamp(),
+        u: privacy ? new Salter({}).qb64 : undefined,
         ...credData,
       };
-      if (!recipientAidInfo.identifiers) {
-        kargsSub.u = new Salter({}).qb64;
-      }
 
       const kargsIss = {
         i: issuerAIDMultisig.prefix,
         ri: issuerRegistry.regk,
         s: schema,
         a: kargsSub,
+        u: privacy ? new Salter({}).qb64 : undefined,
         ...credSource!,
         ...rules!,
       };
-      if (!recipientAidInfo.identifiers) {
-        kargsIss.u = new Salter({}).qb64;
-      }
 
       const IssOps = await Promise.all(
         issuerAids.map((aid: any, index: any) =>
@@ -820,7 +816,7 @@ export class VleiIssuance {
           );
         }),
       );
-
+      sleep(1000);
       const grantTime = createTimestamp();
       await Promise.all(
         creds.map((cred, index) => {
@@ -839,7 +835,7 @@ export class VleiIssuance {
           );
         }),
       );
-
+      sleep(1000);
       await waitAndMarkNotification(
         this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/exn",
@@ -877,7 +873,7 @@ export class VleiIssuance {
             );
           }),
         );
-
+        sleep(2000);
         for (const aid of issuerAids) {
           await waitAndMarkNotification(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
@@ -896,7 +892,7 @@ export class VleiIssuance {
             "/exn/ipex/admit",
           );
         }
-
+        sleep(1000);
         credsReceived = await Promise.all(
           recepientAids.map((aid: any) => {
             const client = this.clients.get(
@@ -926,6 +922,7 @@ export class VleiIssuance {
           this.aids.get(recepientAids[0]!.name)![0].name,
           issuerAIDMultisig,
         );
+        sleep(2000);
         for (const aid of issuerAids) {
           await waitAndMarkNotification(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
