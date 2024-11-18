@@ -339,6 +339,27 @@ function generateBankConfig(bankId: number) {
           credential: "qvi_to_oor_vlei_cred_from_le_to_qvi_ecr_auth_cred",
           credential_source: "oor_auth_cred_2",
         },
+        gen_report_ecr1: {
+          id: "gen_report_ecr1",
+          type: "generate_report",
+          aid: "ecr-aid-1",
+          description: "Generating reports for ecr-aid-1 user",
+          copy_folder: `600-banks-test-data/Bank_${bankId}/reports/ecr1`,
+        },
+        gen_report_ecr2: {
+          id: "gen_report_ecr2",
+          type: "generate_report",
+          aid: "ecr-aid-2",
+          description: "Generating reports for ecr-aid-2 user",
+          copy_folder: `600-banks-test-data/Bank_${bankId}/reports/ecr2`,
+        },
+        gen_report_ecr3: {
+          id: "gen_report_ecr3",
+          type: "generate_report",
+          aid: "ecr-aid-3",
+          description: "Generating reports for ecr-aid-3 user",
+          copy_folder: `600-banks-test-data/Bank_${bankId}/reports/ecr3`,
+        },
       },
     },
   };
@@ -360,11 +381,22 @@ function generateBankConfig(bankId: number) {
     JSON.stringify(config, null, 2),
     "utf8",
   );
+  const metaInf = {
+    secrets: {
+      ...ecrSecrets,
+      ...oorSecrets,
+    },
+  };
+  fs.writeFileSync(
+    `${bankDir}/metaInf.json`,
+    JSON.stringify(metaInf, null, 2),
+    "utf8",
+  );
 }
 
 test("generate-bank-workflows", async function run() {
   // Generate configs and workflows for each bank
-  const amount = 600;
+  const amount = 5;
   for (let i = 1; i < amount + 1; i++) {
     generateBankConfig(i);
   }
