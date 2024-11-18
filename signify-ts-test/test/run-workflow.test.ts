@@ -110,6 +110,7 @@ async function runWorkflow(workflow: any) {
         failDirPrefixed,
         testData["unsignedReports"],
         testData["reportTypes"],
+        step.copy_folder,
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);

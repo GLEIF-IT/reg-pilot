@@ -114,6 +114,7 @@ export async function generate_reports(
   failDirPrefixed: string,
   unsignedReports: string[],
   reportTypes: string[],
+  copyFolder?: string,
 ) {
   deleteReportsDir(signedDirPrefixed);
   deleteReportsDir(failDirPrefixed);
@@ -135,6 +136,19 @@ export async function generate_reports(
     assert.equal(
       await createFailReports(failDirPrefixed, signedDirPrefixed),
       true,
+    );
+  }
+
+  if (copyFolder) {
+    fs.cpSync(
+      signedDirPrefixed,
+      path.join(__dirname, "data", copyFolder, "signed_reports"),
+      { recursive: true },
+    );
+    fs.cpSync(
+      failDirPrefixed,
+      path.join(__dirname, "data", copyFolder, "fail_reports"),
+      { recursive: true },
     );
   }
 }
