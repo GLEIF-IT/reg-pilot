@@ -9,7 +9,7 @@ import {
   getApiTestData,
   getReportGenTestData,
 } from "./utils/test-data";
-import { run_api_test } from "./reg-pilot-api.test";
+import { run_api_revocation_test, run_api_test } from "./reg-pilot-api.test";
 import { run_vlei_verification_test } from "./vlei-verification.test";
 
 const fs = require("fs");
@@ -114,8 +114,29 @@ async function runWorkflow(workflow: any) {
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
-      const apiUsers = await getApiTestData(configJson, env, step.aids);
-      await run_api_test(apiUsers, step.test_case, creds);
+      if (step.test_case == "revoked_cred_upload_test") {
+        const apiUsers = await getApiTestData(configJson, env, step.aids);
+        const aidData = await buildAidData(configJson);
+        const clients = await getOrCreateClients(
+          1,
+          [aidData[step.requestor_aid].agent.secret],
+          true,
+        );
+        const roleClient = clients[clients.length - 1];
+        const requestorAid = await roleClient
+          .identifiers()
+          .get(step.requestor_aid);
+        const requestorAidPrefix = requestorAid.prefix;
+        await run_api_revocation_test(
+          roleClient,
+          step.requestor_aid,
+          requestorAidPrefix,
+          creds,
+        );
+      } else {
+        const apiUsers = await getApiTestData(configJson, env, step.aids);
+        await run_api_test(apiUsers);
+      }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
