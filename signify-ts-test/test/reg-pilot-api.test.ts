@@ -41,37 +41,37 @@ if (require.main === module) {
       env,
       users.map((user) => user.identifiers[0].name),
     );
-    await run_api_test(
-      apiUsers,
-      "reports_upload_test",
-      new Map<string, ApiUser>(),
-    );
+    await run_api_test(apiUsers);
   }, 200000);
 }
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(
-  apiUsers: ApiUser[],
-  testCase: string = "reports_upload_test",
-  credentials: Map<string, ApiUser>,
-) {
-  if (testCase == "reports_upload_test") {
-    if (apiUsers.length == 3) await multi_user_test(apiUsers);
-    else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
-    else
-      console.log(
-        `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
-      );
-  } else if (testCase == "revoked_cred_upload_test") {
-    await revoked_cred_upload_test(credentials);
-  } else {
-    console.log(`Invalid API test type: ${testCase}}`);
-  }
+export async function run_api_test(apiUsers: ApiUser[]) {
+  if (apiUsers.length == 3) await multi_user_test(apiUsers);
+  else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
+  else
+    console.log(
+      `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
+    );
 }
 
-module.exports = { run_api_test };
+export async function run_api_revocation_test(
+  requestorClient: SignifyClient,
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  credentials: Map<string, ApiUser>,
+) {
+  await revoked_cred_upload_test(
+    credentials,
+    requestorAidAlias,
+    requestorAidPrefix,
+    requestorClient,
+  );
+}
+
+module.exports = { run_api_test, run_api_revocation_test };
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -458,7 +458,12 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sbody = await sresp.json();
 }
 
-async function revoked_cred_upload_test(credentials: Map<string, ApiUser>) {
+async function revoked_cred_upload_test(
+  credentials: Map<string, ApiUser>,
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  requestorClient: SignifyClient,
+) {
   const ecr_cred_prev_state = credentials.get("ecr_cred_prev_state")!;
   const ecr_cred_revoke = credentials.get("ecr_cred_revoke")!;
   const ecr_cred_new_state = credentials.get("ecr_cred_new_state")!;
@@ -540,9 +545,11 @@ async function revoked_cred_upload_test(credentials: Map<string, ApiUser>) {
   let sbody = await sresp.json();
 
   // 2nd case. Presenting revoked credential
-  // TODO: update login with new /revoke_credential endpoint call
+
   await presentRevocation(
-    ecr_cred_revoke,
+    requestorAidAlias,
+    requestorAidPrefix,
+    requestorClient,
     ecr_cred_revoke.creds[0]["cred"],
     ecr_cred_revoke.creds[0]["credCesr"],
   );
@@ -767,7 +774,13 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
   return lresp;
 }
 
-async function presentRevocation(user: ApiUser, cred: any, credCesr: any) {
+async function presentRevocation(
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  requestorClient: SignifyClient,
+  cred: any,
+  credCesr: any,
+) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   let lbody = {
@@ -780,21 +793,22 @@ async function presentRevocation(user: ApiUser, cred: any, credCesr: any) {
     body: JSON.stringify(lbody),
   };
   let lpath = `/present_revocation`;
-  const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
+  const url = env.apiBaseUrl + lpath;
+  let sreq = await requestorClient.createSignedRequest(
+    requestorAidAlias,
+    url,
+    lreq,
+  );
+  const lresp = await fetch(url, sreq);
   console.log("login response", lresp);
-  if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
-    assert.equal(lresp.status, 202);
-    let ljson = await lresp.json();
-    const credJson = JSON.parse(ljson["creds"]);
-    assert.equal(credJson.length >= 1, true);
-    assert.equal(credJson[0].sad.a.i, `${user.ecrAid.prefix}`);
-  } else {
-    let ljson = await lresp.json();
-    assert.equal(lresp.status, 202);
-    assert.equal(
-      ljson["msg"],
-      `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
-    );
-  }
+  assert.equal(lresp.status, 202);
+  let ljson = await lresp.json();
+  const credJson = JSON.parse(ljson["creds"]);
+  assert.equal(credJson.length >= 1, true);
+  assert.equal(credJson[0].sad.a.i, `${cred.sad.a.i}`);
+  assert.equal(
+    ljson["msg"],
+    `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
+  );
   return lresp;
 }

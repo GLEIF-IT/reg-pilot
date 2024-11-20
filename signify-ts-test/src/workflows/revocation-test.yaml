@@ -53,9 +53,10 @@ workflow:
       type: "generate_report"
       aid: "ecr-aid-1"
       description: "Generating reports for ecr-aid-1 user"
-    api_test_ecr1:
-      id: "api_test_ecr1"
+    api_test_ecr_rev1:
+      id: "api_test_ecr_rev1"
       type: "api_test"
       aids: ["ecr-aid-1"]
       description: "Running API test for ecr-aid-1 user"
       test_case: "revoked_cred_upload_test"
+      requestor_aid: "qvi-aid-1"
