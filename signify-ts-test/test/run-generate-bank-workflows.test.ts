@@ -372,26 +372,26 @@ function generateBankConfig(bankId: number) {
   const bankDir = `./test/data/600-banks-test-data/Bank_${bankId}`;
   if (!fs.existsSync(bankDir)) {
     fs.mkdirSync(bankDir);
+    let yamlStr = yaml.dump(workflow);
+    yamlStr = yamlStr.replace(/: (?!\d|true|false|null)(\S.*)/g, ': "$1"');
+    fs.writeFileSync(`${bankDir}/workflow.yaml`, yamlStr, "utf8");
+    fs.writeFileSync(
+      `${bankDir}/config.json`,
+      JSON.stringify(config, null, 2),
+      "utf8",
+    );
+    const metaInf = {
+      secrets: {
+        ...ecrSecrets,
+        ...oorSecrets,
+      },
+    };
+    fs.writeFileSync(
+      `${bankDir}/metaInf.json`,
+      JSON.stringify(metaInf, null, 2),
+      "utf8",
+    );
   }
-  let yamlStr = yaml.dump(workflow);
-  yamlStr = yamlStr.replace(/: (?!\d|true|false|null)(\S.*)/g, ': "$1"');
-  fs.writeFileSync(`${bankDir}/workflow.yaml`, yamlStr, "utf8");
-  fs.writeFileSync(
-    `${bankDir}/config.json`,
-    JSON.stringify(config, null, 2),
-    "utf8",
-  );
-  const metaInf = {
-    secrets: {
-      ...ecrSecrets,
-      ...oorSecrets,
-    },
-  };
-  fs.writeFileSync(
-    `${bankDir}/metaInf.json`,
-    JSON.stringify(metaInf, null, 2),
-    "utf8",
-  );
 }
 
 test("generate-bank-workflows", async function run() {
