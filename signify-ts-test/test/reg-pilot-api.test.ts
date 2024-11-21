@@ -99,6 +99,7 @@ async function single_user_test(user: ApiUser) {
   let ecrCred;
   let ecrLei;
   let ecrCredCesr;
+  let ecrUser;
   for (let i = 0; i < user.creds.length; i++) {
     if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
       const foundEcr = isEbaDataSubmitter(
@@ -106,6 +107,7 @@ async function single_user_test(user: ApiUser) {
         user.ecrAid.prefix,
       );
       if (foundEcr) {
+        ecrUser = user;
         ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
         ecrCredCesr = user.creds[i]["credCesr"];
@@ -122,6 +124,15 @@ async function single_user_test(user: ApiUser) {
       } else {
         fail("Failed to login");
       }
+    }
+  }
+  if (ecrUser) {
+    const lresp = await login(ecrUser, ecrCred, ecrCredCesr);
+    if (lresp.status) {
+      sleep(1000);
+      await checkLogin(ecrUser, ecrCred, false);
+    } else {
+      fail("Failed to login");
     }
   }
 
