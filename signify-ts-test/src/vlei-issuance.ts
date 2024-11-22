@@ -70,7 +70,6 @@ import { ApiUser } from "../test/utils/test-data";
 
 export class VleiIssuance {
   configPath: string = "config/";
-  configFile: string;
   configJson: any;
   users: Array<User> = new Array<User>();
   clients: Map<string, Array<SignifyClient>> = new Map<
@@ -97,14 +96,8 @@ export class VleiIssuance {
   kargsAID =
     witnessIds.length > 0 ? { toad: witnessIds.length, wits: witnessIds } : {};
 
-  constructor(secretsJsonFile: string) {
-    this.configFile = secretsJsonFile;
-    this.configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, this.configPath) + secretsJsonFile,
-        "utf-8",
-      ),
-    );
+  constructor(configJson: any) {
+    this.configJson = configJson;
   }
 
   public async prepareClients() {

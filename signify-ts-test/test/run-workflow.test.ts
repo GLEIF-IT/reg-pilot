@@ -7,6 +7,7 @@ import { generate_reports } from "./report.test";
 import {
   ApiUser,
   getApiTestData,
+  getConfig,
   getReportGenTestData,
 } from "./utils/test-data";
 import { run_api_revocation_test, run_api_test } from "./reg-pilot-api.test";
@@ -36,14 +37,9 @@ function loadWorkflow(filePath: string) {
   }
 }
 
-async function runWorkflow(workflow: any) {
+async function runWorkflow(workflow: any, configJson: any) {
   let executedSteps = new Set();
-  const configFileName = env.configuration;
-  const configPath = "../src/config/";
   let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
-  const configJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, configPath) + configFileName, "utf-8"),
-  );
   let vi: VleiIssuance;
 
   for (const [k, v] of Object.entries(workflow.workflow.steps)) {
@@ -53,7 +49,7 @@ async function runWorkflow(workflow: any) {
   async function executeStep(stepName: string, step: any) {
     if (step.type == "issue_credential") {
       if (!vi) {
-        vi = new VleiIssuance(configFileName);
+        vi = new VleiIssuance(configJson);
         await vi.prepareClients();
         await vi.createRegistries();
       }
@@ -146,13 +142,45 @@ async function runWorkflow(workflow: any) {
   }
 }
 
-test("workflow", async function run() {
+test.only("workflow", async function run() {
   const workflowsDir = "../src/workflows/";
   const workflowFile = env.workflow;
   const workflow = loadWorkflow(
     path.join(__dirname, `${workflowsDir}${workflowFile}`),
   );
-  if (workflow) {
-    await runWorkflow(workflow);
+  const configFilePath = env.configuration;
+  const configJson = await getConfig(configFilePath, false);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson);
+  }
+}, 3600000);
+
+test("api-verifier-bank-test-workflow", async function run() {
+  // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
+  const bankName = process.env.BANK_NAME;
+  const workflowPath = "../src/workflows/bank-api-verifier-test-workflow.yaml";
+  const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
+  const configFilePath = `${bankName}/config.json`;
+  const configJson = await getConfig(configFilePath, true);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson);
+  }
+}, 3600000);
+
+test("vlei-issuance-reports-bank-test-workflow", async function run() {
+  // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
+  const bankName = process.env.BANK_NAME;
+  console.log(
+    `Running vlei issuance and reports generation test for bank: ${bankName}`,
+  );
+  const bankDirPath = `./data/600-banks-test-data/${bankName}/`;
+  const workflowName = "workflow.yaml";
+  const workflow = loadWorkflow(
+    path.join(__dirname, `${bankDirPath}`) + workflowName,
+  );
+  const configFilePath = `${bankName}/config.json`;
+  const configJson = await getConfig(configFilePath, true);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson);
   }
 }, 3600000);
