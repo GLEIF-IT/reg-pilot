@@ -6,7 +6,12 @@ import { HabState, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import {
+  ApiUser,
+  getApiTestData,
+  getConfig,
+  isEbaDataSubmitter,
+} from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ECR_SCHEMA_SAID } from "../src/constants";
 import { sleep } from "./utils/test-util";
@@ -28,12 +33,8 @@ beforeAll(async () => {
 
 if (require.main === module) {
   test("reg-pilot-api", async function run() {
-    const configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8",
-      ),
-    );
+    const configFilePath = env.configuration;
+    const configJson = await getConfig(configFilePath, false);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(

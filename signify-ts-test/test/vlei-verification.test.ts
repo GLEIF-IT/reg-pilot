@@ -3,7 +3,12 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";
-import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import {
+  ApiUser,
+  getApiTestData,
+  getConfig,
+  isEbaDataSubmitter,
+} from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 
 const secretsJsonPath = "../src/config/";
@@ -24,12 +29,8 @@ beforeAll(async () => {
 // from the report test
 if (require.main === module) {
   test("vlei-verification", async function run() {
-    const configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8",
-      ),
-    );
+    const configFilePath = env.configuration;
+    const configJson = await getConfig(configFilePath, false);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(
