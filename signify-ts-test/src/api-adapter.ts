@@ -1,5 +1,6 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
+import { getOrCreateClients } from "../test/utils/test-util";
 
 export class ApiAdapter {
   apiBaseUrl: string;
@@ -89,4 +90,41 @@ export class ApiAdapter {
     const resp = await fetch(url, sreq);
     return resp;
   }
+
+  public async addRootOfTrust(
+    configJson: any,
+  ): Promise<Response> {
+    const rootOfTrustIdentifierName = configJson.users.filter((usr: any) => usr.type == "GLEIF")[0].identifiers[0]
+    const rootOfTrustIdentifierAgent = configJson.agents[configJson.identifiers[rootOfTrustIdentifierName].agent];
+    const rootOfTrustIdentifierSecret = configJson.secrets[rootOfTrustIdentifierAgent.secret];
+    const clients = await getOrCreateClients(
+      1,
+      [rootOfTrustIdentifierSecret],
+      true,
+    );
+    const client = clients[clients.length - 1];
+    const rootOfTrustAid = await client.identifiers().get(rootOfTrustIdentifierName);
+
+    const oobi = await client.oobis().get(rootOfTrustIdentifierName);
+    const oobiUrl = oobi.oobis[0].replace("keria", "localhost");
+    const oobiResp = await fetch(oobiUrl);
+    const oobiRespBody = await oobiResp.text();
+    const heads = new Headers();
+    heads.set("Content-Type", "application/json");
+    let lbody = {
+      vlei: oobiRespBody,
+      aid: rootOfTrustAid.prefix
+    };
+    let lreq = {
+      headers: heads,
+      method: "POST",
+      body: JSON.stringify(lbody),
+    };
+    const lurl = `${this.apiBaseUrl}/add_root_of_trust`;
+    const lresp = await fetch(lurl, lreq);
+    return lresp;
+  }
 }
+
+
+

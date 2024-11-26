@@ -42,14 +42,15 @@ if (require.main === module) {
       env,
       users.map((user) => user.identifiers[0].name),
     );
-    await run_api_test(apiUsers);
+    await run_api_test(apiUsers, configJson);
   }, 200000);
 }
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[]) {
+export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
+  await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
@@ -63,7 +64,9 @@ export async function run_api_revocation_test(
   requestorAidAlias: string,
   requestorAidPrefix: string,
   credentials: Map<string, ApiUser>,
+  configJson: any
 ) {
+  await apiAdapter.addRootOfTrust(configJson);
   await revoked_cred_upload_test(
     credentials,
     requestorAidAlias,
@@ -823,4 +826,27 @@ async function presentRevocation(
     `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
   );
   return lresp;
+}
+
+async function addRootOfTrust(
+  requestorAidPrefix: string,  
+  credCesr: any,
+) {
+  let heads = new Headers();
+  heads.set("Content-Type", "application/json+cesr");
+  let lbody = {
+    vlei: credCesr,
+    aid: requestorAidPrefix,
+  };
+  let lreq = {
+    headers: heads,
+    method: "POST",
+    body: JSON.stringify(lbody),
+  };
+  let lpath = `/add_root_of_trust`;
+  const url = env.apiBaseUrl + lpath;
+  const lresp = await fetch(url, lreq);
+  console.log("Add root of trust response", lresp);
+  let ljson = await lresp.json(); 
+  return ljson;
 }
