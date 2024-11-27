@@ -828,25 +828,3 @@ async function presentRevocation(
   return lresp;
 }
 
-async function addRootOfTrust(
-  requestorAidPrefix: string,  
-  credCesr: any,
-) {
-  let heads = new Headers();
-  heads.set("Content-Type", "application/json+cesr");
-  let lbody = {
-    vlei: credCesr,
-    aid: requestorAidPrefix,
-  };
-  let lreq = {
-    headers: heads,
-    method: "POST",
-    body: JSON.stringify(lbody),
-  };
-  let lpath = `/add_root_of_trust`;
-  const url = env.apiBaseUrl + lpath;
-  const lresp = await fetch(url, lreq);
-  console.log("Add root of trust response", lresp);
-  let ljson = await lresp.json(); 
-  return ljson;
-}
