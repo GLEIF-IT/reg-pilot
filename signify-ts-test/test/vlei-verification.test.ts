@@ -43,7 +43,10 @@ if (require.main === module) {
     await run_vlei_verification_test(apiUsers, configJson);
   }, 100000);
 }
-export async function run_vlei_verification_test(users: ApiUser[], configJson: any) {
+export async function run_vlei_verification_test(
+  users: ApiUser[],
+  configJson: any,
+) {
   await apiAdapter.addRootOfTrust(configJson);
   for (const user of users) {
     await vlei_verification(user);

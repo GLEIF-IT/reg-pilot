@@ -128,7 +128,7 @@ async function runWorkflow(workflow: any, configJson: any) {
           step.requestor_aid,
           requestorAidPrefix,
           creds,
-          configJson
+          configJson,
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);

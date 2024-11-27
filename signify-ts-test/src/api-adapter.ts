@@ -91,19 +91,25 @@ export class ApiAdapter {
     return resp;
   }
 
-  public async addRootOfTrust(
-    configJson: any,
-  ): Promise<Response> {
-    const rootOfTrustIdentifierName = configJson.users.filter((usr: any) => usr.type == "GLEIF")[0].identifiers[0]
-    const rootOfTrustIdentifierAgent = configJson.agents[configJson.identifiers[rootOfTrustIdentifierName].agent];
-    const rootOfTrustIdentifierSecret = configJson.secrets[rootOfTrustIdentifierAgent.secret];
+  public async addRootOfTrust(configJson: any): Promise<Response> {
+    const rootOfTrustIdentifierName = configJson.users.filter(
+      (usr: any) => usr.type == "GLEIF",
+    )[0].identifiers[0];
+    const rootOfTrustIdentifierAgent =
+      configJson.agents[
+        configJson.identifiers[rootOfTrustIdentifierName].agent
+      ];
+    const rootOfTrustIdentifierSecret =
+      configJson.secrets[rootOfTrustIdentifierAgent.secret];
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
       true,
     );
     const client = clients[clients.length - 1];
-    const rootOfTrustAid = await client.identifiers().get(rootOfTrustIdentifierName);
+    const rootOfTrustAid = await client
+      .identifiers()
+      .get(rootOfTrustIdentifierName);
 
     const oobi = await client.oobis().get(rootOfTrustIdentifierName);
     const oobiUrl = oobi.oobis[0].replace("keria", "localhost");
@@ -113,7 +119,7 @@ export class ApiAdapter {
     heads.set("Content-Type", "application/json");
     let lbody = {
       vlei: oobiRespBody,
-      aid: rootOfTrustAid.prefix
+      aid: rootOfTrustAid.prefix,
     };
     let lreq = {
       headers: heads,
@@ -125,6 +131,3 @@ export class ApiAdapter {
     return lresp;
   }
 }
-
-
-

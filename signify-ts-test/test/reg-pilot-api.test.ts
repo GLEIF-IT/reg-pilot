@@ -64,7 +64,7 @@ export async function run_api_revocation_test(
   requestorAidAlias: string,
   requestorAidPrefix: string,
   credentials: Map<string, ApiUser>,
-  configJson: any
+  configJson: any,
 ) {
   await apiAdapter.addRootOfTrust(configJson);
   await revoked_cred_upload_test(
@@ -827,4 +827,3 @@ async function presentRevocation(
   );
   return lresp;
 }
-
