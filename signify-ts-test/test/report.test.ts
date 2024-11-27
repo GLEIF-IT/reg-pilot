@@ -138,12 +138,12 @@ export async function generate_reports(
   if (copyFolder) {
     fs.cpSync(
       signedDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "signed_reports"),
+      path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid.prefix),
       { recursive: true },
     );
     fs.cpSync(
       failDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "fail_reports"),
+      path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid.prefix),
       { recursive: true },
     );
   }
