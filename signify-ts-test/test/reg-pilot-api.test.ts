@@ -42,14 +42,15 @@ if (require.main === module) {
       env,
       users.map((user) => user.identifiers[0].name),
     );
-    await run_api_test(apiUsers);
+    await run_api_test(apiUsers, configJson);
   }, 200000);
 }
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[]) {
+export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
+  await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
@@ -63,7 +64,9 @@ export async function run_api_revocation_test(
   requestorAidAlias: string,
   requestorAidPrefix: string,
   credentials: Map<string, ApiUser>,
+  configJson: any,
 ) {
+  await apiAdapter.addRootOfTrust(configJson);
   await revoked_cred_upload_test(
     credentials,
     requestorAidAlias,

@@ -128,15 +128,16 @@ async function runWorkflow(workflow: any, configJson: any) {
           step.requestor_aid,
           requestorAidPrefix,
           creds,
+          configJson,
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await run_api_test(apiUsers);
+        await run_api_test(apiUsers, configJson);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
-      await run_vlei_verification_test(apiUsers);
+      await run_vlei_verification_test(apiUsers, configJson);
     }
     executedSteps.add(step.id);
   }
