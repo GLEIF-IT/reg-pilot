@@ -151,7 +151,7 @@ export function resolveEnvironment(
         workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
         configuration:
           process.env.CONFIGURATION ||
-          "configuration-single-single-user.json",
+          "configuration-singlesig-single-user.json",
       };
       break;
     case "bank_test":
