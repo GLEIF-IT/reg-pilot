@@ -105,12 +105,7 @@ export function resolveEnvironment(
         witnessIds:
           process.env.WITNESS_IDS === ""
             ? []
-            : // : process.env.WITNESS_IDS?.split(",") || [],
-              process.env.WITNESS_IDS?.split(",") || [
-                "BHI7yViNOGWd1X0aKMgxLm4dUgbQDYoCFSJM2U8Hb3cx",
-                "BOUZ4v-vPMP5KyZQP-d_8B30UHI4KWgXczBgWcRJnnYd",
-                "BNY3LWk2BzX8wXmkXuvpYRVSdfynanwKQwD80KOG00VH",
-              ],
+            : process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
@@ -153,10 +148,10 @@ export function resolveEnvironment(
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID demo verifier not set",
-        workflow: process.env.WORKFLOW || "multisig-single-user.yaml",
+        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
         configuration:
           process.env.CONFIGURATION ||
-          "configuration-multisig-single-user.json",
+          "configuration-single-single-user.json",
       };
       break;
     case "bank_test":
