@@ -159,15 +159,11 @@ export function resolveEnvironment(
         preset: preset,
         url: process.env.KERIA || "http://127.0.0.1:3901",
         bootUrl: process.env.KERIA_BOOT || "http://127.0.0.1:3903",
-        witnessUrls: process.env.WITNESS_URLS?.split(",") || [
-          "",
-        ],
-        witnessIds: process.env.WITNESS_IDS?.split(",") || [
-        ],
+        witnessUrls: process.env.WITNESS_URLS?.split(",") || [""],
+        witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
-        apiBaseUrl:
-          process.env.REG_PILOT_API || "Set bank reg-pilot-api",
+        apiBaseUrl: process.env.REG_PILOT_API || "Set bank reg-pilot-api",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
