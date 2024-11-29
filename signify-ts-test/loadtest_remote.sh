@@ -39,9 +39,8 @@ run_bank_test_workflow() {
 }
 
 check_status() {    
-    local message="$1"
     if [[ $? -ne 0 ]]; then
-        echo "Error: $message failed. Exiting."
+        echo "Error: $1 failed. Exiting."
         exit 1
     fi
 }
