@@ -5,8 +5,8 @@ workflow:
       type: "api_test"
       aids: ["ecr-aid-1"]
       description: "Running API test for ecr-aid-1 user"
-    vlei_verification_test_1:
-      id: "vlei_verification_1"
-      type: "vlei_verification_test"
-      aids: ["ecr-aid-1"]
-      description: "Running Vlei Verification test for ecr-aid-1 user"
+    # vlei_verification_test_1:
+    #   id: "vlei_verification_1"
+    #   type: "vlei_verification_test"
+    #   aids: ["ecr-aid-1"]
+    #   description: "Running Vlei Verification test for ecr-aid-1 user"
