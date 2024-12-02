@@ -79,6 +79,19 @@ workflow:
       credential: "ecr_cred"
       generate_test_data: true
       test_name: 3-user-check-upload-rev
+    ecr_cred2:
+      id: "ecr_cred2"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-aid-1"
+      description: "LE issues ECR vLEI credential"
+      credential: "le_to_ecr_vlei_cred"
+      credential_source: "le_cred"
+      generate_test_data: true
+      test_name: 3-user-check-upload-rev
     # gen_report_ecr1:
     #   id: "gen_report_ecr1"
     #   type: "generate_report"

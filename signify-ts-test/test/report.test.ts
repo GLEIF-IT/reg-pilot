@@ -16,7 +16,7 @@ import {
 import { unknownPrefix } from "../src/constants";
 import { sign } from "crypto";
 import { boolean, re } from "mathjs";
-import { getReportGenTestData } from "./utils/test-data";
+import { getConfig, getReportGenTestData } from "./utils/test-data";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -63,12 +63,8 @@ function deleteReportsDir(repDir: string): void {
 if (require.main === module) {
   test("report-generation-test", async function run() {
     env = resolveEnvironment();
-    const configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8",
-      ),
-    );
+    const configFilePath = env.configuration;
+    const configJson = await getConfig(configFilePath, false);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     for (const user of users) {
@@ -114,6 +110,7 @@ export async function generate_reports(
   failDirPrefixed: string,
   unsignedReports: string[],
   reportTypes: string[],
+  copyFolder?: string,
 ) {
   deleteReportsDir(signedDirPrefixed);
   deleteReportsDir(failDirPrefixed);
@@ -135,6 +132,19 @@ export async function generate_reports(
     assert.equal(
       await createFailReports(failDirPrefixed, signedDirPrefixed),
       true,
+    );
+  }
+
+  if (copyFolder) {
+    fs.cpSync(
+      signedDirPrefixed,
+      path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid.prefix),
+      { recursive: true },
+    );
+    fs.cpSync(
+      failDirPrefixed,
+      path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid.prefix),
+      { recursive: true },
     );
   }
 }

@@ -66,10 +66,10 @@ import {
 import fs from "fs";
 import path from "path";
 import { buildTestData, EcrTestData } from "./utils/generate-test-data";
+import { ApiUser } from "../test/utils/test-data";
 
 export class VleiIssuance {
   configPath: string = "config/";
-  configFile: string;
   configJson: any;
   users: Array<User> = new Array<User>();
   clients: Map<string, Array<SignifyClient>> = new Map<
@@ -96,14 +96,8 @@ export class VleiIssuance {
   kargsAID =
     witnessIds.length > 0 ? { toad: witnessIds.length, wits: witnessIds } : {};
 
-  constructor(secretsJsonFile: string) {
-    this.configFile = secretsJsonFile;
-    this.configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, this.configPath) + secretsJsonFile,
-        "utf-8",
-      ),
-    );
+  constructor(configJson: any) {
+    this.configJson = configJson;
   }
 
   public async prepareClients() {
@@ -670,11 +664,9 @@ export class VleiIssuance {
     assert.equal(credHolder.status.s, "0");
     assert(credHolder.atc !== undefined);
     this.credentials.set(credId, cred);
+    const credCesr = await recipientClient.credentials().get(cred.sad.d, true);
     if (generateTestData) {
       let tmpCred = cred;
-      const credCesr = await recipientClient
-        .credentials()
-        .get(cred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
         lei: credData.LEI,
@@ -684,7 +676,15 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey);
     }
-    return cred;
+    const response: ApiUser = {
+      roleClient: recipientClient,
+      ecrAid: recipientAID,
+      creds: [{ cred: cred, credCesr: credCesr }],
+      lei: credData.LEI,
+      uploadDig: "",
+      idAlias: issueeAidKey,
+    };
+    return [response, credData.engagementContextRole];
   }
 
   public async getOrIssueCredentialMultiSig(
@@ -755,23 +755,19 @@ export class VleiIssuance {
       const kargsSub = {
         i: recipientAID.prefix,
         dt: createTimestamp(),
+        u: privacy ? new Salter({}).qb64 : undefined,
         ...credData,
       };
-      if (!recipientAidInfo.identifiers) {
-        kargsSub.u = new Salter({}).qb64;
-      }
 
       const kargsIss = {
         i: issuerAIDMultisig.prefix,
         ri: issuerRegistry.regk,
         s: schema,
         a: kargsSub,
+        u: privacy ? new Salter({}).qb64 : undefined,
         ...credSource!,
         ...rules!,
       };
-      if (!recipientAidInfo.identifiers) {
-        kargsIss.u = new Salter({}).qb64;
-      }
 
       const IssOps = await Promise.all(
         issuerAids.map((aid: any, index: any) =>
@@ -813,7 +809,7 @@ export class VleiIssuance {
           );
         }),
       );
-
+      sleep(1000);
       const grantTime = createTimestamp();
       await Promise.all(
         creds.map((cred, index) => {
@@ -832,7 +828,7 @@ export class VleiIssuance {
           );
         }),
       );
-
+      sleep(1000);
       await waitAndMarkNotification(
         this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
         "/multisig/exn",
@@ -870,7 +866,7 @@ export class VleiIssuance {
             );
           }),
         );
-
+        sleep(2000);
         for (const aid of issuerAids) {
           await waitAndMarkNotification(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
@@ -889,7 +885,7 @@ export class VleiIssuance {
             "/exn/ipex/admit",
           );
         }
-
+        sleep(1000);
         credsReceived = await Promise.all(
           recepientAids.map((aid: any) => {
             const client = this.clients.get(
@@ -919,6 +915,7 @@ export class VleiIssuance {
           this.aids.get(recepientAids[0]!.name)![0].name,
           issuerAIDMultisig,
         );
+        sleep(2000);
         for (const aid of issuerAids) {
           await waitAndMarkNotification(
             this.clients.get(this.aidsInfo.get(aid.name).agent.name)![0],
@@ -940,6 +937,7 @@ export class VleiIssuance {
       cred.sad.d,
     );
     this.credentials.set(credId, cred);
+    return [cred, null];
   }
 
   public async revokeCredentialSingleSig(
@@ -959,11 +957,9 @@ export class VleiIssuance {
 
     const revCred = await revokeCredential(issuerClient, issuerAID, cred.sad.d);
     this.credentials.set(credId, revCred);
+    const credCesr = await issuerClient.credentials().get(revCred.sad.d, true);
     if (generateTestData) {
       let tmpCred = revCred;
-      const credCesr = await recipientClient
-        .credentials()
-        .get(revCred.sad.d, true);
       let testData: EcrTestData = {
         aid: recipientAID.prefix,
         lei: revCred.sad.a.LEI,
@@ -973,7 +969,16 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
-    return revCred;
+
+    const response: ApiUser = {
+      roleClient: recipientClient,
+      ecrAid: recipientAID,
+      creds: [{ cred: revCred, credCesr: credCesr }],
+      lei: revCred.sad.a.LEI,
+      uploadDig: "",
+      idAlias: issueeAidKey,
+    };
+    return [response, revCred.sad.a.engagementContextRole];
   }
 
   public async revokeCredentialMultiSig(
@@ -1020,14 +1025,13 @@ export class VleiIssuance {
         revResult.rev,
         revResult.anc,
       );
-      revCred = await issuerClient.credentials().get(cred.sad.d);
       i += 1;
     }
 
     for (const [client, op] of revOps) {
       await waitOperation(client, op);
     }
-
+    revCred = await issuerClient.credentials().get(cred.sad.d);
     this.credentials.set(credId, revCred);
     if (generateTestData) {
       let tmpCred = revCred;
@@ -1043,6 +1047,6 @@ export class VleiIssuance {
       };
       await buildTestData(testData, testName, issueeAidKey, "revoked_");
     }
-    return revCred;
+    return [revCred, null];
   }
 }

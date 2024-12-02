@@ -3,19 +3,26 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";
-import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import {
+  ApiUser,
+  getApiTestData,
+  getConfig,
+  isEbaDataSubmitter,
+} from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
+import { ApiAdapter } from "../src/api-adapter";
 
 const secretsJsonPath = "../src/config/";
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 
 let env: TestEnvironment;
-let users: Array<ApiUser>;
+let apiAdapter: ApiAdapter;
 
 afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
+  apiAdapter = new ApiAdapter(env.apiBaseUrl);
 });
 
 // This test assumes you have run a vlei test that sets up the
@@ -24,12 +31,8 @@ beforeAll(async () => {
 // from the report test
 if (require.main === module) {
   test("vlei-verification", async function run() {
-    const configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8",
-      ),
-    );
+    const configFilePath = env.configuration;
+    const configJson = await getConfig(configFilePath, false);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(
@@ -37,10 +40,14 @@ if (require.main === module) {
       env,
       users.map((user) => user.identifiers[0].name),
     );
-    await run_vlei_verification_test(apiUsers);
+    await run_vlei_verification_test(apiUsers, configJson);
   }, 100000);
 }
-export async function run_vlei_verification_test(users: ApiUser[]) {
+export async function run_vlei_verification_test(
+  users: ApiUser[],
+  configJson: any,
+) {
+  await apiAdapter.addRootOfTrust(configJson);
   for (const user of users) {
     await vlei_verification(user);
   }

@@ -6,7 +6,12 @@ import { HabState, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import {
+  ApiUser,
+  getApiTestData,
+  getConfig,
+  isEbaDataSubmitter,
+} from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ECR_SCHEMA_SAID } from "../src/constants";
 import { sleep } from "./utils/test-util";
@@ -28,12 +33,8 @@ beforeAll(async () => {
 
 if (require.main === module) {
   test("reg-pilot-api", async function run() {
-    const configJson = JSON.parse(
-      fs.readFileSync(
-        path.join(__dirname, secretsJsonPath + env.configuration),
-        "utf-8",
-      ),
-    );
+    const configFilePath = env.configuration;
+    const configJson = await getConfig(configFilePath, false);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(
@@ -41,14 +42,15 @@ if (require.main === module) {
       env,
       users.map((user) => user.identifiers[0].name),
     );
-    await run_api_test(apiUsers);
+    await run_api_test(apiUsers, configJson);
   }, 200000);
 }
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[]) {
+export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
+  await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
@@ -57,7 +59,23 @@ export async function run_api_test(apiUsers: ApiUser[]) {
     );
 }
 
-module.exports = { run_api_test };
+export async function run_api_revocation_test(
+  requestorClient: SignifyClient,
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  credentials: Map<string, ApiUser>,
+  configJson: any,
+) {
+  await apiAdapter.addRootOfTrust(configJson);
+  await revoked_cred_upload_test(
+    credentials,
+    requestorAidAlias,
+    requestorAidPrefix,
+    requestorClient,
+  );
+}
+
+module.exports = { run_api_test, run_api_revocation_test };
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -85,6 +103,7 @@ async function single_user_test(user: ApiUser) {
   let ecrCred;
   let ecrLei;
   let ecrCredCesr;
+  let ecrUser;
   for (let i = 0; i < user.creds.length; i++) {
     if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
       const foundEcr = isEbaDataSubmitter(
@@ -92,6 +111,7 @@ async function single_user_test(user: ApiUser) {
         user.ecrAid.prefix,
       );
       if (foundEcr) {
+        ecrUser = user;
         ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
         ecrCredCesr = user.creds[i]["credCesr"];
@@ -104,10 +124,19 @@ async function single_user_test(user: ApiUser) {
       );
       if (lresp.status) {
         sleep(1000);
-        await checkLogin(user, user.creds[i]["cred"]);
+        await checkLogin(user, user.creds[i]["cred"], false);
       } else {
         fail("Failed to login");
       }
+    }
+  }
+  if (ecrUser) {
+    const lresp = await login(ecrUser, ecrCred, ecrCredCesr);
+    if (lresp.status) {
+      sleep(1000);
+      await checkLogin(ecrUser, ecrCred, false);
+    } else {
+      fail("Failed to login");
     }
   }
 
@@ -322,15 +351,18 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     let ecrLei;
     let ecrCredCesr;
     for (let i = 0; i < user.creds.length; i++) {
-      login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
-
-      if (isEbaDataSubmitter(ecrCred, user.ecrAid.prefix)) {
+      await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
+      const foundEcr = isEbaDataSubmitter(
+        user.creds[i]["cred"],
+        user.ecrAid.prefix,
+      );
+      if (foundEcr) {
         ecrCred = user.creds[i]["cred"];
         ecrLei = ecrCred.sad.a.LEI;
-        ecrCredCesr = user.creds[i]["cred"];
+        ecrCredCesr = user.creds[i]["credCesr"];
       }
 
-      checkLogin(user, user.creds[i]["cred"]);
+      await checkLogin(user, user.creds[i]["cred"], false);
     }
 
     // try to get status without signed headers provided
@@ -439,6 +471,128 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   );
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
+}
+
+async function revoked_cred_upload_test(
+  credentials: Map<string, ApiUser>,
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  requestorClient: SignifyClient,
+) {
+  const ecr_cred_prev_state = credentials.get("ecr_cred_prev_state")!;
+  const ecr_cred_revoke = credentials.get("ecr_cred_revoke")!;
+  const ecr_cred_new_state = credentials.get("ecr_cred_new_state")!;
+
+  const signedDirPrefixed = path.join(
+    __dirname,
+    "data",
+    signedDir,
+    ecr_cred_prev_state.ecrAid.prefix,
+  );
+  // try to ping the api
+  let ppath = "/ping";
+  let preq = { method: "GET", body: null };
+  let presp = await fetch(env.apiBaseUrl + ppath, preq);
+  console.log("ping response", presp);
+  assert.equal(presp.status, 200);
+
+  // 1st case. Presenting non revoked credential
+  // TODO: update login with new /revoke_credential endpoint call
+  await login(
+    ecr_cred_prev_state,
+    ecr_cred_prev_state.creds[0]["cred"],
+    ecr_cred_prev_state.creds[0]["credCesr"],
+  );
+  await checkLogin(
+    ecr_cred_prev_state,
+    ecr_cred_prev_state.creds[0]["cred"],
+    false,
+  );
+
+  // Get the current working directory
+  const currentDirectory = process.cwd();
+  // Print the current working directory
+  console.log("Current Directory:", currentDirectory);
+
+  // sanity check that the report verifies
+  const keeper = ecr_cred_prev_state.roleClient.manager!.get(
+    ecr_cred_prev_state.ecrAid,
+  );
+  const signer = keeper.signers[0];
+
+  const signedReports = getSignedReports(signedDirPrefixed);
+  // Check signed reports
+  const signedReport = signedReports[0];
+  if (fs.lstatSync(signedReport).isFile()) {
+    await apiAdapter.dropReportStatusByAid(
+      ecr_cred_prev_state.idAlias,
+      ecr_cred_prev_state.ecrAid.prefix,
+      ecr_cred_prev_state.roleClient,
+    );
+    console.log(`Processing file: ${signedReport}`);
+    const signedZipBuf = fs.readFileSync(`${signedReport}`);
+    const signedZipDig = generateFileDigest(signedZipBuf);
+    const signedUpResp = await apiAdapter.uploadReport(
+      ecr_cred_prev_state.idAlias,
+      ecr_cred_prev_state.ecrAid.prefix,
+      signedReport,
+      signedZipBuf,
+      signedZipDig,
+      ecr_cred_prev_state.roleClient,
+    );
+    await checkSignedUpload(
+      signedUpResp,
+      path.basename(signedReport),
+      signedZipDig,
+      ecr_cred_prev_state,
+      ecr_cred_prev_state.creds[0]["cred"],
+    );
+    ecr_cred_prev_state.uploadDig = signedZipDig;
+  }
+
+  // check upload by aid
+  let sresp = await apiAdapter.getReportStatusByAid(
+    ecr_cred_prev_state.idAlias,
+    ecr_cred_prev_state.ecrAid.prefix,
+    ecr_cred_prev_state.roleClient,
+  );
+  assert.equal(sresp.status, 202);
+  let sbody = await sresp.json();
+
+  // 2nd case. Presenting revoked credential
+
+  await presentRevocation(
+    requestorAidAlias,
+    requestorAidPrefix,
+    requestorClient,
+    ecr_cred_revoke.creds[0]["cred"],
+    ecr_cred_revoke.creds[0]["credCesr"],
+  );
+  await checkLogin(ecr_cred_revoke, ecr_cred_revoke.creds[0]["cred"], true);
+
+  // 3rd case. Logging in using previous state(non-revoked) of the credential(which was revoked)
+  await login(
+    ecr_cred_prev_state,
+    ecr_cred_prev_state.creds[0]["cred"],
+    ecr_cred_revoke.creds[0]["credCesr"],
+  );
+  await checkLogin(
+    ecr_cred_prev_state,
+    ecr_cred_prev_state.creds[0]["cred"],
+    true,
+  );
+
+  // 4th case. Presenting new ECR credentail with new SAID
+  await login(
+    ecr_cred_new_state,
+    ecr_cred_new_state.creds[0]["cred"],
+    ecr_cred_new_state.creds[0]["credCesr"],
+  );
+  await checkLogin(
+    ecr_cred_new_state,
+    ecr_cred_new_state.creds[0]["cred"],
+    false,
+  );
 }
 
 export async function checkSignedUpload(
@@ -569,7 +723,7 @@ export function getSignedReports(signedDirPrefixed: string): string[] {
   }
 }
 
-async function checkLogin(user: ApiUser, cred: any) {
+async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   let creq = { headers: heads, method: "GET", body: null };
@@ -577,13 +731,22 @@ async function checkLogin(user: ApiUser, cred: any) {
   const cresp = await fetch(env.apiBaseUrl + cpath, creq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
-    assert.equal(cresp.status, 200);
-    assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
-    assert.equal(
-      cbody["msg"],
-      `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
-    );
-    assert.equal(cbody["said"], cred.sad.d);
+    if (credRevoked) {
+      assert.equal(cresp.status, 401);
+      assert.equal(
+        cbody["msg"],
+        `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential revoked, info: Credential was revoked`,
+        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
+      );
+    } else {
+      assert.equal(cresp.status, 200);
+      assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
+      assert.equal(
+        cbody["msg"],
+        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
+      );
+      assert.equal(cbody["said"], cred.sad.d);
+    }
   } else {
     assert.equal(cresp.status, 401);
     assert.equal(
@@ -623,5 +786,44 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
       `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
     );
   }
+  return lresp;
+}
+
+async function presentRevocation(
+  requestorAidAlias: string,
+  requestorAidPrefix: string,
+  requestorClient: SignifyClient,
+  cred: any,
+  credCesr: any,
+) {
+  let heads = new Headers();
+  heads.set("Content-Type", "application/json");
+  let lbody = {
+    vlei: credCesr,
+    said: cred.sad.d,
+  };
+  let lreq = {
+    headers: heads,
+    method: "POST",
+    body: JSON.stringify(lbody),
+  };
+  let lpath = `/present_revocation`;
+  const url = env.apiBaseUrl + lpath;
+  let sreq = await requestorClient.createSignedRequest(
+    requestorAidAlias,
+    url,
+    lreq,
+  );
+  const lresp = await fetch(url, sreq);
+  console.log("login response", lresp);
+  assert.equal(lresp.status, 202);
+  let ljson = await lresp.json();
+  const credJson = JSON.parse(ljson["creds"]);
+  assert.equal(credJson.length >= 1, true);
+  assert.equal(credJson[0].sad.a.i, `${cred.sad.a.i}`);
+  assert.equal(
+    ljson["msg"],
+    `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
+  );
   return lresp;
 }
