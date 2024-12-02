@@ -112,7 +112,10 @@ export class ApiAdapter {
       .get(rootOfTrustIdentifierName);
 
     const oobi = await client.oobis().get(rootOfTrustIdentifierName);
-    const oobiUrl = oobi.oobis[0].replace("keria", "localhost");
+    let oobiUrl = oobi.oobis[0];
+    const url = new URL(oobiUrl);
+    if (url.hostname === "keria")
+      oobiUrl = oobiUrl.replace("keria", "localhost");
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
