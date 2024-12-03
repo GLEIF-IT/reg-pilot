@@ -97,6 +97,16 @@ parse_args() {
     fi
     }
 
+check_available_banks() {
+    local TOTAL_AVAILABLE_BANKS=10
+
+    if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
+        echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
+        echo "Please reduce the --bank-count value to $TOTAL_AVAILABLE_BANKS or fewer for performing load test."
+        exit 1
+    fi
+}    
+
 # Start services
 start_services_local() {
     echo "Starting local services..."
@@ -184,6 +194,7 @@ load_test_banks() {
 
 main() {
     parse_args "$@"
+    check_available_banks
 
     if [[ "$MODE" == "local" ]]; then
         start_services_local
