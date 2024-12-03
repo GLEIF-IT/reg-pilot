@@ -80,6 +80,11 @@ parse_args() {
         usage
     fi
 
+    # REG_PILOT_API for local mode
+    if [[ "$MODE" == "local" ]]; then
+        echo "INFO: The default API URL for local mode is already set. No need to specify it."
+    fi
+
     # Check for REG_PILOT_API is required in remote mode
     if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
         echo "********************************************"
@@ -96,6 +101,16 @@ parse_args() {
         usage
     fi
     }
+
+check_available_banks() {
+    local TOTAL_AVAILABLE_BANKS=10
+
+    if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
+        echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
+        echo "Please reduce the --bank-count value to $TOTAL_AVAILABLE_BANKS or fewer for performing load test."
+        exit 1
+    fi
+}    
 
 # Start services
 start_services_local() {
@@ -184,6 +199,7 @@ load_test_banks() {
 
 main() {
     parse_args "$@"
+    check_available_banks
 
     if [[ "$MODE" == "local" ]]; then
         start_services_local
