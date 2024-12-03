@@ -38,20 +38,36 @@ const unpackZipFile = (
   zipFilePath: string,
   destFolder: string,
   bankName: string,
+  includeAllSignedReports = false,
+  includeFailReports = false,
 ) => {
   const zip = new AdmZip(zipFilePath);
   zip.extractAllTo(destFolder, false); // if true overwrites existing files
   const signedReportsPath = path.join(__dirname, "./data/signed_reports");
   const failReportsPath = path.join(__dirname, "./data/fail_reports");
   const confPath = path.join(__dirname, "./data/600-banks-test-data");
-  moveReports(
-    path.join(destFolder, bankName, `/reports/signed_reports`),
-    signedReportsPath,
-  );
-  moveReports(
-    path.join(destFolder, bankName, `/reports/fail_reports`),
-    failReportsPath,
-  );
+
+  if (!includeAllSignedReports) {
+    const specificPrefix = "external_manifest_orig_bundle";
+    console.log(`Only moving reports with specific prefix: ${specificPrefix}`);
+    moveReports(
+      path.join(destFolder, bankName, `/reports/signed_reports`),
+      signedReportsPath,
+      specificPrefix,
+    );
+  } else {
+    console.log(`Moving all signed reports`);
+    moveReports(
+      path.join(destFolder, bankName, `/reports/signed_reports`),
+      signedReportsPath,
+    );
+  }
+  if (includeFailReports) {
+    moveReports(
+      path.join(destFolder, bankName, `/reports/fail_reports`),
+      failReportsPath,
+    );
+  }
   moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
   removeFolderRecursive(path.join(destFolder, bankName));
 };
@@ -65,16 +81,35 @@ const removeFolderRecursive = (folderPath: string) => {
   }
 };
 
-const moveReports = (srcDir: string, destDir: string) => {
+const moveReports = (
+  srcDir: string,
+  destDir: string,
+  specificPrefix?: string,
+) => {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
 
   const items = fs.readdirSync(srcDir);
   items.forEach((item: any) => {
-    const srcPath = path.join(srcDir, item);
-    const destPath = path.join(destDir, item);
-    fs.cpSync(srcPath, destPath, { recursive: true });
+    if (specificPrefix) {
+      const aidPath = path.join(srcDir, item);
+      const aidReps = fs.readdirSync(aidPath);
+      aidReps.forEach((rep: any) => {
+        if (rep.startsWith(specificPrefix)) {
+          const srcPath = path.join(aidPath, rep);
+          const destPath = path.join(destDir, item, rep);
+          fs.cpSync(srcPath, destPath, { recursive: true });
+          console.log(`Moved specific report: ${srcPath} to ${destPath}`);
+          return;
+        }
+      });
+    } else {
+      const srcPath = path.join(srcDir, item);
+      const destPath = path.join(destDir, item);
+      fs.cpSync(srcPath, destPath, { recursive: true });
+      console.log(`Moved report folder: ${srcPath} to ${destPath}`);
+    }
   });
 };
 
@@ -100,10 +135,19 @@ test("bank-reports-download", async function run() {
   const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
   const destFilePath = `${tmpReportsPath}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, destFilePath);
+
+  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
+  const doFailReps = includeFailReports?.toLowerCase() === "true";
+  const includeAllSignedReports =
+    process.env.INCLUDE_ALL_SIGNED_REPORTS || "false";
+  const doAllSigned = includeAllSignedReports?.toLowerCase() === "true";
+
   unpackZipFile(
     destFilePath,
     path.join(__dirname, "/data/tmp_reports_unpacked"),
     bankName,
+    doAllSigned,
+    doFailReps,
   );
   removeFolderRecursive(destFilePath);
 }, 3600000);
