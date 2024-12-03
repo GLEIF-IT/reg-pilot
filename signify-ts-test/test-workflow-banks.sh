@@ -52,6 +52,14 @@ while [[ $# -gt 0 ]]; do
             npm run build
             shift # past argument
             ;;
+        --reports-download)
+            npx jest ./run-bank-reports-download.test.ts --runInBand --forceExit
+            report_exit_code=$?  
+                if [[ $report_exit_code -ne 0 ]]; then
+                exit 1  
+                fi
+            shift # past argument
+            ;;
         --data-report)
             npx jest ./run-workflow-bank-issuance.test.ts --runInBand --detectOpenHandles --forceExit
             report_exit_code=$?  

@@ -20,14 +20,14 @@ get_bank_count() {
 start_keria() {
     echo "Bringing up KERIA service for $BANK_NAME with image $BANK_KERIA_IMAGE..."
 
-    docker-compose -f $DOCKER_COMPOSE_FILE up verify -d
+    docker compose -f $DOCKER_COMPOSE_FILE up verify -d
     check_status "Starting KERIA for $BANK_NAME"
 }
 
 # Stop the KERIA service
 stop_keria() {
     echo "Stopping KERIA container for $BANK_NAME..."
-    docker-compose -f $DOCKER_COMPOSE_FILE down
+    docker compose -f $DOCKER_COMPOSE_FILE down
     check_status "Stopping KERIA for $BANK_NAME"
 }
 
