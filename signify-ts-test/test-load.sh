@@ -19,11 +19,11 @@ usage() {
     echo "                  - Specify the count (e.g., 1 for Bank_1, 10 for Bank_1 to Bank_10)."
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
-    echo "                  API URL of the reg-pilot-api service (e.g., https://reg-api-test.rootsid.cloud)."
+    echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
     echo ""
     echo "Examples:"
     echo "  $0 --mode local --bank-count 5"
-    echo "  $0 --mode remote --bank-count 10 --api-url https://api.example.com"
+    echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud"
     echo "---------------------------------------------"
     exit 1
 }
