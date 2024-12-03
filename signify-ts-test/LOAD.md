@@ -171,6 +171,8 @@ Ran all test suites matching /.\/run-workflow-bank-api.test.ts/i.
 Test successful for Bank_1.
 ```
 
+Since this test involves interacting with the target API remotely, no local services are started. However, KERIA agents are initialized for each bank to interact with the target API and facilitate the test workflow.
+
 After the test completes, a summary of the results will be displayed for all banks.
 ```
 === Completed Test for Bank_10 ===
