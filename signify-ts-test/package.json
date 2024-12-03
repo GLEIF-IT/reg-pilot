@@ -23,6 +23,7 @@
     "jszip": "^3.10.1",
     "libsodium-wrappers-sumo": "^0.7.9",
     "mathjs": "^12.4.0",
+    "axios": "^1.7.8",
     "signify-ts": "github:weboftrust/signify-ts#main",
     "structured-headers": "^0.5.0"
   },
