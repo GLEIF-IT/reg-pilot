@@ -84,3 +84,111 @@ SUCCESS COUNT: 5
 FAILURE COUNT: 0
 =================================
 ```
+
+
+# Remote load test
+To run the remote test, run the test script with the --mode flag set to 'remote' and specify the number of banks. The --api-url flag is required to specify the target API URL for the test: ```./test-load.sh --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud```
+
+The test will connect to the specified remote API, and KERIA agents for the selected banks will be [downloaded from docker](https://hub.docker.com/r/ronakseth96/keria/tags) and started, similar to the local mode workflow.
+
+```
+=== Starting Test for Bank_1 ===
+Starting KERIA for Bank_1 with image ronakseth96/keria:TestBank_1...
+[+] Running 2/2
+ ✔ Network signify-ts-test_default    Created
+ ✔ Container signify-ts-test-keria-1  Started   
+```
+
+Similar to the local mode, the [configuration and signed reports](https://github.com/aydarng/bank_reports) for each bank will be downloaded and extracted.
+
+```
+Downloading reports for Bank_1...
+...
+
+ PASS  test/run-bank-reports-download.test.ts
+  ✓ bank-reports-download (615 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        1.41 s, estimated 2 s
+```
+
+Now,the API/Verifier tests will be performed using the downloaded artifacts.
+
+```
+Running remote test workflow for Bank_1 with API URL: https://reg-api-test.rootsid.cloud...
+...
+Executing: Running API test for ecr-aid-1 user...
+...
+ping response Response {
+      status: 200,
+      statusText: 'OK',
+      headers: Headers {
+        date: 'Tue, 03 Dec 2024 16:42:18 GMT',
+        'content-type': 'application/json',
+        'content-length': '6',
+        connection: 'keep-alive',
+        server: 'uvicorn'
+      },
+      body: ReadableStream { locked: false, state: 'readable', supportsBYOB: true },
+      bodyUsed: false,
+      ok: true,
+      redirected: false,
+      type: 'basic',
+      url: 'https://reg-api-test.rootsid.cloud/ping'
+    }
+...
+login response Response {
+      status: 202,
+      statusText: 'Accepted',
+      headers: Headers {
+        date: 'Tue, 03 Dec 2024 16:42:19 GMT',
+        'content-type': 'application/json',
+        'content-length': '22615',
+        connection: 'keep-alive',
+        server: 'uvicorn'
+      },
+      body: ReadableStream { locked: false, state: 'readable', supportsBYOB: true },
+      bodyUsed: false,
+      ok: true,
+      redirected: false,
+      type: 'basic',
+      url: 'https://reg-api-test.rootsid.cloud/login'
+    }
+```
+```
+Processing file: /Users/ronakseth/reg-pilot/signify-ts-test/test/data/signed_reports/EMKW
+...
+PASS  test/run-workflow-bank-api.test.ts (8.538 s)
+  ✓ api-verifier-bank-test-workflow (7147 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        8.579 s, estimated 9 s
+Ran all test suites matching /.\/run-workflow-bank-api.test.ts/i.
+Test successful for Bank_1.
+```
+
+After the test completes, a summary of the results will be displayed for all banks.
+```
+=== Completed Test for Bank_10 ===
+=================================
+           TEST SUMMARY          
+=================================
+TOTAL BANKS TESTED: 10
+SUCCESS COUNT: 10
+FAILURE COUNT: 0
+=================================
+```
+
+
+
+
+
+
+
+
+
+
