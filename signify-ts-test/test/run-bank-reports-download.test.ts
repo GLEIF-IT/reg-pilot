@@ -52,9 +52,7 @@ const unpackZipFile = (
     path.join(destFolder, bankName, `/reports/fail_reports`),
     failReportsPath,
   );
-  moveFiles(
-    path.join(destFolder, bankName), path.join(confPath, bankName),
-  );
+  moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
   removeFolderRecursive(path.join(destFolder, bankName));
 };
 
