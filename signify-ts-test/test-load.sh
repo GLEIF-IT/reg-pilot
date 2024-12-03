@@ -80,6 +80,11 @@ parse_args() {
         usage
     fi
 
+    # REG_PILOT_API for local mode
+    if [[ "$MODE" == "local" ]]; then
+        echo "INFO: The default API URL for local mode is already set. No need to specify it."
+    fi
+
     # Check for REG_PILOT_API is required in remote mode
     if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
         echo "********************************************"
