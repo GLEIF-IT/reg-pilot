@@ -128,7 +128,7 @@ stop_keria() {
 # Run Bank Test Workflow (Local or Remote)
 run_bank_test_workflow() {
     echo "Downloading reports for $BANK_NAME..."
-    TEST_ENVIRONMENT="docker" ./test-workflow-banks.sh --reports-download
+    TEST_ENVIRONMENT="docker" ./test-workflow-banks.sh --build --reports-download
     check_status "Downloading reports for $BANK_NAME"
 
     if [[ "$MODE" == "local" ]]; then

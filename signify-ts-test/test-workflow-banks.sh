@@ -49,6 +49,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --build)
+            npm i
             npm run build
             shift # past argument
             ;;
