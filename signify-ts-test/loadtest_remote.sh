@@ -34,7 +34,7 @@ stop_keria() {
 # Function to run the bank test workflow
 run_bank_test_workflow() {
     echo "Running test workflow for $BANK_NAME..."
-    TEST_ENVIRONMENT="bank_test" ./test-workflow-banks.sh --verify-proxy
+    TEST_ENVIRONMENT="bank_test" ./test-workflow-banks.sh --build --reports-download --verify-proxy
     check_status "Test workflow for $BANK_NAME"
 }
 
