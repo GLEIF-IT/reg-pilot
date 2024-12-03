@@ -1,10 +1,12 @@
 # Local load test
+
 Run the test script with --mode set to 'local' and specify the number of banks:
-``` ./test-load.sh --mode local --bank-count 5```
+` ./test-load.sh --mode local --bank-count 5`
 
 The local services will be started:
+
 ```
- ✔ Network signify-ts-test_default 
+ ✔ Network signify-ts-test_default
  ✔ Container signify-ts-test-vlei-server-1
  ✔ Container signify-ts-test-witness-demo-1
  ✔ Container signify-ts-test-reg-pilot-api-1
@@ -13,12 +15,14 @@ The local services will be started:
 
 The KERIA agent for Bank 1 will be [downloaded from docker](https://hub.docker.com/r/ronakseth96/keria/tags) and started.
 The [configuration and signed reports](https://github.com/aydarng/bank_reports) for Bank 1 will be downloaded and extracted
+
 ```
 Starting KERIA for Bank_1 with image ronakseth96/keria:TestBank_1...
 [+] Running 1/1
- ✔ Container signify-ts-test-keria-1  Started                                                                                0.1s 
+ ✔ Container signify-ts-test-keria-1  Started                                                                                0.1s
 Downloading reports for Bank_1...
 ```
+
 ```
  PASS  test/run-bank-reports-download.test.ts
   ✓ bank-reports-download (777 ms)
@@ -30,6 +34,7 @@ Time:        1.198 s, estimated 2 s
 ```
 
 The API/Verifier tests will be run using the downloaded artifacts:
+
 ```
 Running local test workflow for Bank_3...
 ...
@@ -66,18 +71,19 @@ Test successful for Bank_3.
 ```
 
 After all bank tests have been run there will be a summary:
+
 ```
 === Completed Test for Bank_5 ===
 Stopping all local services...
 [+] Running 6/6
- ✔ Container signify-ts-test-verify-1         Removed                                                                                                                                                  0.0s 
- ✔ Container vlei-verifier                    Removed                                                                                                                                                 10.1s 
- ✔ Container signify-ts-test-reg-pilot-api-1  Removed                                                                                                                                                  0.4s 
- ✔ Container signify-ts-test-vlei-server-1    Removed                                                                                                                                                 10.1s 
- ✔ Container signify-ts-test-witness-demo-1   Removed                                                                                                                                                 10.2s 
- ✔ Network signify-ts-test_default            Removed                                                                                                                                                  0.1s 
+ ✔ Container signify-ts-test-verify-1         Removed                                                                                                                                                  0.0s
+ ✔ Container vlei-verifier                    Removed                                                                                                                                                 10.1s
+ ✔ Container signify-ts-test-reg-pilot-api-1  Removed                                                                                                                                                  0.4s
+ ✔ Container signify-ts-test-vlei-server-1    Removed                                                                                                                                                 10.1s
+ ✔ Container signify-ts-test-witness-demo-1   Removed                                                                                                                                                 10.2s
+ ✔ Network signify-ts-test_default            Removed                                                                                                                                                  0.1s
 =================================
-           TEST SUMMARY          
+           TEST SUMMARY
 =================================
 TOTAL BANKS TESTED: 5
 SUCCESS COUNT: 5
@@ -85,9 +91,9 @@ FAILURE COUNT: 0
 =================================
 ```
 
-
 # Remote load test
-To run the remote test, run the test script with the --mode flag set to 'remote' and specify the number of banks. The --api-url flag is required to specify the target API URL for the test: ```./test-load.sh --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud```
+
+To run the remote test, run the test script with the --mode flag set to 'remote' and specify the number of banks. The --api-url flag is required to specify the target API URL for the test: `./test-load.sh --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud`
 
 The test will connect to the specified remote API, and KERIA agents for the selected banks will be [downloaded from docker](https://hub.docker.com/r/ronakseth96/keria/tags) and started, similar to the local mode workflow.
 
@@ -96,7 +102,7 @@ The test will connect to the specified remote API, and KERIA agents for the sele
 Starting KERIA for Bank_1 with image ronakseth96/keria:TestBank_1...
 [+] Running 2/2
  ✔ Network signify-ts-test_default    Created
- ✔ Container signify-ts-test-keria-1  Started   
+ ✔ Container signify-ts-test-keria-1  Started
 ```
 
 Similar to the local mode, the [configuration and signed reports](https://github.com/aydarng/bank_reports) for each bank will be downloaded and extracted.
@@ -157,6 +163,7 @@ login response Response {
       url: 'https://reg-api-test.rootsid.cloud/login'
     }
 ```
+
 ```
 Processing file: /Users/ronakseth/reg-pilot/signify-ts-test/test/data/signed_reports/EMKW
 ...
@@ -174,23 +181,14 @@ Test successful for Bank_1.
 Since this test involves interacting with the target API remotely, no local services are started. However, KERIA agents are initialized for each bank to interact with the target API and facilitate the test workflow.
 
 After the test completes, a summary of the results will be displayed for all banks.
+
 ```
 === Completed Test for Bank_10 ===
 =================================
-           TEST SUMMARY          
+           TEST SUMMARY
 =================================
 TOTAL BANKS TESTED: 10
 SUCCESS COUNT: 10
 FAILURE COUNT: 0
 =================================
 ```
-
-
-
-
-
-
-
-
-
-
