@@ -43,6 +43,7 @@ const unpackZipFile = (
   zip.extractAllTo(destFolder, false); // if true overwrites existing files
   const signedReportsPath = path.join(__dirname, "./data/signed_reports");
   const failReportsPath = path.join(__dirname, "./data/fail_reports");
+  const confPath = path.join(__dirname, "./data/600-banks-test-data");
   moveReports(
     path.join(destFolder, bankName, `/reports/signed_reports`),
     signedReportsPath,
@@ -51,6 +52,7 @@ const unpackZipFile = (
     path.join(destFolder, bankName, `/reports/fail_reports`),
     failReportsPath,
   );
+  moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
   removeFolderRecursive(path.join(destFolder, bankName));
 };
 
@@ -73,6 +75,22 @@ const moveReports = (srcDir: string, destDir: string) => {
     const srcPath = path.join(srcDir, item);
     const destPath = path.join(destDir, item);
     fs.cpSync(srcPath, destPath, { recursive: true });
+  });
+};
+
+const moveFiles = (srcDir: string, destDir: string) => {
+  if (!fs.existsSync(destDir)) {
+    fs.mkdirSync(destDir, { recursive: true });
+    console.log(`Created folder: ${destDir}`);
+  }
+  const items = fs.readdirSync(srcDir);
+  items.forEach((item: any) => {
+    const srcPath = path.join(srcDir, item);
+    const destPath = path.join(destDir, item);
+    if (fs.lstatSync(srcPath).isFile()) {
+      fs.cpSync(srcPath, destPath);
+      console.log(`Moved file: ${srcPath} to ${destPath}`);
+    }
   });
 };
 
