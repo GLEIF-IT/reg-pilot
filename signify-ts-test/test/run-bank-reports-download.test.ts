@@ -38,8 +38,8 @@ const unpackZipFile = (
   zipFilePath: string,
   destFolder: string,
   bankName: string,
-  includeAllSignedReports=false,
-  includeFailReports=false,
+  includeAllSignedReports = false,
+  includeFailReports = false,
 ) => {
   const zip = new AdmZip(zipFilePath);
   zip.extractAllTo(destFolder, false); // if true overwrites existing files
@@ -81,7 +81,11 @@ const removeFolderRecursive = (folderPath: string) => {
   }
 };
 
-const moveReports = (srcDir: string, destDir: string, specificPrefix?: string) => {
+const moveReports = (
+  srcDir: string,
+  destDir: string,
+  specificPrefix?: string,
+) => {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
@@ -132,10 +136,11 @@ test("bank-reports-download", async function run() {
   const destFilePath = `${tmpReportsPath}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, destFilePath);
 
-  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || 'false';
-  const doFailReps = includeFailReports?.toLowerCase() === 'true'
-  const includeAllSignedReports = process.env.INCLUDE_ALL_SIGNED_REPORTS || 'false';
-  const doAllSigned = includeAllSignedReports?.toLowerCase() === 'true'
+  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
+  const doFailReps = includeFailReports?.toLowerCase() === "true";
+  const includeAllSignedReports =
+    process.env.INCLUDE_ALL_SIGNED_REPORTS || "false";
+  const doAllSigned = includeAllSignedReports?.toLowerCase() === "true";
 
   unpackZipFile(
     destFilePath,
