@@ -1,6 +1,32 @@
 services:
+  vlei-server:
+    image: gleif/vlei
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
+    command:
+      - vLEI-server
+      - -s
+      - ./schema/acdc
+      - -c
+      - ./samples/acdc/
+      - -o
+      - ./samples/oobis/
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:7723/oobi/EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    ports:
+      - 7723:7723
+
   keria:
-    image: ${BANK_KERIA_IMAGE}
+    image: ${BANK_KERIA_IMAGE:-ronakseth96/keria:latest}
     environment:
       - KERI_AGENT_CORS=1
       - KERI_URL=http://keria:3902
@@ -30,9 +56,62 @@ services:
       - 3902:3902
       - 3903:3903
 
+  witness-demo:
+    image: weboftrust/keri-witness-demo:1.1.0
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=UTF-8
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5642/oobi"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    volumes:
+      - ./config/witness-demo:/keripy/scripts/keri/cf/main
+    ports:
+      - 5642:5642
+      - 5643:5643
+      - 5644:5644
+
+  reg-pilot-api:
+    image: gleif/reg-pilot-api:dev
+    ports:
+      - 8000:8000
+    environment:
+      - ENABLE_CORS=true
+      - VERIFIER_AUTHORIZATIONS=http://vlei-verifier:7676/authorizations/
+      - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
+      - VERIFIER_REPORTS=http://vlei-verifier:7676/reports/
+      - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
+  vlei-verifier:
+    image: gleif/vlei-verifier:dev
+    container_name: vlei-verifier
+    hostname: vlei-verifier
+    depends_on:
+      - vlei-server
+      - witness-demo
+    ports:
+      - 7676:7676
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
   verify:
     image: alpine
     command: ["echo", "Dependencies running"]
     depends_on:
-      keria:
+      reg-pilot-api:
+        condition: service_healthy
+      vlei-verifier:
         condition: service_healthy
