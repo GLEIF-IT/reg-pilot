@@ -74,6 +74,7 @@ After completing the API/Verifier tests, the corresponding downloaded report fil
 ```
 Cleaning up report files for Bank_3...
 ```
+
 ```
  PASS  test/run-bank-reports-cleanup.test.ts
   ✓ bank-reports-cleanup (65 ms)
@@ -199,6 +200,7 @@ After completing the API/Verifier test, the corresponding downloaded report file
 ```
 Cleaning up report files for Bank_10...
 ```
+
 ```
  PASS  test/run-bank-reports-cleanup.test.ts
   ✓ bank-reports-cleanup (64 ms)
