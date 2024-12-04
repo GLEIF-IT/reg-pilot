@@ -69,16 +69,6 @@ const unpackZipFile = (
     );
   }
   moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
-  removeFolderRecursive(path.join(destFolder, bankName));
-};
-
-const removeFolderRecursive = (folderPath: string) => {
-  if (fs.existsSync(folderPath)) {
-    fs.rmSync(folderPath, { recursive: true, force: true });
-    console.log(`Deleted folder: ${folderPath}`);
-  } else {
-    console.log(`Folder not found: ${folderPath}`);
-  }
 };
 
 const moveReports = (
@@ -149,5 +139,4 @@ test("bank-reports-download", async function run() {
     doAllSigned,
     doFailReps,
   );
-  removeFolderRecursive(destFilePath);
 }, 3600000);
