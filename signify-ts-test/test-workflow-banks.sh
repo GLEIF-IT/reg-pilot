@@ -63,8 +63,8 @@ while [[ $# -gt 0 ]]; do
             ;;
         --reports-cleanup)
             npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit
-            download_exit_code=$?  
-                if [[ $download_exit_code -ne 0 ]]; then
+            cleanup_exit_code=$?  
+                if [[ $cleanup_exit_code -ne 0 ]]; then
                 exit 1  
                 fi
             shift # past argument

@@ -103,7 +103,7 @@ parse_args() {
     }
 
 check_available_banks() {
-    local TOTAL_AVAILABLE_BANKS=10
+    local TOTAL_AVAILABLE_BANKS=30
 
     if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
         echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
@@ -143,7 +143,7 @@ stop_keria() {
 # Run Bank Test Workflow (Local or Remote)
 run_bank_test_workflow() {
     echo "Downloading reports for $BANK_NAME..."
-    TEST_ENVIRONMENT="docker" ./test-workflow-banks.sh --build --reports-download
+    ./test-workflow-banks.sh --build --reports-download
     check_status "Downloading reports for $BANK_NAME"
 
     if [[ "$MODE" == "local" ]]; then
@@ -154,6 +154,11 @@ run_bank_test_workflow() {
         TEST_ENVIRONMENT="bank_test" REG_PILOT_API="$REG_PILOT_API" ./test-workflow-banks.sh --verify-proxy
     fi
     check_status "Test workflow for $BANK_NAME"
+
+    echo "Cleaning up report files for $BANK_NAME..."
+    ./test-workflow-banks.sh --reports-cleanup
+    check_status "Cleaning up report files for $BANK_NAME"
+    echo "Report files for $BANK_NAME cleaned up successfully."
 }
 
 # Load Test for Banks

@@ -67,6 +67,24 @@ Tests:       1 passed, 1 total
 Snapshots:   0 total
 Time:        4.424 s, estimated 5 s
 Ran all test suites matching /.\/run-workflow-bank-api.test.ts/i.
+```
+
+After completing the API/Verifier tests, the corresponding downloaded report files are cleaned up:
+
+```
+Cleaning up report files for Bank_3...
+```
+
+```
+ PASS  test/run-bank-reports-cleanup.test.ts
+  ✓ bank-reports-cleanup (65 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        0.858 s, estimated 2 s
+...
+Report files for Bank_3 cleaned up successfully.
 Test successful for Bank_3.
 ```
 
@@ -175,7 +193,25 @@ Tests:       1 passed, 1 total
 Snapshots:   0 total
 Time:        8.579 s, estimated 9 s
 Ran all test suites matching /.\/run-workflow-bank-api.test.ts/i.
-Test successful for Bank_1.
+```
+
+After completing the API/Verifier test, the corresponding downloaded report files are cleaned up:
+
+```
+Cleaning up report files for Bank_10...
+```
+
+```
+ PASS  test/run-bank-reports-cleanup.test.ts
+  ✓ bank-reports-cleanup (64 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        1.945 s
+...
+Report files for Bank_10 cleaned up successfully.
+Test successful for Bank_10.
 ```
 
 Since this test involves interacting with the target API remotely, no local services are started. However, KERIA agents are initialized for each bank to interact with the target API and facilitate the test workflow.
