@@ -61,6 +61,14 @@ while [[ $# -gt 0 ]]; do
                 fi
             shift # past argument
             ;;
+        --reports-cleanup)
+            npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit
+            download_exit_code=$?  
+                if [[ $download_exit_code -ne 0 ]]; then
+                exit 1  
+                fi
+            shift # past argument
+            ;;
         --data-report)
             npx jest ./run-workflow-bank-issuance.test.ts --runInBand --detectOpenHandles --forceExit
             report_exit_code=$?  
