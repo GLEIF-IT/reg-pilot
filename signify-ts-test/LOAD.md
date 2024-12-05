@@ -228,3 +228,104 @@ SUCCESS COUNT: 10
 FAILURE COUNT: 0
 =================================
 ```
+
+### Accessing the KERIA Agent with the Signify Browser Extension
+
+#### 1. Run the KERIA Agent for the Bank
+
+To run the KERIA agent for a specific bank image (e.g., TestBank_22), follow these steps:
+
+- **Navigate to the signify-ts directory**:
+  ```
+  cd /path/to/signify-ts-test
+  ```
+- **Run the KERIA agent in a Docker container**:
+  ```
+  docker run --rm -p 3901:3901 -p 3902:3902 -p 3903:3903 \
+  --name bank22 \
+  -e KERI_AGENT_CORS=1 \
+  -e KERI_URL=http://keria:3902 \
+  -e PYTHONUNBUFFERED=1 \
+  -e PYTHONIOENCODING=UTF-8 \
+  -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
+  ronakseth96/keria:TestBank_22 \
+  --config-dir /keria/config --config-file keria
+  ```
+
+#### 2. Download the Bank configuration
+
+Retrieve the zip file containing the passcodes, configurations, and report files for the selected bank (e.g., Bank_22).
+
+- **Download the Zip File:**
+
+  ```
+  wget https://raw.githubusercontent.com/aydarng/bank_reports/main/<Bank_22.zip>
+  ```
+
+- **Extract the Zip File:**  
+  After downloading, extract the zip file to access the following:
+
+  - Passcodes for authentication (found in `metaInf.json`)
+  - Configuration/Workflow file
+  - Test Report files for `ecr-aid-1`, `ecr-aid-2`, and `ecr-aid-3` users.
+
+#### 3. Install the Signify Browser Extension
+
+The Signify Browser Extension (Polaris) is available on the Chrome Web Store. Install it from the following link: [Polaris Chrome Extension](https://chromewebstore.google.com/detail/polaris/jmbebhefpkdgkoecphlpdfgkbgjjhhie)
+
+#### 4. Configure the Extension
+
+Once the extension is installed, follow these steps to configure it:
+
+- **Open the Extension**:
+
+  - Click on the extension icon in your browser toolbar to open it.
+  - Pin the extension to your browser toolbar for easier access.
+
+- **Navigate to the demo webapp**:
+
+  - Go to the demo reg-webapp: [webapp](https://reg-pilot-webapp-dev.rootsid.cloud/)
+
+- **Configure the Extension**:
+  - Click on the **Configure Extension** button.
+  - In the extension window, click **Allow** to grant configuration permissions.
+  - Go to the **Settings** tab and configure the extension with the following details:
+    - **Vendor URL**: `https://api.npoint.io/52639f849bb31823a8c0`
+    - **Agent URL**: `http://localhost:3901` (This points to the KERIA agent running on your local machine)
+    - **Boot URL**: `http://localhost:3903`
+  - After entering the details, click **Save** to store the configuration.
+- **Enter the Passcode**:
+
+  - From the extracted `Bank_22.zip` file, find the passcode in the `metaInf.json` file.
+  - Use the passcode associated with `ecr1`.
+
+- **Connect the Extension**:
+  - Click **Connect** to establish a connection between the Signify extension and the KERIA agent.
+
+#### 5. Identifiers and Credentials
+
+After successfully connecting the extension, you should be able to view the following:
+
+- **Identifiers**:
+  - Look for the **ecr1-AID** that has been preloaded into the extension.
+  - This **ecr1 AID** will be used to select the corresponding folder for reports later.
+- **Credentials**:
+  - Choose the **Legal Entity Engagement Context Role vLEI Credential**.
+  - Click **Sign in with Credential** to authenticate using the credential.
+
+#### 6. Submit and Validate Reports
+
+- After validating the credential, proceed with the following steps:
+
+  - **Navigate to Reports**:
+    - Click the button at the top left corner and select **Reports**.
+  - **Select File**:
+    - Click **Select File**, and from the extracted `Bank_22.zip`, navigate to the `reports` folder.
+    - Inside the `reports` folder, find the `signed_reports` folder.
+  - **Select AID Folder**:
+    - From the `signed_reports` folder, select the AID folder associated with `ecr1` ([Identifiers](#5-identifiers-and-credentials)) and choose the corresponding folder.
+    - Inside this folder, select any file (e.g., `external_manifest_orig_bundle_20240827_131325_signed.zip`).
+  - **Submit the Report**:
+    - Click **Submit Report**. You should see a **green indicator** indicating that the report submission was successful.
+  - **Check Status**:
+    - Click **Check Status** to verify the status of the report.
