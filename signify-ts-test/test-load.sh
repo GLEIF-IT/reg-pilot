@@ -103,7 +103,7 @@ parse_args() {
     }
 
 check_available_banks() {
-    local TOTAL_AVAILABLE_BANKS=30
+    local TOTAL_AVAILABLE_BANKS=60
 
     if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
         echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
