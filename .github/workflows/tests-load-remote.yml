@@ -1,0 +1,42 @@
+name: Remote Mode load test
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch: 
+
+jobs:
+  remote-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mailutils 
+
+      - name: Run load test-load script for remote workflow
+        working-directory: signify-ts-test/
+        env:
+          REMOTE_API_URL: ${{ vars.REMOTE_API_URL }}
+          BANK_COUNT: ${{ vars.BANK_COUNT }}
+        run: |
+          chmod +x test-load.sh
+          ./test-load.sh --mode remote --bank-count $BANK_COUNT --api-url $REMOTE_API_URL
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "Test failed. Sending email notification." | mail -s "Test Run Failed" ronak.seth@rootsid.com
+        continue-on-error: true
+
+      - name: Notify success via email
+        if: success()
+        run: |
+          echo "Test succeeded. Sending email notification." | mail -s "load Test Succeeded" ronak.seth@rootsid.com
+        continue-on-error: true
+
+          
