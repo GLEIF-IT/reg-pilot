@@ -3,7 +3,7 @@ name: Remote Mode load test
 on:
   schedule:
     - cron: "0 4 * * *"
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   remote-test:
@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y mailutils 
+          sudo apt-get install -y mailutils
 
       - name: Run load test-load script for remote workflow
         working-directory: signify-ts-test/
@@ -38,5 +38,3 @@ jobs:
         run: |
           echo "Test succeeded. Sending email notification." | mail -s "load Test Succeeded" ronak.seth@rootsid.com
         continue-on-error: true
-
-          
