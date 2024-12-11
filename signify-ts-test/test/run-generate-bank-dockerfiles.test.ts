@@ -1,19 +1,18 @@
-import * as fs from 'fs';
-import { number } from 'mathjs';
-import * as path from 'path';
+import * as fs from "fs";
+import { number } from "mathjs";
+import * as path from "path";
 
 const baseKeriaUrl = 20001;
 const baseKeriaBootUrl = 20003;
-const outputDir = '../images';
+const outputDir = "../images";
 
-// Run containers with --network host to have access to the locally running Kerias(ex. docker run --network host bank_1_api_test) 
+// Run containers with --network host to have access to the locally running Kerias(ex. docker run --network host bank_1_api_test)
 
 test("generate-bank-dockerfiles", async function run() {
   // Generate dockerfiles for bank api tests
   const bankAmount = process.env.BANK_COUNT || 1;
   generateDockerfiles(number(bankAmount));
 }, 3600000);
-
 
 function generateDockerfiles(bankAmount: number) {
   if (!fs.existsSync(outputDir)) {
