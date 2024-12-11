@@ -48,7 +48,7 @@ const unpackZipFile = (
   const confPath = path.join(__dirname, "./data/600-banks-test-data");
 
   if (!includeAllSignedReports) {
-    const specificPrefix = "external_manifest_orig_bundle";
+    const specificPrefix = "external_manifest";
     console.log(`Only moving reports with specific prefix: ${specificPrefix}`);
     moveReports(
       path.join(destFolder, bankName, `/reports/signed_reports`),
