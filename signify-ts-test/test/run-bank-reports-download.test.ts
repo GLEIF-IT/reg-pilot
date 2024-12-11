@@ -81,26 +81,26 @@ const moveReports = (
   }
 
   const items = fs.readdirSync(srcDir);
-  items.forEach((item: any) => {
+  for (const item of items) {
     if (specificPrefix) {
       const aidPath = path.join(srcDir, item);
       const aidReps = fs.readdirSync(aidPath);
-      aidReps.forEach((rep: any) => {
+      for (const rep of aidReps) {
         if (rep.startsWith(specificPrefix)) {
           const srcPath = path.join(aidPath, rep);
           const destPath = path.join(destDir, item, rep);
           fs.cpSync(srcPath, destPath, { recursive: true });
           console.log(`Moved specific report: ${srcPath} to ${destPath}`);
-          return;
+          break;
         }
-      });
+      }
     } else {
       const srcPath = path.join(srcDir, item);
       const destPath = path.join(destDir, item);
       fs.cpSync(srcPath, destPath, { recursive: true });
       console.log(`Moved report folder: ${srcPath} to ${destPath}`);
     }
-  });
+  }
 };
 
 const moveFiles = (srcDir: string, destDir: string) => {
