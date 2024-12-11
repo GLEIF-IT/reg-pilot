@@ -48,7 +48,7 @@ const unpackZipFile = (
   const confPath = path.join(__dirname, "./data/600-banks-test-data");
 
   if (!includeAllSignedReports) {
-    const specificPrefix = "external_manifest_orig_bundle";
+    const specificPrefix = "external_manifest";
     console.log(`Only moving reports with specific prefix: ${specificPrefix}`);
     moveReports(
       path.join(destFolder, bankName, `/reports/signed_reports`),
@@ -69,16 +69,6 @@ const unpackZipFile = (
     );
   }
   moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
-  removeFolderRecursive(path.join(destFolder, bankName));
-};
-
-const removeFolderRecursive = (folderPath: string) => {
-  if (fs.existsSync(folderPath)) {
-    fs.rmSync(folderPath, { recursive: true, force: true });
-    console.log(`Deleted folder: ${folderPath}`);
-  } else {
-    console.log(`Folder not found: ${folderPath}`);
-  }
 };
 
 const moveReports = (
@@ -91,26 +81,26 @@ const moveReports = (
   }
 
   const items = fs.readdirSync(srcDir);
-  items.forEach((item: any) => {
+  for (const item of items) {
     if (specificPrefix) {
       const aidPath = path.join(srcDir, item);
       const aidReps = fs.readdirSync(aidPath);
-      aidReps.forEach((rep: any) => {
+      for (const rep of aidReps) {
         if (rep.startsWith(specificPrefix)) {
           const srcPath = path.join(aidPath, rep);
           const destPath = path.join(destDir, item, rep);
           fs.cpSync(srcPath, destPath, { recursive: true });
           console.log(`Moved specific report: ${srcPath} to ${destPath}`);
-          return;
+          break;
         }
-      });
+      }
     } else {
       const srcPath = path.join(srcDir, item);
       const destPath = path.join(destDir, item);
       fs.cpSync(srcPath, destPath, { recursive: true });
       console.log(`Moved report folder: ${srcPath} to ${destPath}`);
     }
-  });
+  }
 };
 
 const moveFiles = (srcDir: string, destDir: string) => {
@@ -149,5 +139,4 @@ test("bank-reports-download", async function run() {
     doAllSigned,
     doFailReps,
   );
-  removeFolderRecursive(destFilePath);
 }, 3600000);
