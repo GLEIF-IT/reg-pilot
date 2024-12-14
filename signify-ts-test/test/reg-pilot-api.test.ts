@@ -25,10 +25,10 @@ let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
 
 afterEach(async () => {});
-
 beforeAll(async () => {
   env = resolveEnvironment();
   apiAdapter = new ApiAdapter(env.apiBaseUrl);
+  env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
 });
 
 if (require.main === module) {

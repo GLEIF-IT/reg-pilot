@@ -6,6 +6,7 @@ export class ApiAdapter {
   apiBaseUrl: string;
   constructor(apiBaseUrl: string) {
     this.apiBaseUrl = apiBaseUrl;
+    this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
   }
 
   public async dropReportStatusByAid(
@@ -114,8 +115,15 @@ export class ApiAdapter {
     const oobi = await client.oobis().get(rootOfTrustIdentifierName);
     let oobiUrl = oobi.oobis[0];
     const url = new URL(oobiUrl);
+    // if (url.hostname === "keria")
+    // oobiUrl = oobiUrl.replace("keria", "localhost");
+    // console.log(`OobiUrl: ${oobiUrl}`);
     if (url.hostname === "keria")
-      oobiUrl = oobiUrl.replace("keria", "localhost");
+      oobiUrl = oobiUrl.replace("keria", "host.docker.internal");
+    if (process.env.KERIA_AGENT_PORT) {
+      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_AGENT_PORT);
+    }
+    // console.log(`OobiUrl: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
