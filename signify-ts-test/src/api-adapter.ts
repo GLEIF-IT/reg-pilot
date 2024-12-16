@@ -1,6 +1,7 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
 import { getOrCreateClients } from "../test/utils/test-util";
+import { string } from "mathjs";
 
 export class ApiAdapter {
   apiBaseUrl: string;
@@ -92,9 +93,22 @@ export class ApiAdapter {
   }
 
   public async addRootOfTrust(configJson: any): Promise<Response> {
-    const rootOfTrustIdentifierName = configJson.users.filter(
-      (usr: any) => usr.type == "GLEIF",
-    )[0].identifiers[0];
+    const rootOfTrustMultisigIdentifierName = configJson.users
+      .filter(
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
+      )[0]
+      .identifiers.filter((identifier: string) =>
+        identifier.includes("multisig"),
+      )![0];
+
+    const rootOfTrustIdentifierName = configJson.users
+      .filter(
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
+      )[0]
+      .identifiers.filter(
+        (identifier: string) => !identifier.includes("multisig"),
+      )![0];
+
     const rootOfTrustIdentifierAgent =
       configJson.agents[
         configJson.identifiers[rootOfTrustIdentifierName].agent
@@ -109,13 +123,16 @@ export class ApiAdapter {
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
       .identifiers()
-      .get(rootOfTrustIdentifierName);
+      .get(rootOfTrustMultisigIdentifierName);
 
-    const oobi = await client.oobis().get(rootOfTrustIdentifierName);
+    const oobi = await client
+      .oobis()
+      .get(rootOfTrustMultisigIdentifierName, "agent");
     let oobiUrl = oobi.oobis[0];
     const url = new URL(oobiUrl);
     if (url.hostname === "keria")
       oobiUrl = oobiUrl.replace("keria", "localhost");
+    console.log(`Root of trust OOBIs: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
@@ -123,6 +140,7 @@ export class ApiAdapter {
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
+      oobi: oobiUrl,
     };
     let lreq = {
       headers: heads,

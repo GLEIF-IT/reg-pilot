@@ -1,0 +1,273 @@
+{
+  "secrets": {
+    "gleif-internal1": "D_PbQb01zuzQgK-kDWji1",
+    "gleif-internal2": "D_PbQb01zuzQgK-kDWji2",
+    "gleif-internal3": "D_PbQb01zuzQgK-kDWji3",
+    "gleif-internal4": "D_PbQb01zuzQgK-kDWji4",
+    "gleif-internal5": "D_PbQb01zuzQgK-kDWji5",
+    "gleif-internal6": "D_PbQb01zuzQgK-kDWji6",
+    "gleif-internal7": "D_PbQb01zuzQgK-kDWji7",
+    "gleif-external1": "D_PbQb01zuzQgK-kDWje1",
+    "gleif-external2": "D_PbQb01zuzQgK-kDWje2",
+    "gleif-external3": "D_PbQb01zuzQgK-kDWje3",
+    "gleif-external4": "D_PbQb01zuzQgK-kDWje4",
+    "gleif-external5": "D_PbQb01zuzQgK-kDWje5",
+    "qvi1": "BTaqgh1eeOjXO5iQJp6m1",
+    "qvi2": "BTaqgh1eeOjXO5iQJp6m2",
+    "qvi3": "BTaqgh1eeOjXO5iQJp6m3",
+    "le1": "Lf8nafHfan8fnafnnnfa1",
+    "le2": "Lf8nafHfan8fnafnnnfa2",
+    "le3": "Lf8nafHfan8fnafnnnfa3",
+    "ecr1": "nf98hUHUy8Vt5tvdyaYV7"
+  },
+  "credentials": {
+    "gleif_to_qvi_vlei_cred": {
+      "type": "direct",
+      "schema": "QVI_SCHEMA_SAID",
+      "privacy": false,
+      "attributes": {}
+    },
+    "qvi_to_le_vlei_cred": {
+      "credSource": {
+        "type": "qvi"
+      },
+      "type": "direct",
+      "schema": "LE_SCHEMA_SAID",
+      "rules": "LE_RULES",
+      "privacy": false,
+      "attributes": {}
+    },
+    "le_to_ecr_vlei_cred": {
+      "credSource": {
+        "type": "le"
+      },
+      "type": "direct",
+      "schema": "ECR_SCHEMA_SAID",
+      "rules": "ECR_RULES",
+      "privacy": true,
+      "attributes": {
+        "engagementContextRole": "EBA Data Submitter"
+      }
+    }
+  },
+  "agents": {
+    "gleif-internal-agent-1": {
+      "secret": "gleif-internal1"
+    },
+    "gleif-internal-agent-2": {
+      "secret": "gleif-internal2"
+    },
+    "gleif-internal-agent-3": {
+      "secret": "gleif-internal3"
+    },
+    "gleif-internal-agent-4": {
+      "secret": "gleif-internal4"
+    },
+    "gleif-internal-agent-5": {
+      "secret": "gleif-internal5"
+    },
+    "gleif-internal-agent-6": {
+      "secret": "gleif-internal6"
+    },
+    "gleif-internal-agent-7": {
+      "secret": "gleif-internal7"
+    },
+    "gleif-external-agent-1": {
+      "secret": "gleif-external1"
+    },
+    "gleif-external-agent-2": {
+      "secret": "gleif-external2"
+    },
+    "gleif-external-agent-3": {
+      "secret": "gleif-external3"
+    },
+    "gleif-external-agent-4": {
+      "secret": "gleif-external4"
+    },
+    "gleif-external-agent-5": {
+      "secret": "gleif-external5"
+    },
+    "qvi-agent-1": {
+      "secret": "qvi1"
+    },
+    "qvi-agent-2": {
+      "secret": "qvi2"
+    },
+    "qvi-agent-3": {
+      "secret": "qvi3"
+    },
+    "le-agent-1": {
+      "secret": "le1"
+    },
+    "le-agent-2": {
+      "secret": "le2"
+    },
+    "le-agent-3": {
+      "secret": "le3"
+    },
+    "ecr-agent-1": {
+      "secret": "ecr1"
+    }
+  },
+  "identifiers": {
+    "gleif-internal-aid-1": {
+      "agent": "gleif-internal-agent-1",
+      "name": "gleif-internal-aid-1"
+    },
+    "gleif-internal-aid-2": {
+      "agent": "gleif-internal-agent-2",
+      "name": "gleif-internal-aid-2"
+    },
+    "gleif-internal-aid-3": {
+      "agent": "gleif-internal-agent-3",
+      "name": "gleif-internal-aid-3"
+    },
+    "gleif-internal-aid-4": {
+      "agent": "gleif-internal-agent-4",
+      "name": "gleif-internal-aid-4"
+    },
+    "gleif-internal-aid-5": {
+      "agent": "gleif-internal-agent-5",
+      "name": "gleif-internal-aid-5"
+    },
+    "gleif-internal-aid-6": {
+      "agent": "gleif-internal-agent-6",
+      "name": "gleif-internal-aid-6"
+    },
+    "gleif-internal-aid-7": {
+      "agent": "gleif-internal-agent-7",
+      "name": "gleif-internal-aid-7"
+    },
+    "gleif-internal-multisig-1": {
+      "name": "gleif-internal-multisig-1",
+      "identifiers": [
+        "gleif-internal-aid-1",
+        "gleif-internal-aid-2",
+        "gleif-internal-aid-3",
+        "gleif-internal-aid-4",
+        "gleif-internal-aid-5",
+        "gleif-internal-aid-6",
+        "gleif-internal-aid-7"
+      ],
+      "isith": ["1/3", "1/3", "1/3", "1/3", "1/3", "1/3", "1/3"],
+      "nsith": ["1/3", "1/3", "1/3", "1/3", "1/3", "1/3", "1/3"]
+    },
+    "gleif-external-aid-1": {
+      "agent": "gleif-external-agent-1",
+      "name": "gleif-external-aid-1"
+    },
+    "gleif-external-aid-2": {
+      "agent": "gleif-external-agent-2",
+      "name": "gleif-external-aid-2"
+    },
+    "gleif-external-aid-3": {
+      "agent": "gleif-external-agent-3",
+      "name": "gleif-external-aid-3"
+    },
+    "gleif-external-aid-4": {
+      "agent": "gleif-external-agent-4",
+      "name": "gleif-external-aid-4"
+    },
+    "gleif-external-aid-5": {
+      "agent": "gleif-external-agent-5",
+      "name": "gleif-external-aid-5"
+    },
+    "gleif-external-multisig-1": {
+      "name": "gleif-external-multisig-1",
+      "delegator": "gleif-internal-multisig-1",
+      "identifiers": [
+        "gleif-external-aid-1",
+        "gleif-external-aid-2",
+        "gleif-external-aid-3",
+        "gleif-external-aid-4",
+        "gleif-external-aid-5"
+      ],
+      "isith": ["1/2", "1/2", "1/2", "1/2", "1/2"],
+      "nsith": ["1/2", "1/2", "1/2", "1/2", "1/2"]
+    },
+    "qvi-aid-1": {
+      "agent": "qvi-agent-1",
+      "name": "qvi-aid-1"
+    },
+    "qvi-aid-2": {
+      "agent": "qvi-agent-2",
+      "name": "qvi-aid-2"
+    },
+    "qvi-aid-3": {
+      "agent": "qvi-agent-3",
+      "name": "qvi-aid-3"
+    },
+    "qvi-multisig-1": {
+      "name": "qvi-multisig-1",
+      "delegator": "gleif-external-multisig-1",
+      "identifiers": ["qvi-aid-1", "qvi-aid-2", "qvi-aid-3"],
+      "isith": ["2/3", "1/2", "1/2"],
+      "nsith": ["2/3", "1/2", "1/2"]
+    },
+    "le-aid-1": {
+      "agent": "le-agent-1",
+      "name": "le-aid-1"
+    },
+    "le-aid-2": {
+      "agent": "le-agent-2",
+      "name": "le-aid-2"
+    },
+    "le-aid-3": {
+      "agent": "le-agent-3",
+      "name": "le-aid-3"
+    },
+    "le-multisig-1": {
+      "name": "le-multisig-1",
+      "identifiers": ["le-aid-1", "le-aid-2", "le-aid-3"],
+      "isith": ["2/3", "1/2", "1/2"],
+      "nsith": ["2/3", "1/2", "1/2"]
+    },
+    "ecr-aid-1": {
+      "agent": "ecr-agent-1",
+      "name": "ecr-aid-1"
+    }
+  },
+  "users": [
+    {
+      "type": "GLEIF_INTERNAL",
+      "alias": "gleif-internal-user-1",
+      "identifiers": [
+        "gleif-internal-aid-1",
+        "gleif-internal-aid-2",
+        "gleif-internal-aid-3",
+        "gleif-internal-aid-4",
+        "gleif-internal-aid-5",
+        "gleif-internal-aid-6",
+        "gleif-internal-aid-7",
+        "gleif-internal-multisig-1"
+      ]
+    },
+    {
+      "type": "GLEIF_EXTERNAL",
+      "alias": "gleif-external-user-1",
+      "identifiers": [
+        "gleif-external-aid-1",
+        "gleif-external-aid-2",
+        "gleif-external-aid-3",
+        "gleif-external-aid-4",
+        "gleif-external-aid-5",
+        "gleif-external-multisig-1"
+      ]
+    },
+    {
+      "type": "QVI",
+      "alias": "qvi-user-1",
+      "identifiers": ["qvi-aid-1", "qvi-aid-2", "qvi-aid-3", "qvi-multisig-1"]
+    },
+    {
+      "type": "LE",
+      "alias": "le-user-1",
+      "identifiers": ["le-aid-1", "le-aid-2", "le-aid-3", "le-multisig-1"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-user-1",
+      "identifiers": ["ecr-aid-1"]
+    }
+  ]
+}
