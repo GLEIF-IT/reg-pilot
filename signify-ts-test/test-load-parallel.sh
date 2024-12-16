@@ -106,6 +106,43 @@ check_available_banks() {
         echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
+
+    set -x
+    for ((i=1; i<=BANK_COUNT; i++)); do
+        local PORT_OFFSET=$((((i-1)*10) + i))
+        local ADMIN_PORT=$((20000 + PORT_OFFSET))
+        local HTTP_PORT=$((20001 + PORT_OFFSET))
+        local BOOT_PORT=$((20002 + PORT_OFFSET))
+        local CONTAINER_NAME="bank${i}"
+        local KERIA_CONFIG="{
+            \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
+            \"keria\": {
+                \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
+                \"curls\": [\"http://host.docker.internal:$HTTP_PORT/\"]
+            },
+            \"iurls\": []
+        }"
+
+        # Check if the container is already running
+        if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+            echo "Container ${CONTAINER_NAME} is already running. Skipping..."
+            continue
+        fi
+
+        # -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
+        docker run --rm -d -p $ADMIN_PORT:3901 -p $HTTP_PORT:3902 -p $BOOT_PORT:3903 \
+        --name $CONTAINER_NAME \
+        -e KERI_AGENT_CORS=1 \
+        -e PYTHONUNBUFFERED=1 \
+        -e PYTHONIOENCODING=UTF-8 \
+        ronakseth96/keria:TestBank_$i \
+        --config-dir /keria/config --config-file keria.json --loglevel DEBUG
+
+        # Write the JSON string to a file in the Docker container
+        docker exec $CONTAINER_NAME sh -c 'mkdir -p /keria/config/keri/cf'
+        echo "$KERIA_CONFIG" | docker exec -i $CONTAINER_NAME sh -c 'cat > /keria/config/keri/cf/keria.json'
+    done
+    set +x
 }
 
 remove_api_test_containers() {
@@ -278,7 +315,6 @@ main() {
     parse_args "$@"
     check_available_banks
 
-    # Clean up existing api test containers before starting tests
     remove_api_test_containers
 
     if [[ "$MODE" == "local" ]]; then
