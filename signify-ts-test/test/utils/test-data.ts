@@ -35,11 +35,13 @@ export async function getApiTestData(
   let apiUsers: Array<ApiUser> = [];
   const aidData = await buildAidData(configJson);
   for (const aid of aids) {
-    const clients = await getOrCreateClients(
-      1,
-      [aidData[aid].agent.secret],
-      true,
-    );
+    let secret;
+    if (aidData[aid].identifiers) {
+      secret = aidData[aidData[aid].identifiers[0]].agent.secret;
+    } else {
+      secret = aidData[aid].agent.secret;
+    }
+    const clients = await getOrCreateClients(1, [secret], true);
     const roleClient = clients[clients.length - 1];
     let apiUser: ApiUser = {
       ecrAid: null,

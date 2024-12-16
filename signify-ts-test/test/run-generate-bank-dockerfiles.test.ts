@@ -4,6 +4,7 @@ import * as path from "path";
 
 const baseKeriaUrl = 20001;
 const baseKeriaBootUrl = 20003;
+const baseKeriaAgentPort = 20002;
 const outputDir = "../images";
 
 // Run containers with --network host to have access to the locally running Kerias(ex. docker run --network host bank_1_api_test)
@@ -34,8 +35,9 @@ function generateDockerfiles(bankAmount: number) {
   
   RUN npm run build
   ENV BANK_NAME=${bankName}
-  ENV KERIA_URL=${keriaUrl}
-  ENV KERIA_BOOT_URL=${keriaBootUrl}
+  ENV KERIA=${keriaUrl}
+  ENV KERIA_BOOT=${keriaBootUrl}
+  ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10}
   
   CMD ["npx", "jest", "start", "./test/run-workflow-bank-api.test.ts"]
   `;
