@@ -25,6 +25,7 @@ function generateDockerfiles(bankAmount: number) {
     const bankName = `Bank_${i}`;
     const keriaUrl = `http://host.docker.internal:${baseKeriaUrl + (i - 1) * 10}`;
     const keriaBootUrl = `http://host.docker.internal:${baseKeriaBootUrl + (i - 1) * 10}`;
+    const apiBaseUrl = process.env.REG_PILOT_API;
 
     const dockerfileContent = `
   # Use a base image with the correct platform
@@ -38,6 +39,7 @@ function generateDockerfiles(bankAmount: number) {
   ENV KERIA=${keriaUrl}
   ENV KERIA_BOOT=${keriaBootUrl}
   ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10} 
+  ENV REG_PILOT_API=${apiBaseUrl}
   
   CMD ["npx", "jest", "start", "./test/run-workflow-bank-api.test.ts"]
   `;

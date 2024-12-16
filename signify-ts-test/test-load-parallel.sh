@@ -7,8 +7,8 @@ REG_PILOT_API=""
 FAST_MODE=false
 
 usage() {
-    echo "---------------------------------------------"
-    echo "Usage: $0 --mode [local|remote] --bank-count [COUNT] [--api-url URL]"
+    echo "---------------------------------------------------------------------------------------"
+    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--api-url URL] [--fast]"
     echo ""
     echo "Options:"
     echo "  --mode          Specify the test mode:"
@@ -23,11 +23,15 @@ usage() {
     echo ""
     echo "  --fast          To skip setup steps (requires bank reports, api test dockerfiles, and its build ready)."
     echo ""
-    echo "Examples:"
+    echo "EXAMPLES:"
     echo "  $0 --mode local --bank-count 5"
     echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud"
+    echo ""
+    echo "   NOTE: To run tests in fast mode, use:"
+    echo ""
     echo "  $0 --mode local --bank-count 5 --fast"
-    echo "---------------------------------------------"
+    echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud --fast"
+    echo "---------------------------------------------------------------------------------------"
     exit 1
 }
 
@@ -165,7 +169,8 @@ generate_dockerfiles() {
     echo "Generating Dockerfiles for running API test for all banks..."
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
-    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
+    export REG_PILOT_API=$REG_PILOT_API
+    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit 
     check_status "Generating Dockerfiles for $BANK_COUNT bank(s)"
 }
 
@@ -181,7 +186,7 @@ build_api_docker_image() {
     fi
 
     echo "Building Docker image for $BANK_NAME..."
-    LOG_FILE="./bank_test_logs/docker_build_logs/$BANK_NAME-build-$(date +"%Y%m%d_%H%M%S").log"
+    LOG_FILE="./bank_test_logs/docker_build_logs/$BANK_NAME-build.log"
     mkdir -p $(dirname "$LOG_FILE") 
     docker build --platform linux/arm64 -f $BANK_DOCKERFILE -t $BANK_IMAGE_TAG ../ > "$LOG_FILE" 2>&1
 
@@ -198,7 +203,7 @@ run_api_test() {
     BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]') 
     BANK_IMAGE_TAG="${BANK_NAME}_api_test"
 
-    LOG_FILE="./bank_test_logs/api_test_logs/$BANK_NAME-api-test-$(date +"%Y%m%d_%H%M%S").log"
+    LOG_FILE="./bank_test_logs/api_test_logs/$BANK_NAME-api-test.log"
     mkdir -p $(dirname "$LOG_FILE")
 
     echo "Running API test for $BANK_NAME..."
@@ -206,7 +211,7 @@ run_api_test() {
 
     API_TEST_STATUS=$?
     if [[ $API_TEST_STATUS -ne 0 ]]; then
-        echo "API test for $BANK_NAME failed."
+        echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
         exit 1
     fi
     echo "API test for $BANK_NAME completed successfully."
