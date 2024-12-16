@@ -4,6 +4,7 @@ DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
 BANK_COUNT=0
 REG_PILOT_API=""
+START="0"
 FAST_MODE=false
 
 usage() {
@@ -54,6 +55,10 @@ parse_args() {
                 REG_PILOT_API="$2"
                 shift
                 ;;
+            --start)
+                START=$(( $2 - 1 ))
+                shift
+                ;;
             --fast)
                 FAST_MODE=true
                 ;;
@@ -102,17 +107,17 @@ validate_inputs() {
 check_available_banks() {
     local TOTAL_AVAILABLE_BANKS=600
 
-    if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
-        echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
+    if (( BANK_COUNT + START > TOTAL_AVAILABLE_BANKS )); then
+        echo "WARNING: You have selected more banks ($BANK_COUNT) + ($START) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
 
     set -x
-    for ((i=1; i<=BANK_COUNT; i++)); do
-        local PORT_OFFSET=$((((i-1)*10) + i))
-        local ADMIN_PORT=$((20000 + PORT_OFFSET))
-        local HTTP_PORT=$((20001 + PORT_OFFSET))
-        local BOOT_PORT=$((20002 + PORT_OFFSET))
+    for ((i=(START+1); i<=(START+BANK_COUNT); i++)); do
+        local PORT_OFFSET=$((10*(i-1)))
+        local ADMIN_PORT=$((20001 + PORT_OFFSET))
+        local HTTP_PORT=$((20002 + PORT_OFFSET))
+        local BOOT_PORT=$((20003 + PORT_OFFSET))
         local CONTAINER_NAME="bank${i}"
         local KERIA_CONFIG="{
             \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
@@ -177,7 +182,7 @@ download_reports() {
     echo "-----------------------------------------------------"
     echo "Downloading reports for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=1; i<=BANK_COUNT; i++)); do
+    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
         export BANK_NAME="Bank_$i"
         echo "Downloading reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-download
@@ -189,7 +194,7 @@ cleanup_reports() {
     echo "-----------------------------------------------------"
     echo "Cleaning up report files for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=1; i<=BANK_COUNT; i++)); do
+    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
         export BANK_NAME="Bank_$i"
         echo "Cleaning up reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-cleanup
@@ -202,8 +207,9 @@ generate_dockerfiles() {
     echo "Generating Dockerfiles for running API test for all banks..."
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
+    export BANK_START=$START
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $BANK_COUNT bank(s)"
+    check_status "Generating Dockerfiles for $START to ${BANK_COUNT+START} bank(s)"
 }
 
 build_api_docker_image() {
@@ -262,7 +268,7 @@ load_test_banks() {
     echo "---------------------------------------------------"
     echo "Building docker image to run API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = 1; i <= BANK_COUNT; i++)); do
+    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
         BANK_NAME="Bank_$i"
         build_api_docker_image $BANK_NAME &
         PIDS+=($!)  
@@ -276,7 +282,7 @@ load_test_banks() {
     echo "---------------------------------------------------"
     echo "Running API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = 1; i <= BANK_COUNT; i++)); do
+    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
         BANK_NAME="Bank_$i"
         run_api_test $BANK_NAME &
         PIDS+=($!) 

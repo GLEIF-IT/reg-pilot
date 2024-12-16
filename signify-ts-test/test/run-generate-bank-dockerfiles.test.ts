@@ -12,16 +12,17 @@ const outputDir = "../images";
 test("generate-bank-dockerfiles", async function run() {
   // Generate dockerfiles for bank api tests
   const bankAmount = process.env.BANK_COUNT || 1;
-  generateDockerfiles(number(bankAmount));
+  const bankStart = process.env.BANK_START || 0;
+  generateDockerfiles(number(bankAmount), number(bankStart));
 }, 3600000);
 
-function generateDockerfiles(bankAmount: number) {
+function generateDockerfiles(bankAmount: number, bankStart: number = 0) {
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
   // Generate Dockerfiles
-  for (let i = 1; i <= bankAmount; i++) {
+  for (let i = (1+bankStart); i <= (bankAmount+bankStart); i++) {
     const bankName = `Bank_${i}`;
     const keriaUrl = `http://host.docker.internal:${baseKeriaUrl + (i - 1) * 10}`;
     const keriaBootUrl = `http://host.docker.internal:${baseKeriaBootUrl + (i - 1) * 10}`;
