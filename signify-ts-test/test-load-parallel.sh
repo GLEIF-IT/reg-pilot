@@ -221,29 +221,21 @@ stop_services_local() {
 }
 
 download_reports() {
-    echo "-----------------------------------------------------"
-    echo "Downloading reports for all banks..."
-    echo "-----------------------------------------------------"
-    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
-    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         export BANK_NAME="Bank_$i"
+        echo "---------------------------------------------------"
         echo "Downloading reports for $BANK_NAME..."
+        echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-download
         check_status "Downloading report for $BANK_NAME"
-    done
 }
 
 cleanup_reports() {
-    echo "-----------------------------------------------------"
-    echo "Cleaning up report files for all banks..."
-    echo "-----------------------------------------------------"
-    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
-    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do    
         export BANK_NAME="Bank_$i"
-        echo "Cleaning up reports for $BANK_NAME..."
+        echo "---------------------------------------------------"
+        echo "Cleaning up report files for $BANK_NAME..."
+        echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-cleanup
         check_status "Cleaning up report for $BANK_NAME"
-    done
 }
 
 generate_dockerfiles() {
@@ -268,7 +260,9 @@ build_api_docker_image() {
         exit 1
     fi
 
+    echo "---------------------------------------------------"
     echo "Building Docker image for $BANK_NAME..."
+    echo "---------------------------------------------------"
     LOG_FILE="./bank_test_logs/docker_build_logs/$BANK_NAME-build.log"
     mkdir -p $(dirname "$LOG_FILE") 
     docker build --platform linux/arm64 -f $BANK_DOCKERFILE -t $BANK_IMAGE_TAG ../ > "$LOG_FILE" 2>&1
@@ -311,16 +305,22 @@ load_test_banks() {
 
     if [[ "$STAGE_MODE" == true ]]; then
     # Building docker images for all banks
-    PIDS=() 
-    echo "---------------------------------------------------"
-    echo "Building docker image to run API test for all banks"
-    echo "---------------------------------------------------"
+    START_TIME=$(date +%s)
     for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         BANK_NAME="Bank_$i"
-        build_api_docker_image $BANK_NAME &
-        PIDS+=($!)  
+        download_reports $BANK_NAME
+        build_api_docker_image $BANK_NAME
+        cleanup_reports $BANK_NAME
     done
-    wait "${PIDS[@]}"  # Wait for all Docker image builds to finish
+
+    END_TIME=$(date +%s)
+    ELAPSED_TIME=$((END_TIME - START_TIME))
+    echo "========================================================="
+    echo "                   STAGING SUMMARY                          "
+    echo "========================================================="
+    echo "TOTAL BANKS STAGED: $BANK_COUNT"
+    echo "TOTAL RUNTIME: $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
+    echo "=========================================================="
     fi
 
     if [[ "$FAST_MODE" == true ]]; then
@@ -376,7 +376,6 @@ main() {
     fi
 
     if [[ "$STAGE_MODE" == true ]]; then
-        download_reports
         generate_dockerfiles
     fi
 
