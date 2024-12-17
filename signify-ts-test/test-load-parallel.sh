@@ -3,35 +3,41 @@
 DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
 BANK_COUNT=0
+FIRST_BANK=1
 REG_PILOT_API=""
-START="0"
 FAST_MODE=false
+STAGE_MODE=false
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
-    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--api-url URL] [--fast]"
+    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--api-url URL] [--stage] | [--fast]"
     echo ""
     echo "Options:"
     echo "  --mode          Specify the test mode:"
     echo "                  - 'local': Docker-based testing."
     echo "                  - 'remote': Remote-services-based testing."
     echo ""
+    echo "  --first-bank    The bank number to start testing from (default: 1)."
+    echo "                  - Specify the starting bank number (e.g., 5 for Bank_5)."
+    echo ""
     echo "  --bank-count    Number of banks to test:"
     echo "                  - Specify the count (e.g., 1 for Bank_1, 10 for Bank_1 to Bank_10)."
+    echo "                  - If specifying first-bank, then specify the count (e.g., 5 for Bank_5 to Bank_9)."
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
     echo ""
-    echo "  --fast          To skip setup steps (requires bank reports, api test dockerfiles, and its build ready)."
+    echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
+    echo ""
+    echo "  --fast          Skip setup steps (requires bank reports and Dockerfiles to already be staged and ready)."
     echo ""
     echo "EXAMPLES:"
-    echo "  $0 --mode local --bank-count 5"
-    echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud"
     echo ""
-    echo "   NOTE: To run tests in fast mode, use:"
+    echo "  $0 --mode local --bank-count 5 --stage | --fast"
+    echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud --stage | --fast"
+    echo "  $0 --mode local --first-bank 121 --bank-count 120 --stage | --fast"
+    echo "  $0 --mode remote --first-bank 121 --bank-count 120 --api-url https://reg-api-test.rootsid.cloud --stage | --fast"
     echo ""
-    echo "  $0 --mode local --bank-count 5 --fast"
-    echo "  $0 --mode remote --bank-count 10 --api-url https://reg-api-test.rootsid.cloud --fast"
     echo "---------------------------------------------------------------------------------------"
     exit 1
 }
@@ -51,6 +57,10 @@ parse_args() {
                 MODE="$2"
                 shift
                 ;;
+            --first-bank)
+                FIRST_BANK="$2"
+                shift
+                ;;
             --bank-count)
                 BANK_COUNT="$2"
                 shift
@@ -59,12 +69,11 @@ parse_args() {
                 REG_PILOT_API="$2"
                 shift
                 ;;
-            --start)
-                START=$(( $2 - 1 ))
-                shift
-                ;;
             --fast)
                 FAST_MODE=true
+                ;;
+            --stage)
+                STAGE_MODE=true
                 ;;
             *)
                 echo "Unknown parameter: $1"
@@ -88,7 +97,17 @@ validate_inputs() {
         usage
     fi
 
-    if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
+    if [[ "$MODE" != "local" && "$MODE" != "remote" ]]; then
+        echo "ERROR: Please enter valid mode"
+        usage
+    fi
+
+    if [[ "$FAST_MODE" == false && "$STAGE_MODE" == false ]]; then
+        echo "ERROR: Either --stage or --fast must be specified."
+        usage
+    fi
+
+     if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
         echo "ERROR: --api-url is required in remote mode."
         usage
     fi
@@ -99,25 +118,40 @@ validate_inputs() {
     fi
 
     if [[ "$FAST_MODE" == true ]]; then
-        echo "FAST MODE: Skipping report downloads, Dockerfile generation, and image build. Ensure they're already completed."
+        echo "FAST MODE: Ensure that all reports and Dockerfiles are staged and ready to run API tests."
         read -p "Proceed with FAST MODE? (y/n): " confirm
-        if [[ "$confirm" != "y" ]]; then
-            echo "Exiting. Rerun without --fast if prerequisites are missing."
+        if [[ "$confirm" = "y" ]]; then
+
+            echo "Validating if API test Docker image exists locally..."
+            LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
+            for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
+                BANK_NAME="Bank_${i}"
+                BANK_IMAGE_TAG="$(echo "$BANK_NAME" | tr '[:upper:]' '[:lower:]')_api_test:latest"
+
+                if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${BANK_IMAGE_TAG}$"; then
+                    echo "Exiting due to missing Docker images. Rerun the staging process again to create missing images."
+                    exit 1
+                fi
+            done
+            echo "All Docker images validated successfully."
+        else
+            echo "Exiting. Rerun with --stage if prerequisites are missing."
             exit 1
         fi
     fi    
 }
 
 check_available_banks() {
-    local TOTAL_AVAILABLE_BANKS=600
+    local TOTAL_AVAILABLE_BANKS=601
 
-    if (( BANK_COUNT + START > TOTAL_AVAILABLE_BANKS )); then
-        echo "WARNING: You have selected more banks ($BANK_COUNT) + ($START) than available ($TOTAL_AVAILABLE_BANKS)."
+    if (( BANK_COUNT + FIRST_BANK > TOTAL_AVAILABLE_BANKS )); then
+        echo "WARNING: You have selected more banks ($((BANK_COUNT + FIRST_BANK))) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
 
     set -x
-    for ((i=(START+1); i<=(START+BANK_COUNT); i++)); do
+    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
+    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         local PORT_OFFSET=$((10*(i-1)))
         local ADMIN_PORT=$((20001 + PORT_OFFSET))
         local HTTP_PORT=$((20002 + PORT_OFFSET))
@@ -158,11 +192,15 @@ remove_api_test_containers() {
     containers=$(docker ps -aq --filter "name=_api_test")
     
     if [[ -n "$containers" ]]; then
+        echo "---------------------------------------------------"
         echo "Found existing containers, removing..."
+        echo "---------------------------------------------------"
         docker rm -f $containers > /dev/null 2>&1 
         check_status "Removing existing containers"
     else
+        echo "---------------------------------------------------"
         echo "No existing API test containers found."
+        echo "---------------------------------------------------"
     fi
 }
 
@@ -186,7 +224,8 @@ download_reports() {
     echo "-----------------------------------------------------"
     echo "Downloading reports for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
+    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
+    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         export BANK_NAME="Bank_$i"
         echo "Downloading reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-download
@@ -198,7 +237,8 @@ cleanup_reports() {
     echo "-----------------------------------------------------"
     echo "Cleaning up report files for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
+    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
+    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do    
         export BANK_NAME="Bank_$i"
         echo "Cleaning up reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-cleanup
@@ -211,17 +251,16 @@ generate_dockerfiles() {
     echo "Generating Dockerfiles for running API test for all banks..."
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
-    export BANK_START=$START
+    export FIRST_BANK=$FIRST_BANK
     export REG_PILOT_API=$REG_PILOT_API
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $START to ${BANK_COUNT+START} bank(s)"
-
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s)"
 }
 
 build_api_docker_image() {
     BANK_NAME=$(echo "$BANK_NAME" | tr '[:upper:]' '[:lower:]')
     BANK_DOCKERFILE="../images/${BANK_NAME}.dockerfile"
-    BANK_IMAGE_TAG="${BANK_NAME}_api_test"
+    BANK_IMAGE_TAG="${BANK_NAME}_api_test:latest"
 
     # Check if the Dockerfile exists
     if [[ ! -f "$BANK_DOCKERFILE" ]]; then
@@ -268,13 +307,15 @@ load_test_banks() {
     SUCCESS_COUNT=0
     FAILURE_COUNT=0
 
-    if [[ "$FAST_MODE" == false ]]; then
+    LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
+
+    if [[ "$STAGE_MODE" == true ]]; then
     # Building docker images for all banks
     PIDS=() 
     echo "---------------------------------------------------"
     echo "Building docker image to run API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
+    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         BANK_NAME="Bank_$i"
         build_api_docker_image $BANK_NAME &
         PIDS+=($!)  
@@ -282,13 +323,16 @@ load_test_banks() {
     wait "${PIDS[@]}"  # Wait for all Docker image builds to finish
     fi
 
+    if [[ "$FAST_MODE" == true ]]; then
+    remove_api_test_containers
+
     #Running API tests for all banks
     START_TIME=$(date +%s)
     PIDS=() 
     echo "---------------------------------------------------"
     echo "Running API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
+    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
         BANK_NAME="Bank_$i"
         run_api_test $BANK_NAME &
         PIDS+=($!) 
@@ -304,7 +348,7 @@ load_test_banks() {
             FAILURE_COUNT=$((FAILURE_COUNT + 1))
         fi
     done
-
+    
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
@@ -320,20 +364,18 @@ load_test_banks() {
     echo "FAILURE COUNT: $FAILURE_COUNT"
     echo "TOTAL RUNTIME: $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
     echo "=========================================================="
+    fi
 }
-
 
 main() {
     parse_args "$@"
     check_available_banks
 
-    remove_api_test_containers
-
-    if [[ "$MODE" == "local" ]]; then
+    if [[ "$FAST_MODE" == true && "$MODE" == "local" ]]; then
         start_services_local
     fi
 
-    if [[ "$FAST_MODE" == false ]]; then
+    if [[ "$STAGE_MODE" == true ]]; then
         download_reports
         generate_dockerfiles
     fi
