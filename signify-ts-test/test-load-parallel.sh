@@ -4,6 +4,7 @@ DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
 BANK_COUNT=0
 FIRST_BANK=1
+BATCH_SIZE=5
 REG_PILOT_API=""
 FAST_MODE=false
 STAGE_MODE=false
@@ -23,6 +24,8 @@ usage() {
     echo "  --bank-count    Number of banks to test:"
     echo "                  - Specify the count (e.g., 1 for Bank_1, 10 for Bank_1 to Bank_10)."
     echo "                  - If specifying first-bank, then specify the count (e.g., 5 for Bank_5 to Bank_9)."
+    echo ""
+    echo "  --batch-size    Number of banks to process per batch. (default: 5)"
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
@@ -65,6 +68,10 @@ parse_args() {
                 BANK_COUNT="$2"
                 shift
                 ;;
+            --batch-size)
+                BATCH_SIZE="$2"
+                shift
+                ;;
             --api-url)
                 REG_PILOT_API="$2"
                 shift
@@ -94,6 +101,11 @@ validate_inputs() {
 
     if ! [[ "$BANK_COUNT" =~ ^[0-9]+$ ]]; then
         echo "ERROR: --bank-count must be a valid number."
+        usage
+    fi
+
+    if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] || [[ "$BATCH_SIZE" -lt 1 ]]; then
+        echo "ERROR: --batch-size must be a valid number."
         usage
     fi
 
@@ -316,7 +328,7 @@ load_test_banks() {
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
     echo "========================================================="
-    echo "                   STAGING SUMMARY                          "
+    echo "                   STAGING SUMMARY                       "
     echo "========================================================="
     echo "TOTAL BANKS STAGED: $BANK_COUNT"
     echo "TOTAL RUNTIME: $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
@@ -327,27 +339,39 @@ load_test_banks() {
     remove_api_test_containers
 
     #Running API tests for all banks
-    START_TIME=$(date +%s)
-    PIDS=() 
     echo "---------------------------------------------------"
     echo "Running API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
-        BANK_NAME="Bank_$i"
-        run_api_test $BANK_NAME &
-        PIDS+=($!) 
-    done
 
+    START_TIME=$(date +%s)
+    for ((BATCH_START = FIRST_BANK; BATCH_START <= LAST_BANK; BATCH_START += BATCH_SIZE)); do
+            BATCH_END=$((BATCH_START + BATCH_SIZE - 1))
+            if [[ $BATCH_END -gt $LAST_BANK ]]; then
+                BATCH_END=$LAST_BANK
+            fi
+
+    echo "---------------------------------------------------"
+    echo "Processing banks $BATCH_START to $BATCH_END..."
+    echo "---------------------------------------------------"
+    # Running API tests for all banks in the current batch
+    PIDS=()
+        for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            BANK_NAME="Bank_$i"
+            run_api_test $BANK_NAME &
+            PIDS+=($!)  
+        done
+
+        # Wait for all tests in the batch to finish
         for pid in "${PIDS[@]}"; do
-        wait $pid
-        API_TEST_STATUS=$?
-
-        if [[ $API_TEST_STATUS -eq 0 ]]; then
+            wait $pid
+            API_TEST_STATUS=$?
+            if [[ $API_TEST_STATUS -eq 0 ]]; then
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-        else
+            else
             FAILURE_COUNT=$((FAILURE_COUNT + 1))
-        fi
-    done
+            fi
+        done
+    done    
     
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
