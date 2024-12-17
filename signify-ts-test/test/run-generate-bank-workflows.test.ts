@@ -396,7 +396,7 @@ function generateBankConfig(bankId: number) {
 
 test("generate-bank-workflows", async function run() {
   // Generate configs and workflows for each bank
-  const amount = 600;
+  const amount = 601;
   for (let i = 1; i < amount + 1; i++) {
     generateBankConfig(i);
   }
