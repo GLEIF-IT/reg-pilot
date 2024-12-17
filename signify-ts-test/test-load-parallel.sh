@@ -4,6 +4,7 @@ DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
 BANK_COUNT=0
 REG_PILOT_API=""
+START="0"
 FAST_MODE=false
 
 usage() {
@@ -58,6 +59,10 @@ parse_args() {
                 REG_PILOT_API="$2"
                 shift
                 ;;
+            --start)
+                START=$(( $2 - 1 ))
+                shift
+                ;;
             --fast)
                 FAST_MODE=true
                 ;;
@@ -106,10 +111,47 @@ validate_inputs() {
 check_available_banks() {
     local TOTAL_AVAILABLE_BANKS=600
 
-    if [[ "$BANK_COUNT" -gt "$TOTAL_AVAILABLE_BANKS" ]]; then
-        echo "WARNING: You have selected more banks ($BANK_COUNT) than available ($TOTAL_AVAILABLE_BANKS)."
+    if (( BANK_COUNT + START > TOTAL_AVAILABLE_BANKS )); then
+        echo "WARNING: You have selected more banks ($BANK_COUNT) + ($START) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
+
+    set -x
+    for ((i=(START+1); i<=(START+BANK_COUNT); i++)); do
+        local PORT_OFFSET=$((10*(i-1)))
+        local ADMIN_PORT=$((20001 + PORT_OFFSET))
+        local HTTP_PORT=$((20002 + PORT_OFFSET))
+        local BOOT_PORT=$((20003 + PORT_OFFSET))
+        local CONTAINER_NAME="bank${i}"
+        local KERIA_CONFIG="{
+            \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
+            \"keria\": {
+                \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
+                \"curls\": [\"http://host.docker.internal:$HTTP_PORT/\"]
+            },
+            \"iurls\": []
+        }"
+
+        # Check if the container is already running
+        if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+            echo "Container ${CONTAINER_NAME} is already running. Skipping..."
+            continue
+        fi
+
+        # -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
+        docker run --rm -d -p $ADMIN_PORT:3901 -p $HTTP_PORT:3902 -p $BOOT_PORT:3903 \
+        --name $CONTAINER_NAME \
+        -e KERI_AGENT_CORS=1 \
+        -e PYTHONUNBUFFERED=1 \
+        -e PYTHONIOENCODING=UTF-8 \
+        ronakseth96/keria:TestBank_$i \
+        --config-dir /keria/config --config-file keria.json --loglevel DEBUG
+
+        # Write the JSON string to a file in the Docker container
+        docker exec $CONTAINER_NAME sh -c 'mkdir -p /keria/config/keri/cf'
+        echo "$KERIA_CONFIG" | docker exec -i $CONTAINER_NAME sh -c 'cat > /keria/config/keri/cf/keria.json'
+    done
+    set +x
 }
 
 remove_api_test_containers() {
@@ -144,7 +186,7 @@ download_reports() {
     echo "-----------------------------------------------------"
     echo "Downloading reports for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=1; i<=BANK_COUNT; i++)); do
+    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
         export BANK_NAME="Bank_$i"
         echo "Downloading reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-download
@@ -156,7 +198,7 @@ cleanup_reports() {
     echo "-----------------------------------------------------"
     echo "Cleaning up report files for all banks..."
     echo "-----------------------------------------------------"
-    for ((i=1; i<=BANK_COUNT; i++)); do
+    for ((i=(1+START); i<=(BANK_COUNT+START); i++)); do
         export BANK_NAME="Bank_$i"
         echo "Cleaning up reports for $BANK_NAME..."
         ./test-workflow-banks.sh --reports-cleanup
@@ -169,9 +211,11 @@ generate_dockerfiles() {
     echo "Generating Dockerfiles for running API test for all banks..."
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
+    export BANK_START=$START
     export REG_PILOT_API=$REG_PILOT_API
-    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit 
-    check_status "Generating Dockerfiles for $BANK_COUNT bank(s)"
+    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
+    check_status "Generating Dockerfiles for $START to ${BANK_COUNT+START} bank(s)"
+
 }
 
 build_api_docker_image() {
@@ -230,7 +274,7 @@ load_test_banks() {
     echo "---------------------------------------------------"
     echo "Building docker image to run API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = 1; i <= BANK_COUNT; i++)); do
+    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
         BANK_NAME="Bank_$i"
         build_api_docker_image $BANK_NAME &
         PIDS+=($!)  
@@ -244,7 +288,7 @@ load_test_banks() {
     echo "---------------------------------------------------"
     echo "Running API test for all banks"
     echo "---------------------------------------------------"
-    for ((i = 1; i <= BANK_COUNT; i++)); do
+    for ((i = (1+START); i <= (BANK_COUNT+START); i++)); do
         BANK_NAME="Bank_$i"
         run_api_test $BANK_NAME &
         PIDS+=($!) 
@@ -283,7 +327,6 @@ main() {
     parse_args "$@"
     check_available_banks
 
-    # Clean up existing api test containers before starting tests
     remove_api_test_containers
 
     if [[ "$MODE" == "local" ]]; then
