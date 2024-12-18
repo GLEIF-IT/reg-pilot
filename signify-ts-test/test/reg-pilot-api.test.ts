@@ -1033,35 +1033,33 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
-  // heads.set("sec-ch-ua-platform", "Windows");
+  heads.set("sec-ch-ua-platform", "Windows");
   heads.set("Referer", "https://errp.test.eba.europa.eu/portal/login");
-  // heads.set("sec-ch-ua", '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"');
-  // heads.set("sec-ch-ua-mobile", "?0");
+  heads.set("sec-ch-ua", '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"');
+  heads.set("sec-ch-ua-mobile", "?0");
   heads.set("uiversion", "1.3.10-467-FINAL-PILLAR3-trunk");
-  // heads.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+  heads.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
   heads.set("Accept", "application/json, text/plain, */*");
   let lbody = {credential:{
     cesr: credCesr,
     raw: cred,
+    },
     sessionId: "78a55420-a074-4ba3-85f9-11aa343995a0",
-    }
   };
-  // Convert the payload to a JSON string and then to base64
   let base64Payload = Buffer.from(JSON.stringify(lbody)).toString('base64');
-
   let lreq = {
     headers: heads,
     method: "POST",
-    body: base64Payload,
+    body: JSON.stringify({payload: base64Payload}),
   };
   console.log("eba login lreq", lreq);
   let lpath = `/signifyLogin`;
   const lresp = await fetch("https://errp.test.eba.europa.eu/api-security" + lpath, lreq);
   console.log("login response", lresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
-    assert.equal(lresp.status, 202);
+    assert.equal(lresp.status, 200);
     let ljson = await lresp.json();
-    const token = JSON.parse(ljson["jwt"]);
+    const token = ljson["jwt"];
     assert.equal(token.length >= 1, true);
   } else {
     let ljson = await lresp.json();
