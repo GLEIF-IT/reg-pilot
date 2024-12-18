@@ -322,7 +322,7 @@ load_test_banks() {
         BANK_NAME="Bank_$i"
         download_reports $BANK_NAME
         build_api_docker_image $BANK_NAME
-        cleanup_reports $BANK_NAME
+        # cleanup_reports $BANK_NAME
     done
 
     END_TIME=$(date +%s)
