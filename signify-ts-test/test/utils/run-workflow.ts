@@ -10,7 +10,7 @@ import {
   getConfig,
   getReportGenTestData,
 } from "./test-data";
-import { run_api_revocation_test, run_api_test, run_eba_api_test } from "../reg-pilot-api.test";
+import { run_api_revocation_test, run_api_test, single_user_eba_test } from "../reg-pilot-api.test";
 import { run_vlei_verification_test } from "../vlei-verification.test";
 
 const fs = require("fs");
@@ -149,7 +149,7 @@ export async function runWorkflow(workflow: any, configJson: any) {
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await run_eba_api_test(apiUsers);
+        await single_user_eba_test(apiUsers[0]);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
