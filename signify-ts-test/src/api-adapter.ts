@@ -151,15 +151,31 @@ export class ApiAdapter {
       headers: {
           ...formData.getHeaders(),
         'Authorization': `Bearer ${token}`,
-        'name': '237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip',
-        'size': '155601',
-        'uiversion': '1.3.10-467-FINAL-PILLAR3-trunk',
-        'x-start-byte': '0'
+        'uiversion': '1.3.10-472-FINAL-PILLAR3-trunk',
+        'sec-ch-ua-platform': "macOS",
+        "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+        'x-file-id': "237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip-1734640154691",
+        "x-start-byte": "0",
+        'size': "156231",
+        'sec-ch-ua-mobile':'?0',
+        'Expires':'Sat, 01 Jan 2000 00:00:00 GMT',
+        'Accept':'application/json, text/plain, */*',
+        // "Content-Type":"multipart/form-data; boundary=----WebKitFormBoundaryVzABPbBM8BjT0uAU",
+        // signature-input:signify=("@method" "@path" "signify-resource" "signify-timestamp");created=1734638631;keyid="BFrHXYqOUZbwTZ1REvFllhJYzczzyKEZpVX0w6C5c28T";alg="ed25519"
+        'Directory':'237932ALYUME7DQDC2D7.CON',
+        'Cache-Control':'no-cache',
+        'Pragma':'no-cache',
+        "name": `${path.basename(fileName)}`,
+        'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+        'Sec-Fetch-Site':'same-origin',
+        'Sec-Fetch-Mode':'cors',
+        'Sec-Fetch-Dest':'empty',
+        // 'host':'errp.test.eba.europa.eu'
       }
     };
     const url = `https://errp.test.eba.europa.eu/api/upload`;
     let sreq = await client.createSignedRequest(aidName, url, req);
-    const sreqBod = await sreq.text();
+    // const sreqBod = await sreq.text();
     const resp = await fetch(url, sreq);
     const resBod = await resp.text();
     console.log(`eba upload resp: ${resBod}`);
