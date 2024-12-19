@@ -16,7 +16,6 @@ afterAll((done) => {
 beforeAll((done) => {
   process.env.TEST_ENVIRONMENT = "eba_bank_test";
   process.env.KERIA = "http://localhost:20171";
-  // process.env.KERIA_HTTP_PORT = "20182";
   process.env.KERIA_BOOT = "http://localhost:20173";
   process.env.BANK_NAME = "Bank_18";
   done();
