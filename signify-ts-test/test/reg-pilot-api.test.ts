@@ -367,7 +367,8 @@ export async function single_user_eba_test(user: ApiUser) {
               token
             );
             assert.equal(signedUpResp.status, 200);
-        
+            const resBod = await signedUpResp.json();
+            assert.equal(resBod["message"],`All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`);
           }
         }
       } else {

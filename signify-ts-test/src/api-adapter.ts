@@ -162,7 +162,7 @@ export class ApiAdapter {
         'Accept':'application/json, text/plain, */*',
         // "Content-Type":"multipart/form-data; boundary=----WebKitFormBoundaryVzABPbBM8BjT0uAU",
         // signature-input:signify=("@method" "@path" "signify-resource" "signify-timestamp");created=1734638631;keyid="BFrHXYqOUZbwTZ1REvFllhJYzczzyKEZpVX0w6C5c28T";alg="ed25519"
-        'Directory':'237932ALYUME7DQDC2D7.CON',
+        // 'Directory':'237932ALYUME7DQDC2D7.CON',
         'Cache-Control':'no-cache',
         'Pragma':'no-cache',
         "name": `${path.basename(fileName)}`,
@@ -177,8 +177,6 @@ export class ApiAdapter {
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
     const resp = await fetch(url, sreq);
-    const resBod = await resp.text();
-    console.log(`eba upload resp: ${resBod}`);
     return resp;
   }
 
