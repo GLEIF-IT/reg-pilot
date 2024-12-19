@@ -11,7 +11,7 @@ STAGE_MODE=false
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
-    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--api-url URL] [--stage] | [--fast]"
+    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--first-bank FIRST] [--batch-size SIZE] [--api-url URL] [--stage] | [--fast]"
     echo ""
     echo "Options:"
     echo "  --mode          Specify the test mode:"
@@ -156,8 +156,8 @@ validate_inputs() {
 check_available_banks() {
     local TOTAL_AVAILABLE_BANKS=601
 
-    if (( BANK_COUNT + FIRST_BANK > TOTAL_AVAILABLE_BANKS )); then
-        echo "WARNING: You have selected more banks ($((BANK_COUNT + FIRST_BANK))) than available ($TOTAL_AVAILABLE_BANKS)."
+    if (( BANK_COUNT + FIRST_BANK - 1 > TOTAL_AVAILABLE_BANKS )); then
+        echo "WARNING: You have selected more banks ($((BANK_COUNT + FIRST_BANK - 1))) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
 
@@ -295,15 +295,18 @@ run_api_test() {
     LOG_FILE="./bank_test_logs/api_test_logs/$BANK_NAME-api-test.log"
     mkdir -p $(dirname "$LOG_FILE")
 
+    docker rm -f "$BANK_IMAGE_TAG" > /dev/null 2>&1
+
     echo "Running API test for $BANK_NAME..."
     docker run --name $BANK_IMAGE_TAG $BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
 
     API_TEST_STATUS=$?
     if [[ $API_TEST_STATUS -ne 0 ]]; then
         echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
-        exit 1
-    fi
-    echo "API test for $BANK_NAME completed successfully."
+        return 1
+    else
+        echo "API test for $BANK_NAME completed successfully."
+    fi    
 
     docker rm "$BANK_IMAGE_TAG" > /dev/null 2>&1
     check_status "Removing container for $BANK_NAME"
@@ -312,6 +315,8 @@ run_api_test() {
 load_test_banks() {
     SUCCESS_COUNT=0
     FAILURE_COUNT=0
+    RETRY_COUNT=0
+    MAX_RETRIES=3
 
     LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
 
@@ -344,6 +349,8 @@ load_test_banks() {
     echo "---------------------------------------------------"
 
     START_TIME=$(date +%s)
+    FAILED_BANKS=()
+
     for ((BATCH_START = FIRST_BANK; BATCH_START <= LAST_BANK; BATCH_START += BATCH_SIZE)); do
             BATCH_END=$((BATCH_START + BATCH_SIZE - 1))
             if [[ $BATCH_END -gt $LAST_BANK ]]; then
@@ -355,24 +362,64 @@ load_test_banks() {
     echo "---------------------------------------------------"
     # Running API tests for all banks in the current batch
     PIDS=()
+    BANK_NAMES=()
+
         for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="Bank_$i"
+            BANK_NAMES+=("$BANK_NAME")
             run_api_test $BANK_NAME &
             PIDS+=($!)  
         done
 
         # Wait for all tests in the batch to finish
-        for pid in "${PIDS[@]}"; do
-            wait $pid
+        for pid in "${!PIDS[@]}"; do
+            wait "${PIDS[$pid]}"
             API_TEST_STATUS=$?
             if [[ $API_TEST_STATUS -eq 0 ]]; then
-            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
             else
-            FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                FAILED_BANKS+=("${BANK_NAMES[$pid]}")
             fi
         done
-    done    
+    done   
+  
+    # List of failed banks after processing all batches
+    if [[ ${#FAILED_BANKS[@]} -gt 0 ]]; then
+        echo "---------------------------------------------------"
+        echo "Failed Banks: ${FAILED_BANKS[@]}"
+        echo "---------------------------------------------------"
+    fi
+
+    while [[ ${#FAILED_BANKS[@]} -gt 0 && $RETRY_COUNT -lt $MAX_RETRIES ]]; do
+        echo "Retrying failed banks (Attempt $((RETRY_COUNT + 1))/${MAX_RETRIES})..."
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        NEW_FAILED_BANKS=()
+        PIDS=()
+
+        # Retries for failed banks
+        for BANK_NAME in "${FAILED_BANKS[@]}"; do
+            run_api_test "$BANK_NAME" &
+            PIDS+=($!) 
+        done
+
+        # Wait for all retry processes to finish
+        for pid in "${!PIDS[@]}"; do
+            wait "${PIDS[$pid]}"
+            API_TEST_STATUS=$?
+            if [[ $API_TEST_STATUS -eq 0 ]]; then
+                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            else
+                FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                NEW_FAILED_BANKS+=("${FAILED_BANKS[$pid]}")
+            fi
+        done
+
+        FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")
+    done
     
+    FAILURE_COUNT=${#FAILED_BANKS[@]}
+
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
