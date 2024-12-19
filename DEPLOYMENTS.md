@@ -67,5 +67,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 10 | 2024-11-20 | 1.2.0-rc4      | [ba84a12]        | 
 | 11 | 2024-11-28 | 1.2.0-rc4      | [506d1af]        | 
 | 12 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
+| 13 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
+
 
 
