@@ -30,6 +30,7 @@ usage() {
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
+    echo ""
     echo "  --eba           Enable EBA mode for API tests. --api-url ignored"
     echo ""
     echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
@@ -136,7 +137,7 @@ validate_inputs() {
     fi
 
     if [[ "$MODE" == "remote" && (! "$REG_PILOT_API" =~ ^https?:// && -z "$EBA")]]; then
-        echo "ERROR: Please enter a valid --api-url"
+        echo "ERROR: Please enter a valid --api-url or specify --eba."
         usage
     fi
 
@@ -400,24 +401,31 @@ load_test_banks() {
   
     # List of failed banks after processing all batches
     if [[ ${#FAILED_BANKS[@]} -gt 0 ]]; then
-        echo "---------------------------------------------------"
-        echo "Failed Banks: ${FAILED_BANKS[@]}"
-        echo "---------------------------------------------------"
+        echo "-----------------------------------------------------------------------------------------------------------"
+        echo "Failed Bank(s): ${FAILED_BANKS[@]}"
+        echo "-----------------------------------------------------------------------------------------------------------"
     fi
 
     while [[ ${#FAILED_BANKS[@]} -gt 0 && $RETRY_COUNT -lt $MAX_RETRIES ]]; do
         echo "Retrying failed banks (Attempt $((RETRY_COUNT + 1))/${MAX_RETRIES})..."
         RETRY_COUNT=$((RETRY_COUNT + 1))
         NEW_FAILED_BANKS=()
-        PIDS=()
 
         # Process failed banks in batches
-        for ((i=0; i<${#FAILED_BANKS[@]}; i+=BATCH_SIZE)); do
-            BATCH=("${FAILED_BANKS[@]:i:BATCH_SIZE}")
-            echo "Processing retry batch: ${BATCH[@]}"
+        for ((BATCH_START = 0; BATCH_START < ${#FAILED_BANKS[@]}; BATCH_START += BATCH_SIZE)); do
+            BATCH_END=$((BATCH_START + BATCH_SIZE - 1))
+            if [[ $BATCH_END -ge ${#FAILED_BANKS[@]} ]]; then
+                BATCH_END=$((${#FAILED_BANKS[@]} - 1))
+            fi
+
+            echo "-----------------------------------------------------------------------------------------------------------"
+            echo "Retrying processing banks ${FAILED_BANKS[@]:BATCH_START:BATCH_END - BATCH_START + 1}..."
+            echo "-----------------------------------------------------------------------------------------------------------"
 
             # Retries for failed banks in the current batch
-            for BANK_NAME in "${BATCH[@]}"; do
+            PIDS=()
+            for ((i = BATCH_START; i <= BATCH_END; i++)); do
+                BANK_NAME="${FAILED_BANKS[$i]}"
                 run_api_test "$BANK_NAME" &
                 PIDS+=($!)
             done
@@ -429,7 +437,8 @@ load_test_banks() {
                 if [[ $API_TEST_STATUS -eq 0 ]]; then
                     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
                 else
-                    NEW_FAILED_BANKS+=("${BATCH[$pid]}")
+                    FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                    NEW_FAILED_BANKS+=("${FAILED_BANKS[$pid]}")
                 fi
             done
         done
