@@ -115,7 +115,7 @@ export class ApiAdapter {
         ...formData.getHeaders(),
         "errp-load-test": "74b63b0fd729",
         Authorization: `Bearer ${token}`,
-        uiversion: "1.3.10-472-FINAL-PILLAR3-trunk",
+        uiversion: "1.3.10-474-FINAL-PILLAR3-trunk",
         "sec-ch-ua-platform": "macOS",
         "sec-ch-ua":
           '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',

@@ -886,7 +886,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
-  lheads.set("uiversion", "1.3.10-472-FINAL-PILLAR3-trunk");
+  lheads.set("uiversion", "1.3.10-474-FINAL-PILLAR3-trunk");
   lheads.set("Accept", "application/json, text/plain, */*");
   let lbody = {
     credential: {
