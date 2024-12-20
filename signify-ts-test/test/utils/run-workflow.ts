@@ -91,7 +91,7 @@ export async function runWorkflow(workflow: any, configJson: any) {
         ecrAid.prefix,
       );
       await generate_reports(
-        ecrAid,
+        ecrAid.prefix,
         keeper,
         signedDirPrefixed,
         failDirPrefixed,

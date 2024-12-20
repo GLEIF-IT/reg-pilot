@@ -95,10 +95,8 @@ export class ApiAdapter {
 
   public async ebaUploadReport(
     aidName: string,
-    aidPrefix: string,
     fileName: string,
     zipBuffer: Buffer,
-    zipDigest: string,
     client: SignifyClient,
     token: string,
   ): Promise<Response> {
@@ -154,9 +152,9 @@ export class ApiAdapter {
         'uiversion': '1.3.10-472-FINAL-PILLAR3-trunk',
         'sec-ch-ua-platform': "macOS",
         "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
-        'x-file-id': "237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip-1734640154691",
+        'x-file-id': `${fileName}-1734640154691`,
         "x-start-byte": "0",
-        'size': "156231",
+        'size': `${zipBuffer.length}`,
         'sec-ch-ua-mobile':'?0',
         'Expires':'Sat, 01 Jan 2000 00:00:00 GMT',
         'Accept':'application/json, text/plain, */*',

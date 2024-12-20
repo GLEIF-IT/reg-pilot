@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import fs from "fs";
 import * as process from "process";
 import path from "path";
-import { HabState, SignifyClient } from "signify-ts";
+import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
@@ -13,8 +13,10 @@ import {
   isEbaDataSubmitter,
 } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
-import { ECR_SCHEMA_SAID } from "../src/constants";
+import { createSignedReports, SIMPLE_TYPE } from "./report.test";
 import { sleep } from "./utils/test-util";
+import JSZip from "jszip";
+import AdmZip from "adm-zip";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -352,28 +354,33 @@ export async function single_user_eba_test(user: ApiUser) {
         const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
         // Check signed reports
-        for (const signedReport of signedReports) {
-          if (fs.lstatSync(signedReport).isFile()) {
-            console.log(`Processing file: ${signedReport}`);
-            const signedZipBuf = fs.readFileSync(`${signedReport}`);
-            const signedZipDig = generateFileDigest(signedZipBuf);
-            const signedUpResp = await apiAdapter.ebaUploadReport(
-              user.idAlias,
-              user.ecrAid.prefix,
-              signedReport,
-              signedZipBuf,
-              signedZipDig,
-              user.roleClient,
-              token
-            );
-            assert.equal(signedUpResp.status, 200);
-            const resBod = await signedUpResp.json();
-            assert.equal(resBod["message"],`All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`);
-          }
-        }
+        const filePath = "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip"
+        const signedReport = await getEbaSignedReport(filePath, user.ecrAid.prefix, keeper);
+        const signedUpResp = await apiAdapter.ebaUploadReport(
+          user.idAlias,
+          path.basename(signedReport),
+          await fs.promises.readFile(signedReport),
+          user.roleClient,
+          token
+        );
+        assert.equal(signedUpResp.status, 200);
+        const resBod = await signedUpResp.json();
+        console.log("EBA response body",resBod["message"])
+        assert.equal(resBod["message"],`All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`);
       }
     }
   }
+}
+
+async function getEbaSignedReport(filePath: string, aid: string, keeper: Keeper): Promise<string> {
+  const signedDirPrefixed = path.join(
+    __dirname,
+    "data",
+    signedDir,
+    aid,
+  );
+  const signedZips = await createSignedReports([filePath],[SIMPLE_TYPE], keeper, aid, signedDirPrefixed)
+  return signedZips[0];
 }
 
 async function multi_user_test(apiUsers: Array<ApiUser>) {
