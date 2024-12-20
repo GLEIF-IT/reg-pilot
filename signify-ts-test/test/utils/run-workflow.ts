@@ -10,7 +10,11 @@ import {
   getConfig,
   getReportGenTestData,
 } from "./test-data";
-import { run_api_revocation_test, run_api_test, single_user_eba_test } from "../reg-pilot-api.test";
+import {
+  run_api_revocation_test,
+  run_api_test,
+  single_user_eba_test,
+} from "../reg-pilot-api.test";
 import { run_vlei_verification_test } from "../vlei-verification.test";
 
 const fs = require("fs");

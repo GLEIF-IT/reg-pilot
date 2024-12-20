@@ -1,8 +1,6 @@
 import path from "path";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import {
-  getConfig,
-} from "./utils/test-data";
+import { getConfig } from "./utils/test-data";
 import { runWorkflow } from "./utils/run-workflow";
 
 const fs = require("fs");

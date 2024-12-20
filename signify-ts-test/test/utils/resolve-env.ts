@@ -181,9 +181,10 @@ export function resolveEnvironment(
         witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
-        apiBaseUrl: process.env.REG_PILOT_API || "https://errp.test.eba.europa.eu/api-security",
-        proxyBaseUrl:
-          process.env.REG_PILOT_PROXY || "No test proxy set",
+        apiBaseUrl:
+          process.env.REG_PILOT_API ||
+          "https://errp.test.eba.europa.eu/api-security",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "No test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
         workflow: process.env.WORKFLOW || "",
         configuration: process.env.CONFIGURATION || "",

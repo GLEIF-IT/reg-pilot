@@ -17,16 +17,20 @@ test("generate-bank-dockerfiles", async function run() {
   generateDockerfiles(number(firstbank), number(bankAmount), eba);
 }, 3600000);
 
-function generateDockerfiles(firstbank: number, bankAmount: number, eba: boolean = false) {
+function generateDockerfiles(
+  firstbank: number,
+  bankAmount: number,
+  eba: boolean = false,
+) {
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
   let testName;
-  if(eba) {
-    testName = "eba-verifier-bank-test-workflow"
+  if (eba) {
+    testName = "eba-verifier-bank-test-workflow";
   } else {
-    testName = "api-verifier-bank-test-workflow"
+    testName = "api-verifier-bank-test-workflow";
   }
 
   // Generate Dockerfiles
