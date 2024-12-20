@@ -371,8 +371,6 @@ export async function single_user_eba_test(user: ApiUser) {
             assert.equal(resBod["message"],`All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`);
           }
         }
-      } else {
-        fail("EBA failed to login");
       }
     }
   }

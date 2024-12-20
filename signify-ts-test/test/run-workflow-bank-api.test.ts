@@ -40,3 +40,20 @@ test("api-verifier-bank-test-workflow", async function run() {
     await runWorkflow(workflow, configJson);
   }
 }, 3600000);
+
+test("eba-verifier-bank-test-workflow", async function run() {
+  // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
+  // process.env.TEST_ENVIRONMENT = "eba_bank_test";
+  // process.env.KERIA = "http://localhost:20171";
+  // process.env.KERIA_BOOT = "http://localhost:20173";
+  // process.env.BANK_NAME = "Bank_18";
+  env = resolveEnvironment();
+  const bankName = process.env.BANK_NAME;
+  const workflowPath = "../src/workflows/eba-verifier-test-workflow.yaml";
+  const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
+  const configFilePath = `${bankName}/config.json`;
+  const configJson = await getConfig(configFilePath, true);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson);
+  }
+}, 3600000);

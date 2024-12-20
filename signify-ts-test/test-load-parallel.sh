@@ -8,10 +8,11 @@ BATCH_SIZE=5
 REG_PILOT_API=""
 FAST_MODE=false
 STAGE_MODE=false
+EBA=""
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
-    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--first-bank FIRST] [--batch-size SIZE] [--api-url URL] [--stage] | [--fast]"
+    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--first-bank FIRST] [--batch-size SIZE] [--api-url URL] [--eba] [--stage] | [--fast]"
     echo ""
     echo "Options:"
     echo "  --mode          Specify the test mode:"
@@ -29,6 +30,7 @@ usage() {
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
+    echo "  --eba           Enable EBA mode for API tests. --api-url ignored"
     echo ""
     echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
     echo ""
@@ -58,6 +60,10 @@ parse_args() {
         case $1 in
             --mode)
                 MODE="$2"
+                shift
+                ;;
+            --eba)
+                EBA="true"
                 shift
                 ;;
             --first-bank)
@@ -119,12 +125,17 @@ validate_inputs() {
         usage
     fi
 
-     if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
-        echo "ERROR: --api-url is required in remote mode."
+    if [[ "$MODE" == "local" && "$EBA" ]]; then
+        echo "ERROR: --eba should be used with remote mode."
         usage
     fi
 
-    if [[ "$MODE" == "remote" && ! "$REG_PILOT_API" =~ ^https?:// ]]; then
+    if [[ "$MODE" == "remote" && (-z "$REG_PILOT_API" && -z "$EBA") ]]; then
+        echo "ERROR: --api-url or --eba is required in remote mode."
+        usage
+    fi
+
+    if [[ "$MODE" == "remote" && (! "$REG_PILOT_API" =~ ^https?:// && -z "$EBA")]]; then
         echo "ERROR: Please enter a valid --api-url"
         usage
     fi
@@ -256,9 +267,10 @@ generate_dockerfiles() {
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
     export FIRST_BANK=$FIRST_BANK
+    export EBA=$EBA
     export REG_PILOT_API=$REG_PILOT_API
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s)"
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA: $EBA"
 }
 
 build_api_docker_image() {

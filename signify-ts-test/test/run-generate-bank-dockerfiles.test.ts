@@ -13,12 +13,20 @@ test("generate-bank-dockerfiles", async function run() {
   // Generate dockerfiles for bank api tests
   const firstbank = process.env.FIRST_BANK || 1;
   const bankAmount = process.env.BANK_COUNT || 1;
-  generateDockerfiles(number(firstbank), number(bankAmount));
+  const eba = process.env.EBA === "true";
+  generateDockerfiles(number(firstbank), number(bankAmount), eba);
 }, 3600000);
 
-function generateDockerfiles(firstbank: number, bankAmount: number) {
+function generateDockerfiles(firstbank: number, bankAmount: number, eba: boolean = false) {
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  let testName;
+  if(eba) {
+    testName = "eba-verifier-bank-test-workflow"
+  } else {
+    testName = "api-verifier-bank-test-workflow"
   }
 
   // Generate Dockerfiles
@@ -43,7 +51,7 @@ function generateDockerfiles(firstbank: number, bankAmount: number) {
   ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10} 
   ENV REG_PILOT_API=${apiBaseUrl}
   
-  CMD ["npx", "jest", "start", "./test/run-workflow-bank-api.test.ts"]
+  CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank-api.test.ts", ""]
   `;
 
     // Write the Dockerfile to the output directory
