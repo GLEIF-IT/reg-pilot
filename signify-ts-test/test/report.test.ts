@@ -92,7 +92,7 @@ if (require.main === module) {
         ecrAid.prefix,
       );
       await generate_reports(
-        ecrAid,
+        ecrAid.prefix,
         keeper,
         signedDirPrefixed,
         failDirPrefixed,
@@ -104,7 +104,7 @@ if (require.main === module) {
 }
 
 export async function generate_reports(
-  ecrAid: HabState,
+  ecrAid: string,
   keeper: signify.Keeper,
   signedDirPrefixed: string,
   failDirPrefixed: string,
@@ -138,24 +138,24 @@ export async function generate_reports(
   if (copyFolder) {
     fs.cpSync(
       signedDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid.prefix),
+      path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid),
       { recursive: true },
     );
     fs.cpSync(
       failDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid.prefix),
+      path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid),
       { recursive: true },
     );
   }
 }
 
-module.exports = { generate_reports };
+module.exports = { generate_reports, createSignedReports, SIMPLE_TYPE };
 
-async function createSignedReports(
+export async function createSignedReports(
   filePaths: string[],
   reportTypes: string[] = [SIMPLE_TYPE],
   keeper: signify.Keeper,
-  ecrAid: signify.HabState,
+  ecrAid: string,
   signedDirPrefixed: string,
 ): Promise<string[]> {
   let zipsProcessed = 0;
@@ -281,7 +281,7 @@ async function buildManifest(
   repDirPath: string,
   simple: boolean,
   keeper: signify.Keeper,
-  ecrAid: signify.HabState,
+  ecrAid: string,
 ): Promise<Manifest> {
   const reportEntries = await fs.promises.readdir(repDirPath, {
     withFileTypes: true,
@@ -509,7 +509,7 @@ async function removeMetaInfReportsJson(
 async function addSignatureToReport(
   signatureBlock: Signature,
   keeper: signify.Keeper,
-  ecrAid: signify.HabState,
+  ecrAid: string,
 ): Promise<boolean> {
   const sigs = [] as string[];
   for (const signer of keeper.signers as Signer[]) {
@@ -526,7 +526,7 @@ async function addSignatureToReport(
     `No signatures added to signature block ${signatureBlock}`,
   );
   signatureBlock.sigs = sigs;
-  signatureBlock.aid = ecrAid.prefix;
+  signatureBlock.aid = ecrAid;
 
   return true;
 }

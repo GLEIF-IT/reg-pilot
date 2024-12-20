@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 import fs from "fs";
 import * as process from "process";
 import path from "path";
-import { HabState, SignifyClient } from "signify-ts";
+import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
@@ -13,8 +13,10 @@ import {
   isEbaDataSubmitter,
 } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
-import { ECR_SCHEMA_SAID } from "../src/constants";
+import { createSignedReports, SIMPLE_TYPE } from "./report.test";
 import { sleep } from "./utils/test-util";
+import JSZip from "jszip";
+import AdmZip from "adm-zip";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -55,7 +57,7 @@ export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
     console.log(
-      `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
+      `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
     );
 }
 
@@ -75,7 +77,11 @@ export async function run_api_revocation_test(
   );
 }
 
-module.exports = { run_api_test, run_api_revocation_test };
+module.exports = {
+  run_api_test,
+  single_user_eba_test,
+  run_api_revocation_test,
+};
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -304,6 +310,94 @@ async function single_user_test(user: ApiUser) {
       await checkNonPrefixedDigestUpload(badDigestUpResp);
     }
   }
+}
+
+// Specail test for eba api
+export async function single_user_eba_test(user: ApiUser) {
+  const signedDirPrefixed = path.join(
+    __dirname,
+    "data",
+    signedDir,
+    user.ecrAid.prefix,
+  );
+  const signedReports = getSignedReports(signedDirPrefixed);
+  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
+
+  // login with the ecr credential
+  let ecrCred;
+  let ecrLei;
+  let ecrCredCesr;
+  let ecrUser;
+  for (let i = 0; i < user.creds.length; i++) {
+    if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
+      const foundEcr = isEbaDataSubmitter(
+        user.creds[i]["cred"],
+        user.ecrAid.prefix,
+      );
+      if (foundEcr) {
+        ecrUser = user;
+        ecrCred = user.creds[i]["cred"];
+        ecrLei = ecrCred.sad.a.LEI;
+        ecrCredCesr = user.creds[i]["credCesr"];
+      }
+
+      const token = await ebaLogin(
+        user,
+        user.creds[i]["cred"],
+        user.creds[i]["credCesr"],
+      );
+      if (token && foundEcr) {
+        console.log("EBA login succeeded", token);
+        // Get the current working directory
+        const currentDirectory = process.cwd();
+        // Print the current working directory
+        console.log("Current Directory:", currentDirectory);
+
+        // sanity check that the report verifies
+        const keeper = user.roleClient.manager!.get(user.ecrAid);
+        const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+
+        // Check signed reports
+        const filePath =
+          "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip";
+        const signedReport = await getEbaSignedReport(
+          filePath,
+          user.ecrAid.prefix,
+          keeper,
+        );
+        const signedUpResp = await apiAdapter.ebaUploadReport(
+          user.idAlias,
+          path.basename(signedReport),
+          await fs.promises.readFile(signedReport),
+          user.roleClient,
+          token,
+        );
+        assert.equal(signedUpResp.status, 200);
+        const resBod = await signedUpResp.json();
+        console.log("EBA response body", resBod["message"]);
+        // assert.equal(
+        //   resBod["message"],
+        //   `All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`,
+        // );
+      }
+    }
+  }
+}
+
+async function getEbaSignedReport(
+  filePath: string,
+  aid: string,
+  keeper: Keeper,
+): Promise<string> {
+  const signedDirPrefixed = path.join(__dirname, "data", signedDir, aid);
+  const signedZips = await createSignedReports(
+    [filePath],
+    [SIMPLE_TYPE],
+    keeper,
+    aid,
+    signedDirPrefixed,
+  );
+  return signedZips[0];
 }
 
 async function multi_user_test(apiUsers: Array<ApiUser>) {
@@ -787,6 +881,41 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
     );
   }
   return lresp;
+}
+
+async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
+  let lheads = new Headers();
+  lheads.set("Content-Type", "application/json");
+  lheads.set("uiversion", "1.3.10-474-FINAL-PILLAR3-trunk");
+  lheads.set("Accept", "application/json, text/plain, */*");
+  let lbody = {
+    credential: {
+      cesr: credCesr,
+      raw: cred,
+    },
+    sessionId: "78a55420-a074-4ba3-85f9-11aa343995a0",
+  };
+  let base64Payload = Buffer.from(JSON.stringify(lbody)).toString("base64");
+  let lreq = {
+    headers: lheads,
+    method: "POST",
+    body: JSON.stringify({ payload: base64Payload }),
+  };
+  console.log("eba login lreq", lreq);
+  let lpath = `/signifyLogin`;
+  const lresp = await fetch(
+    "https://errp.test.eba.europa.eu/api-security" + lpath,
+    lreq,
+  );
+  console.log("login response", lresp);
+  let token;
+  if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
+    assert.equal(lresp.status, 200);
+    let ljson = await lresp.json();
+    token = ljson["jwt"];
+    assert.equal(token.length >= 1, true);
+  }
+  return token;
 }
 
 async function presentRevocation(

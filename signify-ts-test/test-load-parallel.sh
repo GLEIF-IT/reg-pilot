@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
@@ -8,10 +8,11 @@ BATCH_SIZE=5
 REG_PILOT_API=""
 FAST_MODE=false
 STAGE_MODE=false
+EBA=""
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
-    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--first-bank FIRST] [--batch-size SIZE] [--api-url URL] [--stage] | [--fast]"
+    echo "usage: $0 --mode [local|remote] --bank-count [COUNT] [--first-bank FIRST] [--batch-size SIZE] [--api-url URL] [--eba] [--stage] | [--fast]"
     echo ""
     echo "Options:"
     echo "  --mode          Specify the test mode:"
@@ -29,6 +30,7 @@ usage() {
     echo ""
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
+    echo "  --eba           Enable EBA mode for API tests. --api-url ignored"
     echo ""
     echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
     echo ""
@@ -58,6 +60,10 @@ parse_args() {
         case $1 in
             --mode)
                 MODE="$2"
+                shift
+                ;;
+            --eba)
+                EBA="true"
                 shift
                 ;;
             --first-bank)
@@ -119,12 +125,17 @@ validate_inputs() {
         usage
     fi
 
-     if [[ "$MODE" == "remote" && -z "$REG_PILOT_API" ]]; then
-        echo "ERROR: --api-url is required in remote mode."
+    if [[ "$MODE" == "local" && "$EBA" ]]; then
+        echo "ERROR: --eba should be used with remote mode."
         usage
     fi
 
-    if [[ "$MODE" == "remote" && ! "$REG_PILOT_API" =~ ^https?:// ]]; then
+    if [[ "$MODE" == "remote" && (-z "$REG_PILOT_API" && -z "$EBA") ]]; then
+        echo "ERROR: --api-url or --eba is required in remote mode."
+        usage
+    fi
+
+    if [[ "$MODE" == "remote" && (! "$REG_PILOT_API" =~ ^https?:// && -z "$EBA")]]; then
         echo "ERROR: Please enter a valid --api-url"
         usage
     fi
@@ -256,9 +267,10 @@ generate_dockerfiles() {
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
     export FIRST_BANK=$FIRST_BANK
+    export EBA=$EBA
     export REG_PILOT_API=$REG_PILOT_API
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s)"
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA: $EBA"
 }
 
 build_api_docker_image() {
@@ -282,6 +294,7 @@ build_api_docker_image() {
     BUILD_STATUS=$?
     if [[ $BUILD_STATUS -ne 0 ]]; then
         echo "Error: Building Docker image for $BANK_NAME failed. See $LOG_FILE for details."
+        tail -n 25 "$LOG_FILE"
         exit 1
     fi
 
@@ -303,6 +316,7 @@ run_api_test() {
     API_TEST_STATUS=$?
     if [[ $API_TEST_STATUS -ne 0 ]]; then
         echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
+        tail -n 25 "$LOG_FILE"
         return 1
     else
         echo "API test for $BANK_NAME completed successfully."
@@ -397,22 +411,27 @@ load_test_banks() {
         NEW_FAILED_BANKS=()
         PIDS=()
 
-        # Retries for failed banks
-        for BANK_NAME in "${FAILED_BANKS[@]}"; do
-            run_api_test "$BANK_NAME" &
-            PIDS+=($!) 
-        done
+        # Process failed banks in batches
+        for ((i=0; i<${#FAILED_BANKS[@]}; i+=BATCH_SIZE)); do
+            BATCH=("${FAILED_BANKS[@]:i:BATCH_SIZE}")
+            echo "Processing retry batch: ${BATCH[@]}"
 
-        # Wait for all retry processes to finish
-        for pid in "${!PIDS[@]}"; do
-            wait "${PIDS[$pid]}"
-            API_TEST_STATUS=$?
-            if [[ $API_TEST_STATUS -eq 0 ]]; then
-                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            else
-                FAILURE_COUNT=$((FAILURE_COUNT + 1))
-                NEW_FAILED_BANKS+=("${FAILED_BANKS[$pid]}")
-            fi
+            # Retries for failed banks in the current batch
+            for BANK_NAME in "${BATCH[@]}"; do
+                run_api_test "$BANK_NAME" &
+                PIDS+=($!)
+            done
+
+            # Wait for all retry processes in the current batch to finish
+            for pid in "${!PIDS[@]}"; do
+                wait "${PIDS[$pid]}"
+                API_TEST_STATUS=$?
+                if [[ $API_TEST_STATUS -eq 0 ]]; then
+                    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                else
+                    NEW_FAILED_BANKS+=("${BATCH[$pid]}")
+                fi
+            done
         done
 
         FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")
