@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 DOCKER_COMPOSE_FILE="docker-compose-banktest.yaml"
 MODE=""
@@ -294,6 +294,7 @@ build_api_docker_image() {
     BUILD_STATUS=$?
     if [[ $BUILD_STATUS -ne 0 ]]; then
         echo "Error: Building Docker image for $BANK_NAME failed. See $LOG_FILE for details."
+        tail -n 25 "$LOG_FILE"
         exit 1
     fi
 
@@ -315,6 +316,7 @@ run_api_test() {
     API_TEST_STATUS=$?
     if [[ $API_TEST_STATUS -ne 0 ]]; then
         echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
+        tail -n 25 "$LOG_FILE"
         return 1
     else
         echo "API test for $BANK_NAME completed successfully."
@@ -339,7 +341,7 @@ load_test_banks() {
         BANK_NAME="Bank_$i"
         download_reports $BANK_NAME
         build_api_docker_image $BANK_NAME
-        # cleanup_reports $BANK_NAME
+        cleanup_reports $BANK_NAME
     done
 
     END_TIME=$(date +%s)
@@ -409,22 +411,27 @@ load_test_banks() {
         NEW_FAILED_BANKS=()
         PIDS=()
 
-        # Retries for failed banks
-        for BANK_NAME in "${FAILED_BANKS[@]}"; do
-            run_api_test "$BANK_NAME" &
-            PIDS+=($!) 
-        done
+        # Process failed banks in batches
+        for ((i=0; i<${#FAILED_BANKS[@]}; i+=BATCH_SIZE)); do
+            BATCH=("${FAILED_BANKS[@]:i:BATCH_SIZE}")
+            echo "Processing retry batch: ${BATCH[@]}"
 
-        # Wait for all retry processes to finish
-        for pid in "${!PIDS[@]}"; do
-            wait "${PIDS[$pid]}"
-            API_TEST_STATUS=$?
-            if [[ $API_TEST_STATUS -eq 0 ]]; then
-                SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-            else
-                FAILURE_COUNT=$((FAILURE_COUNT + 1))
-                NEW_FAILED_BANKS+=("${FAILED_BANKS[$pid]}")
-            fi
+            # Retries for failed banks in the current batch
+            for BANK_NAME in "${BATCH[@]}"; do
+                run_api_test "$BANK_NAME" &
+                PIDS+=($!)
+            done
+
+            # Wait for all retry processes in the current batch to finish
+            for pid in "${!PIDS[@]}"; do
+                wait "${PIDS[$pid]}"
+                API_TEST_STATUS=$?
+                if [[ $API_TEST_STATUS -eq 0 ]]; then
+                    SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                else
+                    NEW_FAILED_BANKS+=("${BATCH[$pid]}")
+                fi
+            done
         done
 
         FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")
