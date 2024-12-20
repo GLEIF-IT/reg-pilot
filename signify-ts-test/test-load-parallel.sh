@@ -409,6 +409,7 @@ load_test_banks() {
     while [[ ${#FAILED_BANKS[@]} -gt 0 && $RETRY_COUNT -lt $MAX_RETRIES ]]; do
         echo "Retrying failed banks (Attempt $((RETRY_COUNT + 1))/${MAX_RETRIES})..."
         RETRY_COUNT=$((RETRY_COUNT + 1))
+        FAILED_BANKS=($(printf "%s\n" "${FAILED_BANKS[@]}" | sort -u))
         NEW_FAILED_BANKS=()
 
         # Process failed banks in batches
