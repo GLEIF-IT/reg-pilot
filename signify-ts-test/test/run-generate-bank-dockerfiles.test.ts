@@ -51,7 +51,7 @@ function generateDockerfiles(firstbank: number, bankAmount: number, eba: boolean
   ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10} 
   ENV REG_PILOT_API=${apiBaseUrl}
   
-  CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank-api.test.ts", ""]
+  CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank-api.test.ts"]
   `;
 
     // Write the Dockerfile to the output directory
