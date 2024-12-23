@@ -172,6 +172,12 @@ check_available_banks() {
         echo "WARNING: You have selected more banks ($((BANK_COUNT + FIRST_BANK - 1))) than available ($TOTAL_AVAILABLE_BANKS)."
         exit 1
     fi
+}    
+
+start_keria() {
+    echo "---------------------------------------------------"
+    echo "Starting KERIA instances..."
+    echo "---------------------------------------------------"
 
     set -x
     LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
@@ -212,15 +218,39 @@ check_available_banks() {
     set +x
 }
 
+stop_keria() {
+    echo "---------------------------------------------------"
+    echo "Stopping all KERIA containers..."
+    echo "---------------------------------------------------"
+    docker stop $(docker ps -q --filter "name=bank") > /dev/null 2>&1
+    check_status "Stopping KERIA containers"
+}
+
+remove_keria_containers() {
+    containers=$(docker ps -aq --filter "name=bank")
+    
+    if [[ -n "$containers" ]]; then
+        echo "---------------------------------------------------"
+        echo "Found existing KERIA containers, removing..."
+        echo "---------------------------------------------------"
+        docker rm -f $containers > /dev/null 2>&1 
+        check_status "Removing existing containers"
+    else
+        echo "---------------------------------------------------"
+        echo "No existing KERIA containers found."
+        echo "---------------------------------------------------"
+    fi
+}
+
 remove_api_test_containers() {
     containers=$(docker ps -aq --filter "name=_api_test")
     
     if [[ -n "$containers" ]]; then
         echo "---------------------------------------------------"
-        echo "Found existing containers, removing..."
+        echo "Found existing api test containers, removing..."
         echo "---------------------------------------------------"
         docker rm -f $containers > /dev/null 2>&1 
-        check_status "Removing existing containers"
+        check_status "Removing existing api test containers"
     else
         echo "---------------------------------------------------"
         echo "No existing API test containers found."
@@ -356,7 +386,11 @@ load_test_banks() {
     fi
 
     if [[ "$FAST_MODE" == true ]]; then
+    remove_keria_containers
     remove_api_test_containers
+
+    # Starting KERIA containers for all banks
+    start_keria
 
     #Running API tests for all banks
     echo "---------------------------------------------------"
@@ -458,8 +492,12 @@ load_test_banks() {
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
-    if [[ "$MODE" == "local" && "$FAILURE_COUNT" -eq 0 ]]; then
-        stop_services_local
+    if [[ "$FAILURE_COUNT" -eq 0 ]]; then
+    stop_keria
+    
+        if [[ "$MODE" == "local" ]]; then
+            stop_services_local
+        fi
     fi
 
     echo "========================================================="
