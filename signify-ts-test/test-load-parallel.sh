@@ -439,13 +439,19 @@ load_test_banks() {
                     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
                 else
                     FAILURE_COUNT=$((FAILURE_COUNT + 1))
-                    NEW_FAILED_BANKS+=("${FAILED_BANKS[$pid]}")
+                    NEW_FAILED_BANKS+=("${FAILED_BANKS[$BATCH_START + pid]}")
                 fi
             done
         done
 
         FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")
     done
+
+    if [[ ${#FAILED_BANKS[@]} -gt 0 ]]; then
+    echo "-----------------------------------------------------------------------------------------------------------"
+    echo "Failed Bank(s) after all retry attempts: ${FAILED_BANKS[@]}"
+    echo "-----------------------------------------------------------------------------------------------------------"
+    fi
     
     FAILURE_COUNT=${#FAILED_BANKS[@]}
 
