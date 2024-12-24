@@ -29,7 +29,7 @@ let apiAdapter: ApiAdapter;
 afterEach(async () => {});
 beforeAll(async () => {
   env = resolveEnvironment();
-  apiAdapter = new ApiAdapter(env.apiBaseUrl);
+  apiAdapter = new ApiAdapter(env.apiBaseUrl,env.filerBaseUrl);
   env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
 });
 
@@ -357,7 +357,7 @@ export async function single_user_eba_test(user: ApiUser) {
         const keeper = user.roleClient.manager!.get(user.ecrAid);
         const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
-        // Check signed reports
+        // upload signed report
         const filePath =
           "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip";
         const signedReport = await getEbaSignedReport(
@@ -374,7 +374,7 @@ export async function single_user_eba_test(user: ApiUser) {
         );
         assert.equal(signedUpResp.status, 200);
         const resBod = await signedUpResp.json();
-        console.log("EBA response body", resBod["message"]);
+        console.log("EBA upload response body", resBod["message"]);
         // assert.equal(
         //   resBod["message"],
         //   `All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`,
@@ -904,7 +904,7 @@ async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   console.log("eba login lreq", lreq);
   let lpath = `/signifyLogin`;
   const lresp = await fetch(
-    "https://errp.test.eba.europa.eu/api-security" + lpath,
+    env.apiBaseUrl + lpath,
     lreq,
   );
   console.log("login response", lresp);

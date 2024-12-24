@@ -5,9 +5,13 @@ import path from "path";
 
 export class ApiAdapter {
   apiBaseUrl: string;
-  constructor(apiBaseUrl: string) {
+  filerBaseUrl?: string;
+  constructor(apiBaseUrl: string, filerBaseUrl?: string) {
     this.apiBaseUrl = apiBaseUrl;
     this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
+    if (!filerBaseUrl) {
+      this.filerBaseUrl = apiBaseUrl;
+    }
   }
 
   public async dropReportStatusByAid(
@@ -139,7 +143,9 @@ export class ApiAdapter {
         // 'host':'errp.test.eba.europa.eu'
       },
     };
-    const url = `https://errp.test.eba.europa.eu/api/upload`;
+    // const url = `https://errp.test.eba.europa.eu/api/upload`;
+    const url = `${this.filerBaseUrl}/upload`;
+    console.log(`EBA upload URL: ${url}`);
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
     const resp = await fetch(url, sreq);

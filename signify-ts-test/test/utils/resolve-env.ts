@@ -20,6 +20,7 @@ export interface TestEnvironment {
   witnessUrls: string[];
   witnessIds: string[];
   apiBaseUrl: string;
+  filerBaseUrl: string;
   proxyBaseUrl: string;
   verifierBaseUrl: string;
   workflow: string;
@@ -55,6 +56,7 @@ export function resolveEnvironment(
             : process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         vleiServerUrl: process.env.VLEI_SERVER || "http://vlei-server:7723",
         apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
         workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
@@ -82,6 +84,7 @@ export function resolveEnvironment(
             ? []
             : process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
         workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
@@ -111,6 +114,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "https://reg-api-dev.rootsid.cloud",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No RootsID dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "RootsID dev verifier not set",
@@ -145,6 +149,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "https://reg-api-test.rootsid.cloud",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl:
@@ -165,6 +170,7 @@ export function resolveEnvironment(
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl: process.env.REG_PILOT_API || "Set bank reg-pilot-api",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
@@ -184,6 +190,9 @@ export function resolveEnvironment(
         apiBaseUrl:
           process.env.REG_PILOT_API ||
           "https://errp.test.eba.europa.eu/api-security",
+        filerBaseUrl:
+          process.env.REG_PILOT_FILER ||
+          "https://errp.test.eba.europa.eu/api",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
         workflow: process.env.WORKFLOW || "",
@@ -219,6 +228,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI dev reg-pilot-api not set",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No NordLEI dev proxy set",
         verifierBaseUrl:
           process.env.VLEI_VERIFIER || "NordLEI dev verifier not set",
@@ -257,6 +267,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:
@@ -290,6 +301,7 @@ export function resolveEnvironment(
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl:
           process.env.REG_PILOT_API || "NordLEI demo reg-pilot-api not set",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No NordLEI demo proxy set",
         verifierBaseUrl:

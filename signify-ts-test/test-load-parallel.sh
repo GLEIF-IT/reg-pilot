@@ -6,6 +6,7 @@ BANK_COUNT=0
 FIRST_BANK=1
 BATCH_SIZE=5
 REG_PILOT_API=""
+REG_PILOT_FILER=""
 FAST_MODE=false
 STAGE_MODE=false
 EBA=""
@@ -31,7 +32,10 @@ usage() {
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
     echo ""
-    echo "  --eba           Enable EBA mode for API tests. --api-url ignored"
+    echo "  --filer-url     (Required for --eba)"
+    echo "                  FILER API URL of the reg-pilot-api service (e.g., https://api.example.com)."
+    echo ""
+    echo "  --eba           Enable EBA mode for API tests. --mode "remote" and --api-url must be specified"
     echo ""
     echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
     echo ""
@@ -83,6 +87,10 @@ parse_args() {
                 REG_PILOT_API="$2"
                 shift
                 ;;
+            --filer-url)
+                REG_PILOT_FILER="$2"
+                shift
+                ;;
             --fast)
                 FAST_MODE=true
                 ;;
@@ -126,18 +134,23 @@ validate_inputs() {
         usage
     fi
 
-    if [[ "$MODE" == "local" && "$EBA" ]]; then
-        echo "ERROR: --eba should be used with remote mode."
+    if [[ "$MODE" == "remote" && (-z "$REG_PILOT_API") ]]; then
+        echo "ERROR: --api-url is required in remote mode."
         usage
     fi
 
-    if [[ "$MODE" == "remote" && (-z "$REG_PILOT_API" && -z "$EBA") ]]; then
-        echo "ERROR: --api-url or --eba is required in remote mode."
+    if [[ "$MODE" == "remote" && ! ("$REG_PILOT_API" =~ ^https?://)]]; then
+        echo "ERROR: Please enter a valid --api-url"
         usage
     fi
 
-    if [[ "$MODE" == "remote" && (! "$REG_PILOT_API" =~ ^https?:// && -z "$EBA")]]; then
-        echo "ERROR: Please enter a valid --api-url or specify --eba."
+    if [[ "$MODE" != "remote" && "$EBA" ]]; then
+        echo "ERROR: --eba should be used with --mode remote."
+        usage
+    fi
+
+    if [[ "$MODE" == "remote" && "$EBA" && (-z "$REG_PILOT_FILER")]]; then
+        echo "ERROR: --eba requires --filer-url specified."
         usage
     fi
 
@@ -300,8 +313,9 @@ generate_dockerfiles() {
     export FIRST_BANK=$FIRST_BANK
     export EBA=$EBA
     export REG_PILOT_API=$REG_PILOT_API
+    export REG_PILOT_FILER=$REG_PILOT_FILER
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA: $EBA"
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA"
 }
 
 build_api_docker_image() {
