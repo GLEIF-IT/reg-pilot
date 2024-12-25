@@ -29,7 +29,7 @@ workflow:
     #   issuee_aid: "ecr-aid-1"
     #   description: "LE issues ECR vLEI credential"
     #   credential: "le_to_ecr_vlei_cred"
-    #   credential_source: "le_cred"    
+    #   credential_source: "le_cred"
     # gen_report_ecr1:
     #   id: "gen_report_ecr1"
     #   type: "generate_report"
