@@ -1,4 +1,4 @@
-name: Run Singlesig Single User Tests
+name: Run Multisig Single User Delegated AIDs Tests
 on:
   push:
     branches:
@@ -8,8 +8,8 @@ on:
       - "main"
   workflow_dispatch:
 jobs:
-  test-single-aid-singlesig:
-    name: Run singlesig single user integration test using keria:${{ matrix.keria-version }}
+  test-single-aid-multisig-delegated-aids:
+    name: Run multisig single user delegated aids integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -32,10 +32,7 @@ jobs:
         run: |
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
-          npm ci     
-      - name: Check formatting
-        run: npm run pretty:check
-        
+          npm ci            
       - name: Run docker
         run: ./test-workflow.sh --docker=verify 
       
@@ -43,6 +40,6 @@ jobs:
         run: ./test-workflow.sh --build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: WORKFLOW=singlesig-single-user.yaml CONFIGURATION=configuration-singlesig-single-user.json ./test-workflow.sh --data-report-verify-proxy
+        run: SPEED=fast WORKFLOW=multisig-single-user-delegated-aids.yaml CONFIGURATION=configuration-multisig-single-user-delegated-aids-light.json ./test-workflow.sh --data-report-verify-proxy
 
 

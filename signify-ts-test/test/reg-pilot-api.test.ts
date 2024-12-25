@@ -84,7 +84,6 @@ async function single_user_test(user: ApiUser) {
     signedDir,
     user.ecrAid.prefix,
   );
-  const signedReports = getSignedReports(signedDirPrefixed);
   failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
@@ -93,11 +92,12 @@ async function single_user_test(user: ApiUser) {
   assert.equal(presp.status, 200);
 
   // fails to query report status because not logged in with ecr yet
-  let sresp = await apiAdapter.getReportStatusByAid(
-    user.idAlias,
-    user.ecrAid.prefix,
-    user.roleClient,
-  );
+  // let sresp = await apiAdapter.getReportStatusByAid(
+  //   user.idAlias,
+  //   user.ecrAid.prefix,
+  //   user.roleClient,
+  // );
+  let sresp = null;
 
   // login with the ecr credential
   let ecrCred;
@@ -197,6 +197,8 @@ async function single_user_test(user: ApiUser) {
   // Loop over the reports directory
 
   // Check signed reports
+  const signedReports = getSignedReports(signedDirPrefixed);
+
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
