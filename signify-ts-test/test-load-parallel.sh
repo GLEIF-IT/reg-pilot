@@ -450,9 +450,16 @@ load_test_banks() {
         done
 
         # Stop KERIA instances for the current batch
+        STOP_PIDS=()
         for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="Bank_$i"
-            stop_keria "$BANK_NAME"
+            stop_keria "$BANK_NAME" &
+            STOP_PIDS+=($!)
+        done
+
+        # Wait for all stop_keria processes to finish
+        for pid in "${STOP_PIDS[@]}"; do
+            wait "$pid"
         done
     done   
   
@@ -480,7 +487,7 @@ load_test_banks() {
             echo "Retrying processing banks ${FAILED_BANKS[@]:BATCH_START:BATCH_END - BATCH_START + 1}..."
             echo "-----------------------------------------------------------------------------------------------------------"
 
-            # Start KERIA instances for the current batch
+            # Start KERIA instances for the failed banks in the current batch
             for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="${FAILED_BANKS[$i]}"
             start_keria "$BANK_NAME"
@@ -507,9 +514,16 @@ load_test_banks() {
             done
 
             # Stop KERIA instances for the current batch
+            STOP_PIDS=()
             for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="${FAILED_BANKS[$i]}"
-            stop_keria "$BANK_NAME"
+            stop_keria "$BANK_NAME" &
+            STOP_PIDS+=($!)
+            done
+
+            # Wait for all stop_keria processes to finish
+            for pid in "${STOP_PIDS[@]}"; do
+                wait "$pid"
             done
         done
 
