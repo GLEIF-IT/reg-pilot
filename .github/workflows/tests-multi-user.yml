@@ -1,4 +1,4 @@
-name: Run Multi User Tests
+name: Run Singlesig Multi User Tests
 on:
   push:
     branches:

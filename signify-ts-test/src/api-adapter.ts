@@ -95,7 +95,7 @@ export class ApiAdapter {
   public hasGLEIFWithMultisig(data: any): boolean {
     return data.users.some(
       (user: any) =>
-        user.type === "GLEIF" &&
+        (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
         user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
     );
   }
@@ -148,7 +148,7 @@ export class ApiAdapter {
     const url = new URL(oobiUrl);
     if (url.hostname === "keria")
       oobiUrl = oobiUrl.replace("keria", "localhost");
-    console.log(`Root of trust OOBIs: ${oobiUrl}`);
+    console.log(`Root of trust OOBI: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
@@ -190,6 +190,7 @@ export class ApiAdapter {
 
     const oobi = await client.oobis().get(rootOfTrustIdentifierName);
     let oobiUrl = oobi.oobis[0];
+    console.log(`Root of trust OOBI: ${oobiUrl}`);
     const url = new URL(oobiUrl);
     if (url.hostname === "keria")
       oobiUrl = oobiUrl.replace("keria", "localhost");
@@ -200,6 +201,7 @@ export class ApiAdapter {
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
+      oobi: oobiUrl,
     };
     let lreq = {
       headers: heads,

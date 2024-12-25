@@ -1,4 +1,4 @@
-name: Run Single User Tests
+name: Run Multisig Single User Delegated AIDs Tests
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs:
   test-single-aid-multisig-delegated-aids:
-    name: Run singlesig single user integration test using keria:${{ matrix.keria-version }}
+    name: Run multisig single user delegated aids integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
