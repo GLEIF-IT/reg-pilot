@@ -84,6 +84,7 @@ services:
       - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
       - VERIFIER_REPORTS=http://vlei-verifier:7676/reports/
       - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
+      - VERIFIER_ADD_ROT=http://vlei-verifier:7676/root_of_trust/
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
