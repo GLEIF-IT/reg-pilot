@@ -96,19 +96,17 @@ export class ApiAdapter {
     return data.users.some(
       (user: any) =>
         user.type === "GLEIF" &&
-        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers)
+        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
     );
   }
 
-  public async addRootOfTrust(configJson: any): Promise<Response> {    
-    if(this.hasGLEIFWithMultisig(configJson)){
+  public async addRootOfTrust(configJson: any): Promise<Response> {
+    if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
-    }
-    else{
+    } else {
       return await this.addRootOfTrustSinglesig(configJson);
     }
   }
-
 
   public async addRootOfTrustMultisig(configJson: any): Promise<Response> {
     const rootOfTrustMultisigIdentifierName = configJson.users
@@ -170,7 +168,7 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any): Promise<Response> {  
+  public async addRootOfTrustSinglesig(configJson: any): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
       (usr: any) => usr.type == "GLEIF",
     )[0].identifiers[0];
