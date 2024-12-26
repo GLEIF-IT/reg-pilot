@@ -15,7 +15,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 5  | 2024-11-14 | 1.2.0-rc4      | [b4c7d3f]        | 
 | 6  | 2024-11-20 | 1.2.0-rc4      | [6ec9191]        | 
 | 7  | 2024-11-28 | 1.2.0-rc4      | [bad12ad]        | 
-
+| 8  | 2024-12-26 | 1.2.0-rc4      | [6330918]        | 
 
 #### b. test domain
 
@@ -28,7 +28,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 5  | 2024-11-18 | 1.2.0-rc4      | [b4c7d3f]        | 
 | 6  | 2024-11-20 | 1.2.0-rc4      | [6ec9191]        | 
 | 7  | 2024-11-28 | 1.2.0-rc4      | [bad12ad]        | 
-
+| 8  | 2024-12-26 | 1.2.0-rc4      | [6330918]        | 
 
 ### 2. vlei-verifier
 
@@ -50,6 +50,8 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 12 | 2024-11-20 | 1.2.0-rc4      | [ba84a12]        | 
 | 13 | 2024-11-28 | 1.2.0-rc4      | [506d1af]        | 
 | 14 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
+| 15 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
+| 16 | 2024-12-26 | 1.2.0-rc4      | [2a62f70]        | 
 
 #### b. test domain
 
@@ -68,6 +70,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 11 | 2024-11-28 | 1.2.0-rc4      | [506d1af]        | 
 | 12 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
 | 13 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
+| 14 | 2024-12-26 | 1.2.0-rc4      | [2a62f70]        | 
 
 
 
