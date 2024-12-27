@@ -22,7 +22,7 @@ afterEach(async () => {});
 
 beforeAll(async () => {
   env = resolveEnvironment();
-  apiAdapter = new ApiAdapter(env.apiBaseUrl);
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 });
 
 // This test assumes you have run a vlei test that sets up the
