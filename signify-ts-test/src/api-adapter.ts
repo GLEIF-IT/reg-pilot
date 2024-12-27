@@ -5,12 +5,16 @@ import path from "path";
 
 export class ApiAdapter {
   apiBaseUrl: string;
-  filerBaseUrl?: string;
-  constructor(apiBaseUrl: string, filerBaseUrl?: string) {
+  filerBaseUrl: string = "";
+  constructor(apiBaseUrl: string, filerBaseUrl: string) {
     this.apiBaseUrl = apiBaseUrl;
     this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
-    if (!filerBaseUrl) {
+    if (!filerBaseUrl || filerBaseUrl === "") {
+      console.log("Filer base URL not provided. Using API base URL.");
       this.filerBaseUrl = apiBaseUrl;
+    } else {
+      console.log(`Filer base URL provided ${filerBaseUrl}`);
+      this.filerBaseUrl = filerBaseUrl;
     }
   }
 

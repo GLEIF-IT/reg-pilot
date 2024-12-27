@@ -49,7 +49,6 @@ test("eba-verifier-bank-test-workflow", async function run() {
   // process.env.KERIA = "http://localhost:"+(offset+20001);
   // process.env.KERIA_BOOT = "http://localhost:"+(offset+20003);
   // process.env.BANK_NAME = "Bank_"+bank;
-  env = resolveEnvironment();
   const bankName = process.env.BANK_NAME;
   const workflowPath = "../src/workflows/eba-verifier-test-workflow.yaml";
   const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
