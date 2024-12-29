@@ -114,6 +114,8 @@ services:
     hostname: reg-pilot-filer
     ports:
       - 7878:7878
+    environment:
+      - VLEI_VERIFIER=http://vlei-verifier:7676
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-filer:7878/health"]
       interval: 2s
