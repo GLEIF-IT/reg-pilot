@@ -115,11 +115,7 @@ services:
     ports:
       - 7878:7878
     healthcheck:
-      test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:7878/health
+      test: ["CMD", "wget", "--spider", "http://reg-pilot-filer:7878/health"]
       interval: 2s
       timeout: 3s
       retries: 5
