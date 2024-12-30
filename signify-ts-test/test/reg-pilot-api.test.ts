@@ -608,7 +608,7 @@ export async function checkSignedUpload(
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
   assert.equal(signedUpBody["submitter"], `${user.ecrAid.prefix}`);
-  const expectedEnding = `files in report package, submitted by ${user.ecrAid.prefix}, have been signed by known AIDs from the LEI ${ecrCred.sad.a.LEI}.`;
+  const expectedEnding = `files in report package, submitted by ${user.ecrAid.prefix}, have been signed by known AIDs`;
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
 
   assert.equal(signedUpBody["filename"], fileName);
@@ -669,7 +669,7 @@ export async function checkFailUpload(
     const failUpBody = await failUpResp.json();
     return true;
   } else if (fileName.includes("wrongAid")) {
-    failMessage = "signature from AID that is not a known";
+    failMessage = `signature from ${ecrAid.prefix} does not match the report signer`;
   }
 
   assert.equal(failUpResp.status, 200);

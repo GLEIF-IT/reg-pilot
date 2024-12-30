@@ -56,10 +56,10 @@ export function resolveEnvironment(
         apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
-        workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
+        workflow: process.env.WORKFLOW || "singlesig-single-user-light.yaml",
         configuration:
           process.env.CONFIGURATION ||
-          "configuration-singlesig-single-user.json",
+          "configuration-singlesig-single-user-light.json",
       };
       break;
     case "local":

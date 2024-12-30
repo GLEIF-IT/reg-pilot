@@ -82,7 +82,7 @@ services:
       - ENABLE_CORS=true
       - VERIFIER_AUTHORIZATIONS=http://vlei-verifier:7676/authorizations/
       - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
-      - VERIFIER_REPORTS=http://vlei-verifier:7676/reports/
+      - FILER_REPORTS=http://reg-pilot-filer:7878/reports/
       - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
       - VERIFIER_ADD_ROT=http://vlei-verifier:7676/root_of_trust/
     healthcheck:
@@ -103,6 +103,21 @@ services:
       - 7676:7676
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
+  reg-pilot-filer:
+    image: gleif/reg-pilot-filer:dev
+    container_name: reg-pilot-filer
+    hostname: reg-pilot-filer
+    ports:
+      - 7878:7878
+    environment:
+      - VLEI_VERIFIER=http://vlei-verifier:7676
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://reg-pilot-filer:7878/health"]
       interval: 2s
       timeout: 3s
       retries: 5
@@ -143,6 +158,8 @@ services:
         condition: service_healthy
       vlei-verifier:
         condition: service_healthy
+      reg-pilot-filer:
+        condition: service_healthy
 
   proxy-verify:
     image: alpine
@@ -155,4 +172,6 @@ services:
       reg-pilot-api:
         condition: service_healthy
       vlei-verifier:
+        condition: service_healthy
+      reg-pilot-filer:
         condition: service_healthy
