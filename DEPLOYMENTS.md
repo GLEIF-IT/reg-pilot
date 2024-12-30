@@ -29,6 +29,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 6  | 2024-11-20 | 1.2.0-rc4      | [6ec9191]        | 
 | 7  | 2024-11-28 | 1.2.0-rc4      | [bad12ad]        | 
 | 8  | 2024-12-26 | 1.2.0-rc4      | [6330918]        | 
+| 9  | 2024-12-30 | 1.2.0-rc4      | [f756a84]        | 
 
 ### 2. vlei-verifier
 
@@ -71,6 +72,7 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 12 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
 | 13 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
 | 14 | 2024-12-26 | 1.2.0-rc4      | [2a62f70]        | 
+| 15 | 2024-12-30 | 1.2.0-rc4      | [ac98204]        | 
 
 
 
