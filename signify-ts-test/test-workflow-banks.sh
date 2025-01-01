@@ -63,7 +63,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --reports-cleanup)
-            npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit
+            npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit --detectOpenHandles
             cleanup_exit_code=$?  
                 if [[ $cleanup_exit_code -ne 0 ]]; then
                 exit 1  

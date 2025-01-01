@@ -10,6 +10,7 @@ REG_PILOT_FILER=""
 FAST_MODE=false
 STAGE_MODE=false
 EBA=""
+USE_DOCKER_INTERNAL=""
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
@@ -71,6 +72,10 @@ parse_args() {
                 EBA="true"
                 shift
                 ;;
+            --mac)
+                USE_DOCKER_INTERNAL="true"
+                shift
+                ;;
             --first-bank)
                 FIRST_BANK="$2"
                 shift
@@ -124,7 +129,7 @@ validate_inputs() {
         usage
     fi
 
-    if [[ "$MODE" != "local" && "$MODE" != "remote" ]]; then
+    if [[ "$MODE" != "local" && "$MODE" != "remote" && "$MODE" != "local_mac" ]]; then
         echo "ERROR: Please enter valid mode"
         usage
     fi
@@ -314,8 +319,9 @@ generate_dockerfiles() {
     export EBA=$EBA
     export REG_PILOT_API=$REG_PILOT_API
     export REG_PILOT_FILER=$REG_PILOT_FILER
-    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA"
+    export USE_DOCKER_INTERNAL=$USE_DOCKER_INTERNAL
+    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit --detectOpenHandles
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA, is USE_DOCKER_INTERNAL?: $USE_DOCKER_INTERNAL"
 }
 
 build_api_docker_image() {
@@ -349,6 +355,7 @@ build_api_docker_image() {
 run_api_test() {
     BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]') 
     BANK_IMAGE_TAG="${BANK_NAME}_api_test"
+    export USE_DOCKER_INTERNAL=$USE_DOCKER_INTERNAL
 
     LOG_FILE="./bank_test_logs/api_test_logs/$BANK_NAME-api-test.log"
     mkdir -p $(dirname "$LOG_FILE")

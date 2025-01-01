@@ -1,6 +1,6 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
-import { getOrCreateClients } from "../test/utils/test-util";
+import { convertDockerHost, getOrCreateClients, replaceUrlHost } from "../test/utils/test-util";
 import path from "path";
 
 export class ApiAdapter {
@@ -8,9 +8,10 @@ export class ApiAdapter {
   filerBaseUrl: string = "";
   constructor(apiBaseUrl: string, filerBaseUrl: string) {
     this.apiBaseUrl = apiBaseUrl;
-    this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
     if (!filerBaseUrl || filerBaseUrl === "") {
-      console.log("Filer base URL not provided. Using API base URL.");
+      console.log(
+        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`
+      );
       this.filerBaseUrl = apiBaseUrl;
     } else {
       console.log(`Filer base URL provided ${filerBaseUrl}`);
@@ -21,7 +22,7 @@ export class ApiAdapter {
   public async dropReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const dreq = { headers: heads, method: "POST", body: null };
@@ -34,7 +35,7 @@ export class ApiAdapter {
   public async getReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -48,7 +49,7 @@ export class ApiAdapter {
     aidName: string,
     aidPrefix: string,
     dig: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -61,7 +62,7 @@ export class ApiAdapter {
   public async getLeiReportStatusesByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -77,7 +78,7 @@ export class ApiAdapter {
     fileName: string,
     zipBuffer: Buffer,
     zipDigest: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     let formData = new FormData();
     let ctype = "application/zip";
@@ -106,7 +107,7 @@ export class ApiAdapter {
     fileName: string,
     zipBuffer: Buffer,
     client: SignifyClient,
-    token: string,
+    token: string
   ): Promise<Response> {
     let formData = new FormData();
     let ctype = "application/zip";
@@ -158,7 +159,7 @@ export class ApiAdapter {
 
   public async addRootOfTrust(configJson: any): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
-      (usr: any) => usr.type == "GLEIF",
+      (usr: any) => usr.type == "GLEIF"
     )[0].identifiers[0];
     const rootOfTrustIdentifierAgent =
       configJson.agents[
@@ -169,7 +170,7 @@ export class ApiAdapter {
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
-      true,
+      true
     );
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
@@ -182,12 +183,15 @@ export class ApiAdapter {
     // if (url.hostname === "keria")
     // oobiUrl = oobiUrl.replace("keria", "localhost");
     // console.log(`OobiUrl: ${oobiUrl}`);
-    if (url.hostname === "keria")
-      oobiUrl = oobiUrl.replace("keria", "host.docker.internal");
+    console.log(`Original OobiUrl ${oobiUrl}`);
+    if (url.hostname === "keria") {
+      oobiUrl = convertDockerHost(oobiUrl, "keria");
+    }
     if (process.env.KERIA_AGENT_PORT) {
       oobiUrl = oobiUrl.replace("3902", process.env.KERIA_AGENT_PORT);
+      console.log(`Replaced OobiUrl port ${url.port}: ${oobiUrl}`);
     }
-    // console.log(`OobiUrl: ${oobiUrl}`);
+    console.log(`Fetcching OobiUrl: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();

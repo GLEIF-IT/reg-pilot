@@ -1,4 +1,4 @@
-import FormData from "form-data";
+import * as os from "os";
 import signify, {
   CreateIdentiferArgs,
   EventResult,
@@ -37,7 +37,7 @@ export function sleep(ms: number): Promise<void> {
 export async function admitSinglesig(
   client: SignifyClient,
   aidName: string,
-  recipientAid: HabState,
+  recipientAid: HabState
 ) {
   const grantMsgSaid = await waitAndMarkNotification(client, "/exn/ipex/grant");
 
@@ -85,7 +85,7 @@ export async function assertNotifications(
 
 export async function createAid(
   client: SignifyClient,
-  name: string,
+  name: string
 ): Promise<Aid> {
   const [prefix, oobi] = await getOrCreateIdentifier(client, name);
   return { prefix, oobi, name };
@@ -108,7 +108,7 @@ export function createTimestamp() {
 export async function getEndRoles(
   client: SignifyClient,
   alias: string,
-  role?: string,
+  role?: string
 ): Promise<any> {
   const path =
     role !== undefined
@@ -123,7 +123,7 @@ export async function getEndRoles(
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string,
+  credId: string
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -140,7 +140,7 @@ export async function getIssuedCredential(
   issuerClient: SignifyClient,
   issuerAID: HabState,
   recipientAID: HabState,
-  schemaSAID: string,
+  schemaSAID: string
 ) {
   const credentialList = await issuerClient.credentials().list({
     filter: {
@@ -156,7 +156,7 @@ export async function getIssuedCredential(
 export async function getOrCreateAID(
   client: SignifyClient,
   name: string,
-  kargs: CreateIdentiferArgs,
+  kargs: CreateIdentiferArgs
 ): Promise<HabState> {
   try {
     return await client.identifiers().get(name);
@@ -181,7 +181,7 @@ export async function getOrCreateAID(
  */
 export async function getOrCreateClient(
   bran: string | undefined = undefined,
-  getOnly: boolean = false,
+  getOnly: boolean = false
 ): Promise<SignifyClient> {
   const env = resolveEnvironment();
   await ready();
@@ -197,7 +197,7 @@ export async function getOrCreateClient(
       await client.connect();
     } else {
       throw new Error(
-        "Could not connect to client w/ bran " + bran + e.message,
+        "Could not connect to client w/ bran " + bran + e.message
       );
     }
   }
@@ -222,7 +222,7 @@ export async function getOrCreateClient(
 export async function getOrCreateClients(
   count: number,
   brans: string[] | undefined = undefined,
-  getOnly: boolean = false,
+  getOnly: boolean = false
 ): Promise<SignifyClient[]> {
   const tasks: Promise<SignifyClient>[] = [];
   for (let i = 0; i < count; i++) {
@@ -245,7 +245,7 @@ export async function getOrCreateClients(
 export async function getOrCreateContact(
   client: SignifyClient,
   name: string,
-  oobi: string,
+  oobi: string
 ): Promise<string> {
   const list = await client.contacts().list(undefined, "alias", `^${name}$`);
   // console.log("contacts.list", list);
@@ -274,7 +274,7 @@ export async function getOrCreateContact(
 export async function getOrCreateIdentifier(
   client: SignifyClient,
   name: string,
-  kargs: CreateIdentiferArgs | undefined = undefined,
+  kargs: CreateIdentiferArgs | undefined = undefined
 ): Promise<[string, string]> {
   let id: any = undefined;
   try {
@@ -318,7 +318,7 @@ export async function getOrIssueCredential(
   schema: string,
   rules?: any,
   source?: any,
-  privacy = false,
+  privacy = false
 ): Promise<any> {
   const credentialList = await issuerClient.credentials().list();
 
@@ -329,7 +329,7 @@ export async function getOrIssueCredential(
         cred.sad.i === issuerAid.prefix &&
         cred.sad.a.i === recipientAid.prefix &&
         cred.sad.a.AID === credData.AID! &&
-        cred.status.et != "rev",
+        cred.status.et != "rev"
     );
     if (credential) return credential;
   }
@@ -356,7 +356,7 @@ export async function getOrIssueCredential(
 export async function revokeCredential(
   issuerClient: SignifyClient,
   issuerAid: Aid,
-  credentialSaid: string,
+  credentialSaid: string
 ): Promise<any> {
   const credentialList = await issuerClient.credentials().list();
 
@@ -372,7 +372,7 @@ export async function revokeCredential(
 
 export async function getStates(client: SignifyClient, prefixes: string[]) {
   const participantStates = await Promise.all(
-    prefixes.map((p) => client.keyStates().get(p)),
+    prefixes.map((p) => client.keyStates().get(p))
   );
   return participantStates.map((s: any[]) => s[0]);
 }
@@ -384,7 +384,7 @@ export async function hasEndRole(
   client: SignifyClient,
   alias: string,
   role: string,
-  eid: string,
+  eid: string
 ): Promise<boolean> {
   const list = await getEndRoles(client, alias, role);
   for (const i of list) {
@@ -417,7 +417,7 @@ export async function warnNotifications(
 
 export async function deleteOperations<T = any>(
   client: SignifyClient,
-  op: Operation<T>,
+  op: Operation<T>
 ) {
   if (op.metadata?.depends) {
     await deleteOperations(client, op.metadata.depends);
@@ -428,7 +428,7 @@ export async function deleteOperations<T = any>(
 
 export async function getReceivedCredential(
   client: SignifyClient,
-  credId: string,
+  credId: string
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: {
@@ -448,7 +448,7 @@ export async function getReceivedCredential(
  */
 export async function markAndRemoveNotification(
   client: SignifyClient,
-  note: Notification,
+  note: Notification
 ): Promise<void> {
   try {
     await client.notifications().mark(note.i);
@@ -462,7 +462,7 @@ export async function markAndRemoveNotification(
  */
 export async function markNotification(
   client: SignifyClient,
-  note: Notification,
+  note: Notification
 ): Promise<void> {
   await client.notifications().mark(note.i);
 }
@@ -470,7 +470,7 @@ export async function markNotification(
 export async function resolveOobi(
   client: SignifyClient,
   oobi: string,
-  alias?: string,
+  alias?: string
 ) {
   const op = await client.oobis().resolve(oobi, alias);
   await waitOperation(client, op);
@@ -479,7 +479,7 @@ export async function resolveOobi(
 export async function waitForCredential(
   client: SignifyClient,
   credSAID: string,
-  MAX_RETRIES: number = 10,
+  MAX_RETRIES: number = 10
 ) {
   let retryCount = 0;
   while (retryCount < MAX_RETRIES) {
@@ -495,14 +495,14 @@ export async function waitForCredential(
 
 export async function waitAndMarkNotification(
   client: SignifyClient,
-  route: string,
+  route: string
 ) {
   const notes = await waitForNotifications(client, route);
 
   await Promise.all(
     notes.map((note) => {
       client.notifications().mark(note.i);
-    }),
+    })
   );
 
   return notes[notes.length - 1]?.a.d ?? "";
@@ -511,7 +511,7 @@ export async function waitAndMarkNotification(
 export async function waitForNotifications(
   client: SignifyClient,
   route: string,
-  options: RetryOptions = {},
+  options: RetryOptions = {}
 ): Promise<Notification[]> {
   return retry(async () => {
     const response: { notes: Notification[] } = await client
@@ -519,7 +519,7 @@ export async function waitForNotifications(
       .list();
 
     const notes = response.notes.filter(
-      (note) => note.a.r === route && note.r === false,
+      (note) => note.a.r === route && note.r === false
     );
 
     if (!notes.length) {
@@ -537,7 +537,7 @@ export async function waitForNotifications(
 export async function waitOperation<T = any>(
   client: SignifyClient,
   op: Operation<T> | string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Operation<T>> {
   if (typeof op === "string") {
     op = await client.operations().get(op);
@@ -555,11 +555,11 @@ export async function waitOperation<T = any>(
 export async function getOrCreateRegistry(
   client: SignifyClient,
   aid: Aid,
-  registryName: string,
+  registryName: string
 ): Promise<{ name: string; regk: string }> {
   let registries = await client.registries().list(aid.name);
   registries = registries.filter(
-    (reg: { name: string }) => reg.name == registryName,
+    (reg: { name: string }) => reg.name == registryName
   );
   if (registries.length > 0) {
     assert.equal(registries.length, 1);
@@ -570,7 +570,7 @@ export async function getOrCreateRegistry(
     await waitOperation(client, await regResult.op());
     registries = await client.registries().list(aid.name);
     registries = registries.filter(
-      (reg: { name: string }) => reg.name == registryName,
+      (reg: { name: string }) => reg.name == registryName
     );
   }
   console.log(registries);
@@ -582,7 +582,7 @@ export async function sendGrantMessage(
   senderClient: SignifyClient,
   senderAid: Aid,
   recipientAid: Aid,
-  credential: any,
+  credential: any
 ) {
   const [grant, gsigs, gend] = await senderClient.ipex().grant({
     senderName: senderAid.name,
@@ -603,11 +603,11 @@ export async function sendGrantMessage(
 export async function sendAdmitMessage(
   senderClient: SignifyClient,
   senderAid: Aid,
-  recipientAid: Aid,
+  recipientAid: Aid
 ) {
   const notifications = await waitForNotifications(
     senderClient,
-    "/exn/ipex/grant",
+    "/exn/ipex/grant"
   );
   assert.equal(notifications.length, 1);
   const grantNotification = notifications[0];
@@ -626,4 +626,50 @@ export async function sendAdmitMessage(
   op = await waitOperation(senderClient, op);
 
   await markAndRemoveNotification(senderClient, grantNotification);
+}
+
+/**
+ * Replace the URL based on the environment variable and optional hosts
+ */
+export function convertDockerHost(
+  url: string,
+  moreHostsToReplace?: string,
+  newHost?: string,
+): string {
+  if (newHost) {
+    return replaceUrlHost(url, newHost, moreHostsToReplace);
+  }
+  const useDockerInternal = process.env.USE_DOCKER_INTERNAL === "true";
+  if (useDockerInternal) {
+    url = replaceUrlHost(url, "host.docker.internal", moreHostsToReplace);
+    return url;
+  }
+  if (process.env.DOCKER_HOST) {
+    url = replaceUrlHost(url, process.env.DOCKER_HOST, moreHostsToReplace);
+    return url;
+  }
+  return url;
+}
+
+/**
+ * Replace the URL based on the environment variable and optional hosts
+ */
+export function replaceUrlHost(
+  url: string,
+  newHost: string = "host.docker.internal",
+  moreHostsToReplace: string = ""
+): string {
+  const defaultHosts = ["127.0.0.1", "localhost"];
+  const hostsToReplace = moreHostsToReplace
+    ? defaultHosts.concat(moreHostsToReplace.split(","))
+    : defaultHosts;
+
+  for (const host of hostsToReplace) {
+    if (url.includes(host)) {
+      console.log(`Replacing URL host: ${host} -> ${newHost}`);
+      return url.replace(host, newHost);
+    }
+  }
+
+  throw new Error(`Error appling replacement for URL: ${url}`);
 }

@@ -34,6 +34,22 @@ const downloadFileFromUrl = async (url: string, destFilePath: string) => {
   });
 };
 
+// afterAll(() => {
+//   // Clean up any resources after the tests have run
+//   if (fs.existsSync(tmpReportsPath)) {
+//     fs.rmSync(tmpReportsPath, { recursive: true, force: true });
+//   }
+// });
+
+// test("download file from URL", async () => {
+//   const url = "https://example.com/file.zip";
+//   const destFilePath = path.join(tmpReportsPath, "file.zip");
+
+//   await downloadFileFromUrl(url, destFilePath);
+
+//   expect(fs.existsSync(destFilePath)).toBe(true);
+// });
+
 const unpackZipFile = (
   zipFilePath: string,
   destFolder: string,
