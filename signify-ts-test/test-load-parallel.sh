@@ -342,7 +342,6 @@ generate_dockerfiles() {
     export BANK_COUNT=$BANK_COUNT
     export FIRST_BANK=$FIRST_BANK
     export EBA=$EBA
-    export REG_PILOT_FILER=$REG_PILOT_FILER
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
     check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA"
 }
