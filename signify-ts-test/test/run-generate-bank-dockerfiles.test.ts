@@ -39,8 +39,11 @@ function generateDockerfiles(
     const bankName = `Bank_${i}`;
     const keriaUrl = `http://host.docker.internal:${baseKeriaUrl + (i - 1) * 10}`;
     const keriaBootUrl = `http://host.docker.internal:${baseKeriaBootUrl + (i - 1) * 10}`;
-    const apiBaseUrl = process.env.REG_PILOT_API;
-    const filerBaseUrl = process.env.REG_PILOT_FILER;
+    // const apiBaseUrl = process.env.REG_PILOT_API;
+    // const filerBaseUrl = process.env.REG_PILOT_FILER;
+    // ENV TEST_ENVIRONMENT=${process.env.TEST_ENVIRONMENT}
+    // ENV REG_PILOT_FILER=${filerBaseUrl}
+    // ENV REG_PILOT_API=${apiBaseUrl}
 
     const dockerfileContent = `
   # Use a base image with the correct platform
@@ -53,13 +56,10 @@ function generateDockerfiles(
   RUN npm install --legacy-peer-deps
   
   RUN npm run build
-  ENV TEST_ENVIRONMENT=${process.env.TEST_ENVIRONMENT}
   ENV BANK_NAME=${bankName}
   ENV KERIA=${keriaUrl}
   ENV KERIA_BOOT=${keriaBootUrl}
   ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10} 
-  ENV REG_PILOT_API=${apiBaseUrl}
-  ENV REG_PILOT_FILER=${filerBaseUrl}
   
   CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank-api.test.ts"]
   `;
