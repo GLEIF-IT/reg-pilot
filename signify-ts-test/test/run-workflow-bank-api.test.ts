@@ -5,6 +5,7 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import { getConfig } from "./utils/test-data";
 
 import { runWorkflow } from "./utils/run-workflow";
+import axios from "axios";
 
 const fs = require("fs");
 const yaml = require("js-yaml");
@@ -85,7 +86,28 @@ beforeAll(async () => {
       await container.start();
     }
   }
+
+  // Perform health check
+  await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
 });
+
+// Function to perform health check
+async function performHealthCheck(url: string, timeout: number = 60000, interval: number = 5000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const response = await axios.get(url);
+      if (response.status === 200) {
+        console.log('Service is healthy');
+        return;
+      }
+    } catch (error) {
+      console.log('Waiting for service to be healthy...');
+    }
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+  throw new Error('Service did not become healthy in time');
+}
 
 // Function to load and parse YAML file
 function loadWorkflow(filePath: string) {
