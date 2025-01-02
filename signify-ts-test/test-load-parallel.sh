@@ -208,17 +208,17 @@ check_available_banks() {
 
 start_keria() {
     echo "---------------------------------------------------"
-    echo "Starting KERIA instances..."
+    echo "Starting KERIA instance for $BANK_NAME"
     echo "---------------------------------------------------"
+    BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    BANK_INDEX=$(echo "$BANK_NAME" | sed 's/[^0-9]*//g')
     
     set -x
-        LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
-        for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
-        local PORT_OFFSET=$((10*(i-1)))
+        local PORT_OFFSET=$((10*(BANK_INDEX-1)))
         local ADMIN_PORT=$((20001 + PORT_OFFSET))
         local HTTP_PORT=$((20002 + PORT_OFFSET))
         local BOOT_PORT=$((20003 + PORT_OFFSET))
-        local CONTAINER_NAME="bank${i}"
+        local CONTAINER_NAME=$BANK_NAME
         local KERIA_CONFIG="{
             \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
             \"keria\": {
@@ -231,7 +231,7 @@ start_keria() {
         # Check if the container is already running
         if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
             echo "Container ${CONTAINER_NAME} is already running. Skipping..."
-            continue
+            return
         fi
 
         # -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
@@ -240,13 +240,12 @@ start_keria() {
         -e KERI_AGENT_CORS=1 \
         -e PYTHONUNBUFFERED=1 \
         -e PYTHONIOENCODING=UTF-8 \
-        ronakseth96/keria:TestBank_$i \
+        ronakseth96/keria:TestBank_$BANK_INDEX \
         --config-dir /keria/config --config-file keria.json --loglevel DEBUG
 
         # Write the JSON string to a file in the Docker container
         docker exec $CONTAINER_NAME sh -c 'mkdir -p /keria/config/keri/cf'
         echo "$KERIA_CONFIG" | docker exec -i $CONTAINER_NAME sh -c 'cat > /keria/config/keri/cf/keria.json'
-        done
     set +x
 }
 
@@ -469,9 +468,6 @@ load_test_banks() {
     remove_keria_containers
     remove_api_test_containers
 
-    # Starting KERIA containers for all banks
-    start_keria
-
     #Running API tests for all banks
     echo "---------------------------------------------------"
     echo "Running API test for all banks"
@@ -489,6 +485,13 @@ load_test_banks() {
     echo "---------------------------------------------------"
     echo "Processing banks $BATCH_START to $BATCH_END..."
     echo "---------------------------------------------------"
+
+    # Start KERIA instances for the current batch
+    for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            BANK_NAME="Bank_$i"
+            start_keria "$BANK_NAME"
+    done
+
     # Running API tests for all banks in the current batch
     PIDS=()
     BANK_NAMES=()
@@ -510,6 +513,19 @@ load_test_banks() {
                 FAILURE_COUNT=$((FAILURE_COUNT + 1))
                 FAILED_BANKS+=("${BANK_NAMES[$pid]}")
             fi
+        done
+
+        # Stop KERIA instances for the current batch
+        STOP_PIDS=()
+        for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            BANK_NAME="Bank_$i"
+            stop_keria "$BANK_NAME" &
+            STOP_PIDS+=($!)
+        done
+
+        # Wait for all stop_keria processes to finish
+        for pid in "${STOP_PIDS[@]}"; do
+            wait "$pid"
         done
     done   
   
@@ -536,6 +552,12 @@ load_test_banks() {
             echo "-----------------------------------------------------------------------------------------------------------"
             echo "Retrying processing banks ${FAILED_BANKS[@]:BATCH_START:BATCH_END - BATCH_START + 1}..."
             echo "-----------------------------------------------------------------------------------------------------------"
+            
+            # Start KERIA instances for the failed banks in the current batch
+            for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            BANK_NAME="${FAILED_BANKS[$i]}"
+            start_keria "$BANK_NAME"
+            done
 
             # Retries for failed banks in the current batch
             PIDS=()
@@ -556,6 +578,19 @@ load_test_banks() {
                     NEW_FAILED_BANKS+=("${FAILED_BANKS[$BATCH_START + pid]}")
                 fi
             done
+
+            # Stop KERIA instances for the current batch
+            STOP_PIDS=()
+            for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            BANK_NAME="${FAILED_BANKS[$i]}"
+            stop_keria "$BANK_NAME" &
+            STOP_PIDS+=($!)
+            done
+
+            # Wait for all stop_keria processes to finish
+            for pid in "${STOP_PIDS[@]}"; do
+                wait "$pid"
+            done
         done
 
         FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")
@@ -572,12 +607,8 @@ load_test_banks() {
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
-    if [[ "$FAILURE_COUNT" -eq 0 ]]; then
-    stop_keria
-    
-        if [[ "$MODE" == "local" ]]; then
+    if [[ "$MODE" == "local" && "$FAILURE_COUNT" -eq 0 ]]; then
             stop_services_local
-        fi
     fi
 
     echo "========================================================="
