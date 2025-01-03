@@ -29,20 +29,20 @@ beforeAll(async () => {
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-if (require.main === module) {
-  test("vlei-verification", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
-    let users = await buildUserData(configJson);
-    users = users.filter((user) => user.type === "ECR");
-    const apiUsers = await getApiTestData(
-      configJson,
-      env,
-      users.map((user) => user.identifiers[0].name),
-    );
-    await run_vlei_verification_test(apiUsers, configJson);
-  }, 100000);
-}
+// if (require.main === module) {
+//   test("vlei-verification", async function run() {
+//     const configFilePath = env.configuration;
+//     const configJson = await getConfig(configFilePath, false);
+//     let users = await buildUserData(configJson);
+//     users = users.filter((user) => user.type === "ECR");
+//     const apiUsers = await getApiTestData(
+//       configJson,
+//       env,
+//       users.map((user) => user.identifiers[0].name),
+//     );
+//     await run_vlei_verification_test(apiUsers, configJson);
+//   }, 100000);
+// }
 export async function run_vlei_verification_test(
   users: ApiUser[],
   configJson: any,
@@ -55,7 +55,7 @@ export async function run_vlei_verification_test(
 
 module.exports = { run_vlei_verification_test };
 
-async function vlei_verification(user: ApiUser) {
+export async function vlei_verification(user: ApiUser) {
   try {
     let hpath = "/health";
     let hreq = { method: "GET", body: null };

@@ -31,11 +31,11 @@ const tempPath = path.join(__dirname, tempDir);
 const secretsJsonPath = "../src/config/";
 const tempExtManifestDir = "temp_manifest";
 
-afterAll(async () => {
-  deleteReportsDir(tempPath);
-});
+// afterAll(async () => {
+//   deleteReportsDir(tempPath);
+// });
 
-beforeAll(async () => {});
+// beforeAll(async () => {});
 
 // Function to create a report dir
 function createReportsDir(repDir: string): void {
@@ -60,48 +60,48 @@ function deleteReportsDir(repDir: string): void {
 
 // This test assumes you have run a vlei-issuance test that sets up the glief, qvi, le, and
 // role identifiers and Credentials.
-if (require.main === module) {
-  test("report-generation-test", async function run() {
-    env = resolveEnvironment();
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
-    let users = await buildUserData(configJson);
-    users = users.filter((user) => user.type === "ECR");
-    for (const user of users) {
-      const testData = getReportGenTestData();
-      const clients = await getOrCreateClients(
-        1,
-        [user.identifiers[0].agent.secret],
-        true,
-      );
-      const roleClient = clients[0];
-      const ecrAid = await roleClient
-        .identifiers()
-        .get(user.identifiers[0].name);
-      const keeper = roleClient.manager!.get(ecrAid);
-      const failDirPrefixed = path.join(
-        __dirname,
-        "data",
-        testData["failDir"],
-        ecrAid.prefix,
-      );
-      const signedDirPrefixed = path.join(
-        __dirname,
-        "data",
-        testData["signedDir"],
-        ecrAid.prefix,
-      );
-      await generate_reports(
-        ecrAid.prefix,
-        keeper,
-        signedDirPrefixed,
-        failDirPrefixed,
-        testData["unsignedReports"],
-        testData["reportTypes"],
-      );
-    }
-  }, 100000);
-}
+// if (require.main === module) {
+//   test("report-generation-test", async function run() {
+//     env = resolveEnvironment();
+//     const configFilePath = env.configuration;
+//     const configJson = await getConfig(configFilePath, false);
+//     let users = await buildUserData(configJson);
+//     users = users.filter((user) => user.type === "ECR");
+//     for (const user of users) {
+//       const testData = getReportGenTestData();
+//       const clients = await getOrCreateClients(
+//         1,
+//         [user.identifiers[0].agent.secret],
+//         true,
+//       );
+//       const roleClient = clients[0];
+//       const ecrAid = await roleClient
+//         .identifiers()
+//         .get(user.identifiers[0].name);
+//       const keeper = roleClient.manager!.get(ecrAid);
+//       const failDirPrefixed = path.join(
+//         __dirname,
+//         "data",
+//         testData["failDir"],
+//         ecrAid.prefix,
+//       );
+//       const signedDirPrefixed = path.join(
+//         __dirname,
+//         "data",
+//         testData["signedDir"],
+//         ecrAid.prefix,
+//       );
+//       await generate_reports(
+//         ecrAid.prefix,
+//         keeper,
+//         signedDirPrefixed,
+//         failDirPrefixed,
+//         testData["unsignedReports"],
+//         testData["reportTypes"],
+//       );
+//     }
+//   }, 100000);
+// }
 
 export async function generate_reports(
   ecrAid: string,

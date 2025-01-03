@@ -3,7 +3,7 @@ import path from "path";
 import { getOrCreateClients } from "./test-util";
 import { resolveEnvironment, TestEnvironment } from "./resolve-env";
 import { buildAidData } from "../../src/utils/handle-json-config";
-import { generate_reports } from "../report.test";
+import { generate_reports } from "../report";
 import {
   ApiUser,
   getApiTestData,
@@ -14,14 +14,14 @@ import {
   run_api_revocation_test,
   run_api_test,
   single_user_eba_test,
-} from "../reg-pilot-api.test";
-import { run_vlei_verification_test } from "../vlei-verification.test";
+} from "../reg-pilot-api";
+import { run_vlei_verification_test } from "../vlei-verification";
 
 const fs = require("fs");
 const yaml = require("js-yaml");
 
 // Function to load and parse YAML file
-function loadWorkflow(filePath: string) {
+export function loadWorkflow(filePath: string) {
   try {
     const file = fs.readFileSync(filePath, "utf8");
     return yaml.load(file);
@@ -31,17 +31,16 @@ function loadWorkflow(filePath: string) {
   }
 }
 
-export async function runWorkflow(workflow: any, configJson: any) {
+export async function runWorkflow(workflow: any, configJson: any, env: TestEnvironment) {
   let executedSteps = new Set();
   let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
   let vi: VleiIssuance;
 
   for (const [k, v] of Object.entries(workflow.workflow.steps)) {
-    await executeStep(k, v);
+    await executeStep(k, v, env);
   }
 
-  async function executeStep(stepName: string, step: any) {
-    let env = resolveEnvironment();
+  async function executeStep(stepName: string, step: any, env: TestEnvironment) {
     if (step.type == "issue_credential") {
       if (!vi) {
         vi = new VleiIssuance(configJson);
@@ -153,7 +152,7 @@ export async function runWorkflow(workflow: any, configJson: any) {
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await single_user_eba_test(apiUsers[0]);
+        await single_user_eba_test(apiUsers[0], env);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
@@ -161,5 +160,19 @@ export async function runWorkflow(workflow: any, configJson: any) {
       await run_vlei_verification_test(apiUsers, configJson);
     }
     executedSteps.add(step.id);
+  }
+}
+
+export async function launchWorkflow() {
+  const workflowsDir = "../src/workflows/";
+  const env = resolveEnvironment();
+  const workflowFile = env.workflow;
+  const workflow = loadWorkflow(
+    path.join(__dirname, `${workflowsDir}${workflowFile}`)
+  );
+  const configFilePath = env.configuration;
+  const configJson = await getConfig(configFilePath, false);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson, env);
   }
 }

@@ -13,7 +13,7 @@ import {
   isEbaDataSubmitter,
 } from "./utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
-import { createSignedReports, SIMPLE_TYPE } from "./report.test";
+import { createSignedReports, SIMPLE_TYPE } from "./report";
 import { convertDockerHost, sleep } from "./utils/test-util";
 
 const failDir = "fail_reports";
@@ -24,34 +24,35 @@ const secretsJsonPath = "../src/config/";
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
 
-afterEach(async () => {});
-beforeAll(async () => {
-  env = resolveEnvironment();
-  env.apiBaseUrl = convertDockerHost(env.apiBaseUrl);
-  env.filerBaseUrl = convertDockerHost(env.filerBaseUrl);
-  // env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
-  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-});
+// afterEach(async () => {});
+// beforeAll(async () => {
+//   env = resolveEnvironment();
+//   // env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
+//   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+// });
 
-if (require.main === module) {
-  test("reg-pilot-api", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
-    let users = await buildUserData(configJson);
-    users = users.filter((user) => user.type === "ECR");
-    const apiUsers = await getApiTestData(
-      configJson,
-      env,
-      users.map((user) => user.identifiers[0].name)
-    );
-    await run_api_test(apiUsers, configJson);
-  }, 200000);
-}
+// if (require.main === module) {
+//   test("reg-pilot-api", async function run() {
+//     const configFilePath = env.configuration;
+//     const configJson = await getConfig(configFilePath, false);
+//     let users = await buildUserData(configJson);
+//     users = users.filter((user) => user.type === "ECR");
+//     const apiUsers = await getApiTestData(
+//       configJson,
+//       env,
+//       users.map((user) => user.identifiers[0].name)
+//     );
+//     await run_api_test(apiUsers, configJson);
+//   }, 200000);
+// }
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
 export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
+  env = resolveEnvironment();
+  //   // env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
@@ -313,7 +314,11 @@ async function single_user_test(user: ApiUser) {
 }
 
 // Specail test for eba api
-export async function single_user_eba_test(user: ApiUser) {
+export async function single_user_eba_test(
+  user: ApiUser,
+  overrideEnv: TestEnvironment
+) {
+  env = overrideEnv
   const signedDirPrefixed = path.join(
     __dirname,
     "data",
@@ -370,7 +375,8 @@ export async function single_user_eba_test(user: ApiUser) {
           path.basename(signedReport),
           await fs.promises.readFile(signedReport),
           user.roleClient,
-          token
+          token,
+          overrideEnv
         );
         assert.equal(signedUpResp.status, 200);
         const resBod = await signedUpResp.json();

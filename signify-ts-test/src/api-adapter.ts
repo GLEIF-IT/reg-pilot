@@ -2,6 +2,7 @@ import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
 import { convertDockerHost, getOrCreateClients, replaceUrlHost } from "../test/utils/test-util";
 import path from "path";
+import { TestEnvironment } from "../test/utils/resolve-env";
 
 export class ApiAdapter {
   apiBaseUrl: string;
@@ -107,8 +108,13 @@ export class ApiAdapter {
     fileName: string,
     zipBuffer: Buffer,
     client: SignifyClient,
-    token: string
+    token: string,
+    envOverride?: TestEnvironment
   ): Promise<Response> {
+    if(envOverride) {
+      this.apiBaseUrl = envOverride.apiBaseUrl;
+      this.filerBaseUrl = envOverride.filerBaseUrl;
+    } 
     let formData = new FormData();
     let ctype = "application/zip";
     formData.append("file", zipBuffer, {
@@ -199,6 +205,7 @@ export class ApiAdapter {
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
+      oobi: oobiUrl,
     };
     let lreq = {
       headers: heads,
@@ -206,6 +213,8 @@ export class ApiAdapter {
       body: JSON.stringify(lbody),
     };
     const lurl = `${this.apiBaseUrl}/add_root_of_trust`;
+    console.log("Adding test Root of trust URL: ", lurl);
+    console.log("Adding test Root of trust Req: ", lreq);
     const lresp = await fetch(lurl, lreq);
     return lresp;
   }
