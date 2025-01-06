@@ -6,7 +6,7 @@ import path from "path";
 const bankReportsUrl =
   "https://raw.githubusercontent.com/aydarng/bank_reports/main";
 
-export const tmpReportsPath = path.join(__dirname, "../data/tmp_reports");
+export const tmpReportsPath = path.join(process.cwd(),"test/data/tmp_reports");
 
 export async function downloadFileFromUrl(url: string, destFilePath: string) {
   const filePath = destFilePath;
@@ -34,9 +34,11 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
   });
 }
 
-export async function downloadReports(bankNum: number) {
+export async function downloadReports(
+  bankNum: number = Number.parseInt(process.env.BANK_NAME || "Bank_1")
+) {
   // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
-  const bankName = process.env.BANK_NAME || "Bank_"+bankNum;
+  const bankName = process.env.BANK_NAME || "Bank_" + bankNum;
   const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
   const destFilePath = `${tmpReportsPath}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, destFilePath);
@@ -52,7 +54,7 @@ export async function downloadReports(bankNum: number) {
     path.join(__dirname, "../data/tmp_reports_unpacked"),
     bankName,
     doAllSigned,
-    doFailReps,
+    doFailReps
   );
 }
 

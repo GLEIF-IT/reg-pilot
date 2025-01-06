@@ -2,11 +2,11 @@ import path from "path";
 import Docker from "dockerode";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 
-import { getConfig } from "./utils/test-data";
+import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 
 import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 import axios from "axios";
-import { downloadReports } from "./utils/test-reports";
+import { downloadReports } from "../src/utils/test-reports";
 
 const fs = require("fs");
 const yaml = require("js-yaml");
@@ -35,6 +35,9 @@ beforeAll(async () => {
   process.env.KERIA_AGENT_PORT = keriaHttpPort.toString();
   process.env.KERIA_BOOT = `http://localhost:${keriaBootPort}`;
   process.env.DOCKER_HOST = "localhost";
+  process.env.SPEED = "fast";
+  process.env.INCLUDE_ALL_SIGNED_REPORTS = "false";
+  process.env.INCLUDE_FAIL_REPORTS = "false";
 
   // Check if the container is already running
   const containers = await docker.listContainers({ all: true });
@@ -149,6 +152,25 @@ test("eba-verifier-bank-test-workflow", async function run() {
   const env = resolveEnvironment();
   const workflowPath = "../src/workflows/eba-verifier-test-workflow.yaml";
   const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
+  const configFilePath = `${bankName}/config.json`;
+  const configJson = await getConfig(configFilePath, true);
+  if (workflow && configJson) {
+    await runWorkflow(workflow, configJson, env);
+  }
+}, 3600000);
+
+test("vlei-issuance-reports-bank-test-workflow", async function run() {
+  // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
+  process.env.REPORT_TYPES = SIMPLE_TYPE;
+  const env = resolveEnvironment();
+  console.log(
+    `Running vlei issuance and reports generation test for bank: ${bankName}`
+  );
+  const bankDirPath = `./data/600-banks-test-data/${bankName}/`;
+  const workflowName = "workflow.yaml";
+  const workflow = loadWorkflow(
+    path.join(__dirname, `${bankDirPath}`) + workflowName,
+  );
   const configFilePath = `${bankName}/config.json`;
   const configJson = await getConfig(configFilePath, true);
   if (workflow && configJson) {

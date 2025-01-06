@@ -4,19 +4,10 @@ import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
 import { generateFileDigest } from "./utils/generate-digest";
-import { Aid, getOrCreateClients } from "./utils/test-util";
-import signify, { HabState, Signer, SignifyClient } from "signify-ts";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import {
-  buildAidData,
-  buildUserData,
-  User,
-} from "../src/utils/handle-json-config";
+import signify, { Signer } from "signify-ts";
+import { TestEnvironment } from "./utils/resolve-env";
 
 import { unknownPrefix } from "../src/constants";
-import { sign } from "crypto";
-import { boolean, re } from "mathjs";
-import { getConfig, getReportGenTestData } from "./utils/test-data";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -110,7 +101,7 @@ export async function generate_reports(
   failDirPrefixed: string,
   unsignedReports: string[],
   reportTypes: string[],
-  copyFolder?: string,
+  copyFolder?: string
 ) {
   deleteReportsDir(signedDirPrefixed);
   deleteReportsDir(failDirPrefixed);
@@ -122,7 +113,7 @@ export async function generate_reports(
     reportTypes,
     keeper,
     ecrAid,
-    signedDirPrefixed,
+    signedDirPrefixed
   );
   assert.equal(signedReports.length > 0, true);
 
@@ -131,7 +122,7 @@ export async function generate_reports(
     createReportsDir(tempPath);
     assert.equal(
       await createFailReports(failDirPrefixed, signedDirPrefixed),
-      true,
+      true
     );
   }
 
@@ -139,13 +130,15 @@ export async function generate_reports(
     fs.cpSync(
       signedDirPrefixed,
       path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid),
-      { recursive: true },
+      { recursive: true }
     );
-    fs.cpSync(
-      failDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid),
-      { recursive: true },
-    );
+    if (reportTypes.includes(FAIL_TYPE)) {
+      fs.cpSync(
+        failDirPrefixed,
+        path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid),
+        { recursive: true }
+      );
+    }
   }
 }
 
@@ -156,12 +149,12 @@ export async function createSignedReports(
   reportTypes: string[] = [SIMPLE_TYPE],
   keeper: signify.Keeper,
   ecrAid: string,
-  signedDirPrefixed: string,
+  signedDirPrefixed: string
 ): Promise<string[]> {
   let zipsProcessed = 0;
   let signedReports = [] as string[];
   console.log(
-    `Generating ${reportTypes} signed reports from orig reports: ${filePaths}`,
+    `Generating ${reportTypes} signed reports from orig reports: ${filePaths}`
   );
   for (const filePath of filePaths) {
     const fileName = path.basename(filePath, path.extname(filePath));
@@ -186,12 +179,12 @@ export async function createSignedReports(
           foundPath,
           false,
           keeper,
-          ecrAid,
+          ecrAid
         );
         const complexManJson = JSON.stringify(complexManifest, null, 2);
         if (reportTypes.includes(EXTERNAL_MAN_TYPE)) {
           console.log(
-            `Processing external manifest file signature: ${filePath}`,
+            `Processing external manifest file signature: ${filePath}`
           );
           // extract the zip so we can produce digests/signatures for each file
 
@@ -199,12 +192,12 @@ export async function createSignedReports(
           const signedRepPath = path.join(signedDirPrefixed, shortFileName);
           console.log(
             `Creating ${EXTERNAL_MAN_TYPE} packaged signed report ` +
-              signedRepPath,
+              signedRepPath
           );
           await createExternalManifestZip(
             signedRepPath,
             filePath,
-            complexManJson,
+            complexManJson
           );
           signedReports.push(signedRepPath);
         }
@@ -215,15 +208,15 @@ export async function createSignedReports(
             const unfolderedShortFileName = `${UNFOLDERED_TYPE}_${UNZIPPED_TYPE}_${fileName}_signed${fileExtension}`;
             const unfolderedRepPath = path.join(
               signedDirPrefixed,
-              unfolderedShortFileName,
+              unfolderedShortFileName
             );
             console.log(
-              "Creating unfoldered+unzipped signed report " + unfolderedRepPath,
+              "Creating unfoldered+unzipped signed report " + unfolderedRepPath
             );
             const sufZip = await transferTempToZip(
               fullTemp,
               unfolderedRepPath,
-              false,
+              false
             );
             validateReport(new AdmZip(sufZip));
             signedReports.push(unfolderedRepPath);
@@ -243,13 +236,13 @@ export async function createSignedReports(
         // just copy the zip file here for a single digest/signature
         fsExtra.copySync(
           filePath,
-          path.join(fullTemp, path.basename(filePath)),
+          path.join(fullTemp, path.basename(filePath))
         );
         const simpleManifest = await buildManifest(
           fullTemp,
           true,
           keeper,
-          ecrAid,
+          ecrAid
         );
         const simpleManJson = JSON.stringify(simpleManifest, null, 2);
 
@@ -281,7 +274,7 @@ async function buildManifest(
   repDirPath: string,
   simple: boolean,
   keeper: signify.Keeper,
-  ecrAid: string,
+  ecrAid: string
 ): Promise<Manifest> {
   const reportEntries = await fs.promises.readdir(repDirPath, {
     withFileTypes: true,
@@ -316,7 +309,7 @@ async function buildManifest(
 
 async function createFailReports(
   failDirPrefixed: string,
-  signedDirPrefixed: string,
+  signedDirPrefixed: string
 ): Promise<boolean> {
   const failFuncs: Array<(manifestPath: string) => Promise<boolean>> = [
     genMissingSignature,
@@ -476,14 +469,13 @@ async function listReportZips(dir: string): Promise<string[]> {
         const zipEntries = zip.getEntries();
         if (
           zipEntries.some(
-            (entry) =>
-              entry.isDirectory && entry.entryName.endsWith("reports/"),
+            (entry) => entry.isDirectory && entry.entryName.endsWith("reports/")
           )
         ) {
           if (reportZips.length > 0) {
             throw new Error(
               "Multiple report zips found in but we dont handle that case currnetly " +
-                dir,
+                dir
             );
           }
           reportZips.push(zipFile);
@@ -495,7 +487,7 @@ async function listReportZips(dir: string): Promise<string[]> {
 }
 
 async function removeMetaInfReportsJson(
-  manifestPath: string,
+  manifestPath: string
 ): Promise<boolean> {
   if (fs.existsSync(manifestPath)) {
     console.log(`Removing ${manifestPath}`);
@@ -509,7 +501,7 @@ async function removeMetaInfReportsJson(
 async function addSignatureToReport(
   signatureBlock: Signature,
   keeper: signify.Keeper,
-  ecrAid: string,
+  ecrAid: string
 ): Promise<boolean> {
   const sigs = [] as string[];
   for (const signer of keeper.signers as Signer[]) {
@@ -523,7 +515,7 @@ async function addSignatureToReport(
   }
   assert(
     sigs.length > 0,
-    `No signatures added to signature block ${signatureBlock}`,
+    `No signatures added to signature block ${signatureBlock}`
   );
   signatureBlock.sigs = sigs;
   signatureBlock.aid = ecrAid;
@@ -534,7 +526,7 @@ async function addSignatureToReport(
 async function addDigestToReport(
   reportPath: string,
   signatureBlock: Signature,
-  simple = false,
+  simple = false
 ): Promise<boolean> {
   const reportName = path.basename(reportPath);
   const buffer = await fs.promises.readFile(reportPath);
@@ -556,7 +548,7 @@ async function addDigestToReport(
 async function transferTempToZip(
   tempDir: string,
   filePath: string,
-  allowSubDir: boolean = true,
+  allowSubDir: boolean = true
 ): Promise<string> {
   const zip = new AdmZip();
   if (allowSubDir) {
@@ -584,7 +576,7 @@ async function transferTempToZip(
   } else {
     console.log(`Zip file created at ${filePath}`);
     console.log(
-      `Zip file contains: ${zip.getEntries().map((entry) => entry.entryName)}`,
+      `Zip file contains: ${zip.getEntries().map((entry) => entry.entryName)}`
     );
   }
 
@@ -616,15 +608,15 @@ async function getRepPath(fullTemp: string): Promise<string> {
   if (dirs.includes("META-INF")) {
     if (dirs.includes("reports")) {
       console.log(
-        "Non-foldered report, found META-INF and reports directories",
+        "Non-foldered report, found META-INF and reports directories"
       );
     } else if (repZip.length > 0) {
       console.log(
-        "Packaged report, found META-INF and zip with reports directories",
+        "Packaged report, found META-INF and zip with reports directories"
       );
     } else {
       throw new Error(
-        "Report has META-INF but no reports directory or zip " + fullTemp,
+        "Report has META-INF but no reports directory or zip " + fullTemp
       );
     }
   } else {
@@ -641,7 +633,7 @@ async function getRepPath(fullTemp: string): Promise<string> {
     assert(
       found,
       "Report is missing dir with META-INF and/or reports directory in " +
-        fullTemp,
+        fullTemp
     );
   }
   return repDirPath;
@@ -650,7 +642,7 @@ async function getRepPath(fullTemp: string): Promise<string> {
 async function createExternalManifestZip(
   signedRepPath: string,
   origZipFilePath: string,
-  manJson: string,
+  manJson: string
 ): Promise<void> {
   // Create a temporary directory
   const tempDir = path.join(__dirname, "tempZipDir");
@@ -679,7 +671,7 @@ async function createExternalManifestZip(
   fsExtra.removeSync(tempDir);
 
   console.log(
-    `${EXTERNAL_MAN_TYPE} zip package file created at: ${signedRepPath}`,
+    `${EXTERNAL_MAN_TYPE} zip package file created at: ${signedRepPath}`
   );
 }
 
@@ -687,14 +679,14 @@ function validateReport(zip: AdmZip) {
   const zipEntries = zip.getEntries();
   // Check for META-INF directory and report.json
   const metaInfEntry = zipEntries.find((entry) =>
-    entry.entryName.endsWith("META-INF/"),
+    entry.entryName.endsWith("META-INF/")
   );
   if (!metaInfEntry) {
     throw new Error("META-INF directory not found in the zip file");
   }
 
   const reportJsonEntry = zipEntries.find((entry) =>
-    entry.entryName.endsWith("META-INF/reports.json"),
+    entry.entryName.endsWith("META-INF/reports.json")
   );
   if (!reportJsonEntry) {
     throw new Error("report.json not found in META-INF directory");
@@ -702,20 +694,20 @@ function validateReport(zip: AdmZip) {
 
   // Check for reports directory or zip file
   const reportsEntry = zipEntries.find(
-    (entry) => entry.entryName.endsWith("reports/") && entry.isDirectory,
+    (entry) => entry.entryName.endsWith("reports/") && entry.isDirectory
   );
   const reportsZipEntry = zipEntries.find((entry) =>
-    entry.entryName.endsWith(".zip"),
+    entry.entryName.endsWith(".zip")
   );
 
   if (!reportsEntry && !reportsZipEntry) {
     throw new Error(
-      "Neither reports directory nor zip file found in the zip file",
+      "Neither reports directory nor zip file found in the zip file"
     );
   }
 
   console.log(
-    "Validation passed: META-INF directory with report.json and either reports directory or zip file found.",
+    "Validation passed: META-INF directory with report.json and either reports directory or zip file found."
   );
 }
 
@@ -741,7 +733,7 @@ function findReportsDir(dirPath: string): string | null {
 
 async function writeReportsJson(
   fullTemp: string,
-  manJson: string,
+  manJson: string
 ): Promise<string> {
   const dirPath = await getRepPath(fullTemp);
   const manifestPath = path.join(dirPath, "META-INF", "reports.json");

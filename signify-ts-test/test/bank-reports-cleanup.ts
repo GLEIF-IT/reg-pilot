@@ -19,7 +19,9 @@ const removeFolderRecursive = (folderPath: string) => {
   }
 };
 
-export function cleanupReports(bankName: string) {
+export function cleanupReports(
+  bankName: string = process.env.BANK_NAME || "Bank_1"
+) {
   const currentTmpSignedReportsUnpackedPath = `${tmpReportsUnpackedPath}/${bankName}/reports/signed_reports`;
   const currentTmpFailReportsUnpackedPath = `${tmpReportsUnpackedPath}/${bankName}/reports/fail_reports`;
   const signedItems = fs.readdirSync(currentTmpSignedReportsUnpackedPath);

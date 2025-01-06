@@ -55,7 +55,7 @@ export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
-  else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
+  else if (apiUsers.length == 1) await single_user_test(apiUsers[0], process.env.SPEED === "fast");
   else
     console.log(
       `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
@@ -84,7 +84,7 @@ module.exports = {
   run_api_revocation_test,
 };
 
-async function single_user_test(user: ApiUser) {
+async function single_user_test(user: ApiUser, fast = false) {
   const signedDirPrefixed = path.join(
     __dirname,
     "data",
@@ -229,6 +229,7 @@ async function single_user_test(user: ApiUser) {
         user,
         ecrCred
       );
+      if (fast) break;
     }
   }
 
@@ -262,6 +263,7 @@ async function single_user_test(user: ApiUser) {
           failZipDig,
           user.ecrAid
         );
+        if (fast) break;
       }
     }
   }
@@ -286,6 +288,7 @@ async function single_user_test(user: ApiUser) {
         user.roleClient
       );
       await checkBadDigestUpload(badDigestUpResp);
+      if (fast) break;
     }
   }
 
@@ -309,6 +312,7 @@ async function single_user_test(user: ApiUser) {
         user.roleClient
       );
       await checkNonPrefixedDigestUpload(badDigestUpResp);
+      if (fast) break;
     }
   }
 }
@@ -325,7 +329,6 @@ export async function single_user_eba_test(
     signedDir,
     user.ecrAid.prefix
   );
-  const signedReports = getSignedReports(signedDirPrefixed);
   failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
 
   // login with the ecr credential
@@ -814,13 +817,9 @@ export async function checkNonPrefixedDigestUpload(
   return true;
 }
 
-export function getSignedReports(signedDirPrefixed: string): string[] {
-  if (process.env.SIGNED_REPORTS) {
-    return process.env.SIGNED_REPORTS.split(",");
-  } else {
-    const fileNames = fs.readdirSync(signedDirPrefixed);
-    return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
-  }
+export function getSignedReports(signedDirPrefixed: string, files?: string[]): string[] {
+  const fileNames = files || fs.readdirSync(signedDirPrefixed);
+  return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
 }
 
 async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
