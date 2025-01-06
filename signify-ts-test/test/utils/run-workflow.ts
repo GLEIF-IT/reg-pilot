@@ -22,13 +22,13 @@ const yaml = require("js-yaml");
 
 // Function to load and parse YAML file
 export function loadWorkflow(filePath: string) {
-  try {
-    const file = fs.readFileSync(filePath, "utf8");
-    return yaml.load(file);
-  } catch (e) {
-    console.error("Error reading YAML file:", e);
-    return null;
-  }
+  // try {
+  const file = fs.readFileSync(filePath, "utf8");
+  return yaml.load(file);
+  // } catch (e) {
+  //   console.error("Error reading YAML file:", e);
+  //   return null;
+  // }
 }
 
 export async function runWorkflow(workflow: any, configJson: any, env: TestEnvironment) {
@@ -81,23 +81,9 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
       const roleClient = clients[0];
       const ecrAid = await roleClient.identifiers().get(step.aid);
       const keeper = roleClient.manager!.get(ecrAid);
-      const failDirPrefixed = path.join(
-        __dirname,
-        "../data",
-        testData["failDir"],
-        ecrAid.prefix,
-      );
-      const signedDirPrefixed = path.join(
-        __dirname,
-        "../data",
-        testData["signedDir"],
-        ecrAid.prefix,
-      );
       await generate_reports(
         ecrAid.prefix,
         keeper,
-        signedDirPrefixed,
-        failDirPrefixed,
         testData["unsignedReports"],
         testData["reportTypes"],
         step.copy_folder,
@@ -168,7 +154,7 @@ export async function launchWorkflow() {
   const env = resolveEnvironment();
   const workflowFile = env.workflow;
   const workflow = loadWorkflow(
-    path.join(__dirname, `${workflowsDir}${workflowFile}`)
+    path.join(process.cwd(), `${workflowsDir}${workflowFile}`)
   );
   const configFilePath = env.configuration;
   const configJson = await getConfig(configFilePath, false);

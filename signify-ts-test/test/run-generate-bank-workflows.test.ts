@@ -1,3 +1,4 @@
+import { TEST_BANK_DATA } from "../src/utils/test-reports";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 
 const fs = require("fs");
@@ -344,32 +345,32 @@ function generateBankConfig(bankId: number) {
           type: "generate_report",
           aid: "ecr-aid-1",
           description: "Generating reports for ecr-aid-1 user",
-          copy_folder: `600-banks-test-data/Bank_${bankId}/reports`,
+          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
         },
         gen_report_ecr2: {
           id: "gen_report_ecr2",
           type: "generate_report",
           aid: "ecr-aid-2",
           description: "Generating reports for ecr-aid-2 user",
-          copy_folder: `600-banks-test-data/Bank_${bankId}/reports`,
+          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
         },
         gen_report_ecr3: {
           id: "gen_report_ecr3",
           type: "generate_report",
           aid: "ecr-aid-3",
           description: "Generating reports for ecr-aid-3 user",
-          copy_folder: `600-banks-test-data/Bank_${bankId}/reports`,
+          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
         },
       },
     },
   };
 
-  if (!fs.existsSync("./test/data/600-banks-test-data")) {
-    fs.mkdirSync("./test/data/600-banks-test-data");
+  if (!fs.existsSync(`./test/data/${TEST_BANK_DATA}`)) {
+    fs.mkdirSync(`./test/data/${TEST_BANK_DATA}`);
   }
 
   // Write YAML and JSON files
-  const bankDir = `./test/data/600-banks-test-data/Bank_${bankId}`;
+  const bankDir = `./test/data/${TEST_BANK_DATA}/Bank_${bankId}`;
   if (!fs.existsSync(bankDir)) {
     fs.mkdirSync(bankDir);
     let yamlStr = yaml.dump(workflow);

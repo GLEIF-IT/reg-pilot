@@ -6,7 +6,7 @@ import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 
 import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 import axios from "axios";
-import { downloadReports } from "../src/utils/test-reports";
+import { downloadReports, TEST_BANK_DATA } from "../src/utils/test-reports";
 
 const fs = require("fs");
 const yaml = require("js-yaml");
@@ -21,6 +21,8 @@ const offset = 10 * (bankNum - 1);
 const keriaAdminPort = offset + 20001;
 const keriaHttpPort = offset + 20002;
 const keriaBootPort = offset + 20003;
+
+
 
 afterAll(async () => {
   // Stop Docker service
@@ -103,7 +105,8 @@ beforeAll(async () => {
   // Perform health check
   await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
 
-  await downloadReports(bankNum);
+  const testDataDir = path.join(process.cwd(), `./test/data/${TEST_BANK_DATA}`);
+  await downloadReports(bankNum, testDataDir);
 });
 
 // Function to perform health check
@@ -135,8 +138,8 @@ test("api-verifier-bank-test-workflow", async function run() {
 
   const env = resolveEnvironment();
 
-  const workflowPath = "../src/workflows/bank-api-verifier-test-workflow.yaml";
-  const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
+  const workflowPath = path.join(process.cwd(), "./src/workflows/bank-api-verifier-test-workflow.yaml");
+  const workflow = loadWorkflow(`${workflowPath}`);
   const configFilePath = `${bankName}/config.json`;
   const configJson = await getConfig(configFilePath, true);
   if (workflow && configJson) {
@@ -150,8 +153,8 @@ test("eba-verifier-bank-test-workflow", async function run() {
   process.env.REG_PILOT_API = "https://errp.test.eba.europa.eu/api-security";
   process.env.REG_PILOT_FILER = "https://errp.test.eba.europa.eu/api";
   const env = resolveEnvironment();
-  const workflowPath = "../src/workflows/eba-verifier-test-workflow.yaml";
-  const workflow = loadWorkflow(path.join(__dirname, `${workflowPath}`));
+  const workflowPath = path.join(process.cwd(), "./src/workflows/eba-verifier-test-workflow.yaml");
+  const workflow = loadWorkflow(workflowPath);
   const configFilePath = `${bankName}/config.json`;
   const configJson = await getConfig(configFilePath, true);
   if (workflow && configJson) {
@@ -166,11 +169,10 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
   console.log(
     `Running vlei issuance and reports generation test for bank: ${bankName}`
   );
-  const bankDirPath = `./data/600-banks-test-data/${bankName}/`;
+  const bankDirPath = `./test/data/${TEST_BANK_DATA}/${bankName}/`;
   const workflowName = "workflow.yaml";
-  const workflow = loadWorkflow(
-    path.join(__dirname, `${bankDirPath}`) + workflowName,
-  );
+  const workflowPath = path.join(process.cwd(), bankDirPath, workflowName);
+  const workflow = loadWorkflow(workflowPath);
   const configFilePath = `${bankName}/config.json`;
   const configJson = await getConfig(configFilePath, true);
   if (workflow && configJson) {

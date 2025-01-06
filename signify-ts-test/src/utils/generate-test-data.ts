@@ -9,7 +9,7 @@ export async function buildTestData(
   fileNamePrefix: string = "",
 ): Promise<string> {
   let testDataDirPrefixed = path.join(
-    __dirname,
+    process.cwd(),
     "../../test",
     "data",
     testDataDir,

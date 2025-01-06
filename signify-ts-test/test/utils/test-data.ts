@@ -5,6 +5,7 @@ import { TestEnvironment } from "./resolve-env";
 import { getOrCreateClients } from "./test-util";
 import { ECR_SCHEMA_SAID } from "../../src/constants";
 import { SignifyClient } from "signify-ts";
+import { TEST_BANK_DATA } from "../../src/utils/test-reports";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -19,10 +20,10 @@ const signedDir = "signed_reports";
 export async function getConfig(configFilePath: string, bankTest = false) {
   let dirPath = "../../src/config/";
   if (bankTest) {
-    dirPath = "../data/600-banks-test-data/";
+    dirPath = `../data/${TEST_BANK_DATA}/`;
   }
   const configJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, dirPath) + configFilePath, "utf-8"),
+    fs.readFileSync(path.join(process.cwd(), dirPath) + configFilePath, "utf-8"),
   );
   return configJson;
 }
@@ -121,7 +122,7 @@ export function getDefaultOrigReports(): string[] {
   );
 
   // Loop over the files in the ./data/orig_reports directory
-  const origReportsDir = path.join(__dirname, "..", "data", origDir);
+  const origReportsDir = path.join(process.cwd(), "./test/data", origDir);
 
   const reports = fs.readdirSync(origReportsDir);
   console.log("Available reports: ", reports);

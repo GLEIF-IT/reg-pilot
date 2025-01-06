@@ -6,7 +6,8 @@ import path from "path";
 const bankReportsUrl =
   "https://raw.githubusercontent.com/aydarng/bank_reports/main";
 
-export const tmpReportsPath = path.join(process.cwd(),"test/data/tmp_reports");
+export const TEST_BANK_DATA = `600-banks-test-data`;
+export const TMP_REPORTS_PATH = path.join(process.cwd(),"test/data/tmp_reports");
 
 export async function downloadFileFromUrl(url: string, destFilePath: string) {
   const filePath = destFilePath;
@@ -14,8 +15,8 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
   const response = await axios.get(url, {
     responseType: "stream",
   });
-  if (!fs.existsSync(tmpReportsPath)) {
-    fs.mkdirSync(tmpReportsPath);
+  if (!fs.existsSync(TMP_REPORTS_PATH)) {
+    fs.mkdirSync(TMP_REPORTS_PATH);
   }
   const writer = fs.createWriteStream(filePath);
 
@@ -35,12 +36,12 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
 }
 
 export async function downloadReports(
-  bankNum: number = Number.parseInt(process.env.BANK_NAME || "Bank_1")
+  bankNum: number, dataDir: string
 ) {
   // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
   const bankName = process.env.BANK_NAME || "Bank_" + bankNum;
   const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
-  const destFilePath = `${tmpReportsPath}/${bankName}.zip`;
+  const destFilePath = `${TMP_REPORTS_PATH}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, destFilePath);
 
   const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
@@ -51,7 +52,7 @@ export async function downloadReports(
 
   unpackZipFile(
     destFilePath,
-    path.join(__dirname, "../data/tmp_reports_unpacked"),
+    dataDir,
     bankName,
     doAllSigned,
     doFailReps
@@ -60,16 +61,17 @@ export async function downloadReports(
 
 export function unpackZipFile(
   zipFilePath: string,
-  destFolder: string,
+  dataDir: string,
   bankName: string,
   includeAllSignedReports = false,
   includeFailReports = false
 ) {
   const zip = new AdmZip(zipFilePath);
+  const destFolder = `${dataDir}/tmp_reports_unpacked`;
   zip.extractAllTo(destFolder, false); // if true overwrites existing files
-  const signedReportsPath = path.join(__dirname, "../data/signed_reports");
-  const failReportsPath = path.join(__dirname, "../data/fail_reports");
-  const confPath = path.join(__dirname, "../data/600-banks-test-data");
+  const signedReportsPath = `${dataDir}/signed_reports`
+  const failReportsPath = `${dataDir}/fail_reports`
+  const confPath = `${dataDir}/${TEST_BANK_DATA}`
 
   if (!includeAllSignedReports) {
     const specificPrefix = "external_manifest";

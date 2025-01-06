@@ -18,7 +18,6 @@ export const FAIL_TYPE = "fail";
 let env: TestEnvironment;
 
 const tempDir = "temp_reports";
-const tempPath = path.join(__dirname, tempDir);
 const secretsJsonPath = "../src/config/";
 const tempExtManifestDir = "temp_manifest";
 
@@ -71,13 +70,13 @@ function deleteReportsDir(repDir: string): void {
 //         .get(user.identifiers[0].name);
 //       const keeper = roleClient.manager!.get(ecrAid);
 //       const failDirPrefixed = path.join(
-//         __dirname,
+//         process.cwd(),
 //         "data",
 //         testData["failDir"],
 //         ecrAid.prefix,
 //       );
 //       const signedDirPrefixed = path.join(
-//         __dirname,
+//         process.cwd(),
 //         "data",
 //         testData["signedDir"],
 //         ecrAid.prefix,
@@ -97,176 +96,182 @@ function deleteReportsDir(repDir: string): void {
 export async function generate_reports(
   ecrAid: string,
   keeper: signify.Keeper,
-  signedDirPrefixed: string,
-  failDirPrefixed: string,
   unsignedReports: string[],
   reportTypes: string[],
   copyFolder?: string
 ) {
-  deleteReportsDir(signedDirPrefixed);
-  deleteReportsDir(failDirPrefixed);
-
-  deleteReportsDir(tempPath);
-  createReportsDir(tempPath);
-  const signedReports = await createSignedReports(
-    unsignedReports,
-    reportTypes,
-    keeper,
-    ecrAid,
-    signedDirPrefixed
+  let zipsProcessed = 0;
+  const signedReports = [] as string[];
+  console.log(
+    `Generating ${reportTypes} signed reports from orig reports: ${unsignedReports}`
   );
-  assert.equal(signedReports.length > 0, true);
 
-  if (reportTypes.includes(FAIL_TYPE)) {
+  for (const unsignedReport of unsignedReports) {
+    const unsignedDir = path.dirname(unsignedReport);
+    const dataDir = path.dirname(unsignedDir);
+
+    const failDirPrefixed = path.join(dataDir, "failDir", ecrAid);
+    const signedDirPrefixed = path.join(dataDir, "signedDir", ecrAid);
+    const tempPath = path.join(dataDir, tempDir);
+    deleteReportsDir(signedDirPrefixed);
+    deleteReportsDir(failDirPrefixed);
+
     deleteReportsDir(tempPath);
     createReportsDir(tempPath);
-    assert.equal(
-      await createFailReports(failDirPrefixed, signedDirPrefixed),
-      true
-    );
-  }
+    const signedReports = await createSignedReports(
+      unsignedReport,
+      reportTypes,
+      keeper,
+      ecrAid,
+      signedDirPrefixed
+    )
 
-  if (copyFolder) {
-    fs.cpSync(
-      signedDirPrefixed,
-      path.join(__dirname, "data", copyFolder, "signed_reports", ecrAid),
-      { recursive: true }
-    );
+    assert.equal(signedReports.length > 0, true);
+
     if (reportTypes.includes(FAIL_TYPE)) {
-      fs.cpSync(
-        failDirPrefixed,
-        path.join(__dirname, "data", copyFolder, "fail_reports", ecrAid),
-        { recursive: true }
+      deleteReportsDir(tempPath);
+      createReportsDir(tempPath);
+      assert.equal(
+        await createFailReports(failDirPrefixed, signedDirPrefixed),
+        true
       );
     }
+
+    if (copyFolder) {
+      fs.cpSync(
+        signedDirPrefixed,
+        path.join(dataDir, copyFolder, "signed_reports", ecrAid),
+        { recursive: true }
+      );
+      if (reportTypes.includes(FAIL_TYPE)) {
+        fs.cpSync(
+          failDirPrefixed,
+          path.join(dataDir, copyFolder, "fail_reports", ecrAid),
+          { recursive: true }
+        );
+      }
+    }
+    zipsProcessed += 1;
   }
+
+  assert(zipsProcessed > 0, "No reports zip files processed");
 }
 
 module.exports = { generate_reports, createSignedReports, SIMPLE_TYPE };
 
 export async function createSignedReports(
-  filePaths: string[],
+  filePath: string,
   reportTypes: string[] = [SIMPLE_TYPE],
   keeper: signify.Keeper,
   ecrAid: string,
   signedDirPrefixed: string
 ): Promise<string[]> {
-  let zipsProcessed = 0;
-  let signedReports = [] as string[];
-  console.log(
-    `Generating ${reportTypes} signed reports from orig reports: ${filePaths}`
-  );
-  for (const filePath of filePaths) {
-    const fileName = path.basename(filePath, path.extname(filePath));
-    if (fs.lstatSync(filePath).isFile()) {
-      const zip = new AdmZip(filePath);
-      const fullTemp = path.join(__dirname, tempDir);
-      fsExtra.emptyDirSync(fullTemp);
-      const fileExtension = path.extname(filePath);
+  const fileName = path.basename(filePath, path.extname(filePath));
+  const signedReports = [] as string[];
+  if (fs.lstatSync(filePath).isFile()) {
+    const zip = new AdmZip(filePath);
 
-      // generate packaged signed report types
-      if (
-        reportTypes.includes(EXTERNAL_MAN_TYPE) ||
-        reportTypes.includes(UNZIPPED_TYPE)
-      ) {
-        zip.extractAllTo(fullTemp, true);
+    const reportDir = path.dirname(filePath);
+    const dataDir = path.dirname(reportDir);
 
-        const foundPath = findReportsDir(fullTemp);
-        if (!foundPath) {
-          throw new Error(`No reports directory found in ${fullTemp}`);
-        }
-        const complexManifest = await buildManifest(
-          foundPath,
-          false,
-          keeper,
-          ecrAid
-        );
-        const complexManJson = JSON.stringify(complexManifest, null, 2);
-        if (reportTypes.includes(EXTERNAL_MAN_TYPE)) {
-          console.log(
-            `Processing external manifest file signature: ${filePath}`
-          );
-          // extract the zip so we can produce digests/signatures for each file
+    const fullTemp = path.join(dataDir, tempDir);
+    fsExtra.emptyDirSync(fullTemp);
+    const fileExtension = path.extname(filePath);
 
-          let shortFileName = `${EXTERNAL_MAN_TYPE}_${fileName}_signed${fileExtension}`;
-          const signedRepPath = path.join(signedDirPrefixed, shortFileName);
-          console.log(
-            `Creating ${EXTERNAL_MAN_TYPE} packaged signed report ` +
-              signedRepPath
-          );
-          await createExternalManifestZip(
-            signedRepPath,
-            filePath,
-            complexManJson
-          );
-          signedReports.push(signedRepPath);
-        }
-        if (reportTypes.includes(UNZIPPED_TYPE)) {
-          const manPath = await writeReportsJson(fullTemp, complexManJson);
-          if (reportTypes.includes(UNFOLDERED_TYPE)) {
-            //generate unfoldered zip, like older xbrl spec
-            const unfolderedShortFileName = `${UNFOLDERED_TYPE}_${UNZIPPED_TYPE}_${fileName}_signed${fileExtension}`;
-            const unfolderedRepPath = path.join(
-              signedDirPrefixed,
-              unfolderedShortFileName
-            );
-            console.log(
-              "Creating unfoldered+unzipped signed report " + unfolderedRepPath
-            );
-            const sufZip = await transferTempToZip(
-              fullTemp,
-              unfolderedRepPath,
-              false
-            );
-            validateReport(new AdmZip(sufZip));
-            signedReports.push(unfolderedRepPath);
-          }
-          // generate unzipped foldered signed report
-          const shortFileName = `${UNZIPPED_TYPE}_${fileName}_signed${fileExtension}`;
-          const repPath = path.join(signedDirPrefixed, shortFileName);
-          console.log("Creating unzipped+foldered signed report " + repPath);
-          const sfZip = await transferTempToZip(fullTemp, repPath);
-          validateReport(new AdmZip(sfZip));
-          signedReports.push(repPath);
-          fsExtra.emptyDirSync(fullTemp);
-        }
+    // generate packaged signed report types
+    if (
+      reportTypes.includes(EXTERNAL_MAN_TYPE) ||
+      reportTypes.includes(UNZIPPED_TYPE)
+    ) {
+      zip.extractAllTo(fullTemp, true);
+
+      const foundPath = findReportsDir(fullTemp);
+      if (!foundPath) {
+        throw new Error(`No reports directory found in ${fullTemp}`);
       }
-      if (reportTypes.includes(SIMPLE_TYPE)) {
-        console.log(`Processing simple file signature: ${filePath}`);
-        // just copy the zip file here for a single digest/signature
-        fsExtra.copySync(
-          filePath,
-          path.join(fullTemp, path.basename(filePath))
-        );
-        const simpleManifest = await buildManifest(
-          fullTemp,
-          true,
-          keeper,
-          ecrAid
-        );
-        const simpleManJson = JSON.stringify(simpleManifest, null, 2);
+      const complexManifest = await buildManifest(
+        foundPath,
+        false,
+        keeper,
+        ecrAid
+      );
+      const complexManJson = JSON.stringify(complexManifest, null, 2);
+      if (reportTypes.includes(EXTERNAL_MAN_TYPE)) {
+        console.log(`Processing external manifest file signature: ${filePath}`);
+        // extract the zip so we can produce digests/signatures for each file
 
-        const manifestPath = path.join(fullTemp, "META-INF", "reports.json");
-        console.log(`Writing manifest with digests/signatures ${manifestPath}`);
-
-        const manifestDir = path.dirname(manifestPath);
-        if (!fs.existsSync(manifestDir)) {
-          fs.mkdirSync(manifestDir, { recursive: true });
-        }
-
-        fs.writeFileSync(manifestPath, simpleManJson, "utf8");
-        const shortFileName = `${fileName}_signed${fileExtension}`;
+        let shortFileName = `${EXTERNAL_MAN_TYPE}_${fileName}_signed${fileExtension}`;
         const signedRepPath = path.join(signedDirPrefixed, shortFileName);
-        console.log(`Creating simple packaged signed report ${signedRepPath}`);
-        const sfZip = await transferTempToZip(fullTemp, signedRepPath);
-        validateReport(new AdmZip(sfZip));
+        console.log(
+          `Creating ${EXTERNAL_MAN_TYPE} packaged signed report ` +
+            signedRepPath
+        );
+        await createExternalManifestZip(
+          signedRepPath,
+          filePath,
+          complexManJson
+        );
         signedReports.push(signedRepPath);
       }
+      if (reportTypes.includes(UNZIPPED_TYPE)) {
+        const manPath = await writeReportsJson(fullTemp, complexManJson);
+        if (reportTypes.includes(UNFOLDERED_TYPE)) {
+          //generate unfoldered zip, like older xbrl spec
+          const unfolderedShortFileName = `${UNFOLDERED_TYPE}_${UNZIPPED_TYPE}_${fileName}_signed${fileExtension}`;
+          const unfolderedRepPath = path.join(
+            signedDirPrefixed,
+            unfolderedShortFileName
+          );
+          console.log(
+            "Creating unfoldered+unzipped signed report " + unfolderedRepPath
+          );
+          const sufZip = await transferTempToZip(
+            fullTemp,
+            unfolderedRepPath,
+            false
+          );
+          validateReport(new AdmZip(sufZip));
+          signedReports.push(unfolderedRepPath);
+        }
+        // generate unzipped foldered signed report
+        const shortFileName = `${UNZIPPED_TYPE}_${fileName}_signed${fileExtension}`;
+        const repPath = path.join(signedDirPrefixed, shortFileName);
+        console.log("Creating unzipped+foldered signed report " + repPath);
+        const sfZip = await transferTempToZip(fullTemp, repPath);
+        validateReport(new AdmZip(sfZip));
+        signedReports.push(repPath);
+        fsExtra.emptyDirSync(fullTemp);
+      }
+    }
+    if (reportTypes.includes(SIMPLE_TYPE)) {
+      console.log(`Processing simple file signature: ${filePath}`);
+      // just copy the zip file here for a single digest/signature
+      fsExtra.copySync(filePath, path.join(fullTemp, path.basename(filePath)));
+      const simpleManifest = await buildManifest(
+        fullTemp,
+        true,
+        keeper,
+        ecrAid
+      );
+      const simpleManJson = JSON.stringify(simpleManifest, null, 2);
 
-      zipsProcessed += 1;
+      const manifestPath = path.join(fullTemp, "META-INF", "reports.json");
+      console.log(`Writing manifest with digests/signatures ${manifestPath}`);
+
+      const manifestDir = path.dirname(manifestPath);
+      if (!fs.existsSync(manifestDir)) {
+        fs.mkdirSync(manifestDir, { recursive: true });
+      }
+
+      fs.writeFileSync(manifestPath, simpleManJson, "utf8");
+      const shortFileName = `${fileName}_signed${fileExtension}`;
+      const signedRepPath = path.join(signedDirPrefixed, shortFileName);
+      console.log(`Creating simple packaged signed report ${signedRepPath}`);
+      const sfZip = await transferTempToZip(fullTemp, signedRepPath);
+      validateReport(new AdmZip(sfZip));
+      signedReports.push(signedRepPath);
     }
   }
-  assert(zipsProcessed > 0, "No reports zip files processed");
   return signedReports;
 }
 
@@ -327,7 +332,7 @@ async function createFailReports(
     if (fs.lstatSync(filePath).isFile()) {
       console.log(`Processing file: ${filePath}`);
       const zip = new AdmZip(filePath);
-      let fullTemp = path.join(__dirname, tempDir);
+      let fullTemp = path.join(process.cwd(), tempDir);
       fsExtra.emptyDirSync(fullTemp);
       for (const failFunc of failFuncs) {
         validateReport(zip);
@@ -645,7 +650,7 @@ async function createExternalManifestZip(
   manJson: string
 ): Promise<void> {
   // Create a temporary directory
-  const tempDir = path.join(__dirname, "tempZipDir");
+  const tempDir = path.join(process.cwd(), "tempZipDir");
   fsExtra.emptyDirSync(tempDir);
 
   // Extract the original zip file to the temporary directory

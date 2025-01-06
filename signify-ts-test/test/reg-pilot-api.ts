@@ -19,7 +19,6 @@ import { convertDockerHost, sleep } from "./utils/test-util";
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
-const secretsJsonPath = "../src/config/";
 
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
@@ -51,7 +50,6 @@ let apiAdapter: ApiAdapter;
 // from the report test
 export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
   env = resolveEnvironment();
-  //   // env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
@@ -86,13 +84,13 @@ module.exports = {
 
 async function single_user_test(user: ApiUser, fast = false) {
   const signedDirPrefixed = path.join(
-    __dirname,
-    "data",
+    process.cwd(),
+    "test/data",
     signedDir,
     user.ecrAid.prefix
   );
   const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
+  failDirPrefixed = path.join(process.cwd(), "data", failDir, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -323,13 +321,7 @@ export async function single_user_eba_test(
   overrideEnv: TestEnvironment
 ) {
   env = overrideEnv
-  const signedDirPrefixed = path.join(
-    __dirname,
-    "data",
-    signedDir,
-    user.ecrAid.prefix
-  );
-  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 
   // login with the ecr credential
   let ecrCred;
@@ -363,7 +355,6 @@ export async function single_user_eba_test(
 
         // sanity check that the report verifies
         const keeper = user.roleClient.manager!.get(user.ecrAid);
-        const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
 
         // upload signed report
         const filePath =
@@ -384,10 +375,6 @@ export async function single_user_eba_test(
         assert.equal(signedUpResp.status, 200);
         const resBod = await signedUpResp.json();
         console.log("EBA upload response body", resBod["message"]);
-        // assert.equal(
-        //   resBod["message"],
-        //   `All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`,
-        // );
       }
     }
   }
@@ -398,9 +385,9 @@ async function getEbaSignedReport(
   aid: string,
   keeper: Keeper
 ): Promise<string> {
-  const signedDirPrefixed = path.join(__dirname, "data", signedDir, aid);
+  const signedDirPrefixed = path.join(process.cwd(), "data", signedDir, aid);
   const signedZips = await createSignedReports(
-    [filePath],
+    filePath,
     [SIMPLE_TYPE],
     keeper,
     aid,
@@ -430,7 +417,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   for (const user of apiUsers) {
     const signedDirPrefixed = path.join(
-      __dirname,
+      process.cwd(),
       "data",
       signedDir,
       user.ecrAid.prefix
@@ -587,7 +574,7 @@ async function revoked_cred_upload_test(
   const ecr_cred_new_state = credentials.get("ecr_cred_new_state")!;
 
   const signedDirPrefixed = path.join(
-    __dirname,
+    process.cwd(),
     "data",
     signedDir,
     ecr_cred_prev_state.ecrAid.prefix
@@ -891,7 +878,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
-  lheads.set("uiversion", "1.3.10-474-FINAL-PILLAR3-trunk");
+  lheads.set("uiversion", "1.3.10-475-FINAL-PILLAR3-trunk");
   lheads.set("Accept", "application/json, text/plain, */*");
   let lbody = {
     credential: {
