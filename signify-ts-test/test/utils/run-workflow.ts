@@ -121,6 +121,12 @@ export async function runWorkflow(workflow: any, configJson: any) {
           creds,
           configJson,
         );
+      } else if (step.test_case == "admin_test") {
+        const apiUsers = await getApiTestData(configJson, env, step.aids);
+        const adminUser = await getApiTestData(configJson, env, [
+          step.admin_aid,
+        ]);
+        await run_api_test(apiUsers, configJson, adminUser[0]);
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
         await run_api_test(apiUsers, configJson);

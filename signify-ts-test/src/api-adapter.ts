@@ -35,6 +35,19 @@ export class ApiAdapter {
     return sresp;
   }
 
+  public async getReportsStatusAdmin(
+    aidName: string,
+    aidPrefix: string,
+    client: SignifyClient,
+  ): Promise<Response> {
+    const heads = new Headers();
+    const sreq = { headers: heads, method: "GET", body: null };
+    const surl = `${this.apiBaseUrl}/admin/upload_statuses/${aidPrefix}`;
+    let shreq = await client.createSignedRequest(aidName, surl, sreq);
+    const sresp = await fetch(surl, shreq);
+    return sresp;
+  }
+
   public async getReportStatusByDig(
     aidName: string,
     aidPrefix: string,
