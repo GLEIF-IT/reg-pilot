@@ -17,14 +17,9 @@ const origDir = "orig_reports";
 const failDir = "fail_reports";
 const signedDir = "signed_reports";
 
-export async function getConfig(configFilePath: string, bankTest = false) {
-  let dirPath = "../../src/config/";
-  if (bankTest) {
-    dirPath = `../data/${TEST_BANK_DATA}/`;
-  }
-  const configJson = JSON.parse(
-    fs.readFileSync(path.join(process.cwd(), dirPath) + configFilePath, "utf-8"),
-  );
+export function getConfig(configFilePath: string, bankTest = false) {
+  const configFile = fs.readFileSync(configFilePath, "utf-8")
+  const configJson = JSON.parse(configFile);
   return configJson;
 }
 

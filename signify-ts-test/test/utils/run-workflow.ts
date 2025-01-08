@@ -157,6 +157,7 @@ export async function launchWorkflow() {
     path.join(process.cwd(), `${workflowsDir}${workflowFile}`)
   );
   const configFilePath = env.configuration;
+  
   const configJson = await getConfig(configFilePath, false);
   if (workflow && configJson) {
     await runWorkflow(workflow, configJson, env);
