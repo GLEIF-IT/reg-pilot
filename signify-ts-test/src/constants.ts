@@ -1,5 +1,5 @@
 import { Saider } from "signify-ts";
-import { resolveEnvironment } from "../test/utils/resolve-env";
+import { resolveEnvironment } from "./utils/resolve-env";
 
 export const { vleiServerUrl, witnessIds } = resolveEnvironment();
 

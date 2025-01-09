@@ -1,4 +1,4 @@
-import { replaceUrlHost, convertDockerHost } from "./test-util";
+import { convertDockerHost, replaceUrlHost } from "../../src/utils/resolve-env";
 
 describe("replaceUrlHost", () => {
   const originalEnv = process.env;
@@ -67,9 +67,9 @@ describe("convertDockerHost", () => {
   });
 
   test("should replace URL when USE_DOCKER_INTERNAL is true", () => {
-      process.env.USE_DOCKER_INTERNAL = "true";
-      const url = "http://127.0.0.1:3000";
-      const newUrl = convertDockerHost(url);
-      expect(newUrl).toBe("http://host.docker.internal:3000");
+    process.env.USE_DOCKER_INTERNAL = "true";
+    const url = "http://127.0.0.1:3000";
+    const newUrl = convertDockerHost(url);
+    expect(newUrl).toBe("http://host.docker.internal:3000");
   });
 });

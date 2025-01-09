@@ -1,16 +1,8 @@
 import path from "path";
-const fs = require("fs");
-const yaml = require("js-yaml");
+import { TestPaths } from "../src/utils/resolve-env";
+import fs from "fs";
 
-const dataDir = process.env.DATA_DIR || path.join(process.cwd(), "../data");
-
-const tmpReportsPath = `${dataDir}/tmp_reports`;
-const tmpReportsUnpackedPath = path.join(
-  process.cwd(),
-  `${dataDir}/tmp_reports_unpacked`
-);
-const signedReportsPath = `${dataDir}/signed_reports`;
-const faileportsPath = `${dataDir}/fail_reports`;
+const testPaths = new TestPaths();
 
 const removeFolderRecursive = (folderPath: string) => {
   if (fs.existsSync(folderPath)) {
@@ -21,19 +13,15 @@ const removeFolderRecursive = (folderPath: string) => {
   }
 };
 
-export function cleanupReports(
-  bankName: string = process.env.BANK_NAME || "Bank_1"
-) {
-  const currentTmpSignedReportsUnpackedPath = `${tmpReportsUnpackedPath}/${bankName}/reports/signed_reports`;
-  const currentTmpFailReportsUnpackedPath = `${tmpReportsUnpackedPath}/${bankName}/reports/fail_reports`;
-  const signedItems = fs.readdirSync(currentTmpSignedReportsUnpackedPath);
+export function cleanupReports() {
+  const signedItems = fs.readdirSync(testPaths.testTmpSignedReports);
   signedItems.forEach((item: any) => {
-    removeFolderRecursive(`${signedReportsPath}/${item}`);
+    removeFolderRecursive(path.join(testPaths.testTmpSignedReports, item));
   });
-  const failItems = fs.readdirSync(currentTmpFailReportsUnpackedPath);
+  const failItems = fs.readdirSync(testPaths.testTmpFailReports);
   failItems.forEach((item: any) => {
-    removeFolderRecursive(`${faileportsPath}/${item}`);
+    removeFolderRecursive(path.join(testPaths.testTmpFailReports, item));
   });
-  removeFolderRecursive(`${tmpReportsPath}`);
-  removeFolderRecursive(`${tmpReportsUnpackedPath}`);
+  removeFolderRecursive(testPaths.tmpReportsDir);
+  removeFolderRecursive(testPaths.tmpReportUnpackDir);
 }

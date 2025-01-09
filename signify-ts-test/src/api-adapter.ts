@@ -1,8 +1,8 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
-import { convertDockerHost, getOrCreateClients, replaceUrlHost } from "../test/utils/test-util";
+import { getOrCreateClients } from "../test/utils/test-util";
 import path from "path";
-import { TestEnvironment } from "../test/utils/resolve-env";
+import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
 
 export class ApiAdapter {
   apiBaseUrl: string;
@@ -111,10 +111,10 @@ export class ApiAdapter {
     token: string,
     envOverride?: TestEnvironment
   ): Promise<Response> {
-    if(envOverride) {
+    if (envOverride) {
       this.apiBaseUrl = envOverride.apiBaseUrl;
       this.filerBaseUrl = envOverride.filerBaseUrl;
-    } 
+    }
     let formData = new FormData();
     let ctype = "application/zip";
     formData.append("file", zipBuffer, {
@@ -193,8 +193,8 @@ export class ApiAdapter {
     if (url.hostname === "keria") {
       oobiUrl = convertDockerHost(oobiUrl, "keria");
     }
-    if (process.env.KERIA_AGENT_PORT) {
-      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_AGENT_PORT);
+    if (process.env.KERIA_HTTP_PORT) {
+      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_HTTP_PORT);
       console.log(`Replaced OobiUrl port ${url.port}: ${oobiUrl}`);
     }
     console.log(`Fetcching OobiUrl: ${oobiUrl}`);

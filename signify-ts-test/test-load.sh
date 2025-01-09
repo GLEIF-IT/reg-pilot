@@ -167,8 +167,8 @@ load_test_banks() {
     FAILURE_COUNT=0
 
     for ((i = 1; i <= BANK_COUNT; i++)); do
-        BANK_NAME="Bank_$i"
-        export BANK_NAME
+        TEST_USER_NAME="Bank_$i"
+        export TEST_USER_NAME
         BANK_KERIA_IMAGE="$KERIA_IMAGE_REPO:Test$BANK_NAME"
         export BANK_KERIA_IMAGE
 

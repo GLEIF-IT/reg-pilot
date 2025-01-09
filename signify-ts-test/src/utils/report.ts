@@ -1,13 +1,13 @@
 import { strict as assert } from "assert";
-import * as fs from "fs";
+import fs from "fs";
 import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
-import { generateFileDigest } from "./utils/generate-digest";
+import { generateFileDigest } from "../../test/utils/generate-digest";
 import signify, { Signer } from "signify-ts";
-import { TestEnvironment } from "./utils/resolve-env";
+import { TestEnvironment } from "./resolve-env";
 
-import { unknownPrefix } from "../src/constants";
+import { unknownPrefix } from "../constants";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -124,7 +124,7 @@ export async function generate_reports(
       keeper,
       ecrAid,
       signedDirPrefixed
-    )
+    );
 
     assert.equal(signedReports.length > 0, true);
 

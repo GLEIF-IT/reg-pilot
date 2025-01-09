@@ -70,11 +70,9 @@ parse_args() {
                 ;;
             --eba)
                 EBA="true"
-                shift
                 ;;
             --mac)
                 USE_DOCKER_INTERNAL="true"
-                shift
                 ;;
             --first-bank)
                 FIRST_BANK="$2"
@@ -293,26 +291,26 @@ stop_services_local() {
 }
 
 download_reports() {
-        export BANK_NAME="Bank_$i"
+        export TEST_USER_NAME="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Downloading reports for $BANK_NAME..."
+        echo "Downloading reports for $TEST_USER_NAME..."
         echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-download
-        check_status "Downloading report for $BANK_NAME"
+        check_status "Downloading report for $TEST_USER_NAME"
 }
 
 cleanup_reports() {
-        export BANK_NAME="Bank_$i"
+        export TEST_USER_NAME="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Cleaning up report files for $BANK_NAME..."
+        echo "Cleaning up report files for $TEST_USER_NAME..."
         echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-cleanup
-        check_status "Cleaning up report for $BANK_NAME"
+        check_status "Cleaning up report for $TEST_USER_NAME"
 }
 
 generate_dockerfiles() {
     echo "------------------------------------------------------------"
-    echo "Generating Dockerfiles for running API test for all banks..."
+    echo "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA, is USE_DOCKER_INTERNAL?: $USE_DOCKER_INTERNAL"
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
     export FIRST_BANK=$FIRST_BANK
@@ -320,6 +318,7 @@ generate_dockerfiles() {
     export REG_PILOT_API=$REG_PILOT_API
     export REG_PILOT_FILER=$REG_PILOT_FILER
     export USE_DOCKER_INTERNAL=$USE_DOCKER_INTERNAL
+    export TEST_DOCKER="false"
     npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit --detectOpenHandles
     check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA, is USE_DOCKER_INTERNAL?: $USE_DOCKER_INTERNAL"
 }
@@ -336,7 +335,7 @@ build_api_docker_image() {
     fi
 
     echo "---------------------------------------------------"
-    echo "Building Docker image for $BANK_NAME..."
+    echo "Building Docker image for $BANK_NAME: $BANK_DOCKERFILE"
     echo "---------------------------------------------------"
     LOG_FILE="./bank_test_logs/docker_build_logs/$BANK_NAME-build.log"
     mkdir -p $(dirname "$LOG_FILE") 

@@ -1,9 +1,13 @@
 import { VleiIssuance } from "../../src/vlei-issuance";
 import path from "path";
 import { getOrCreateClients } from "./test-util";
-import { resolveEnvironment, TestEnvironment } from "./resolve-env";
+import {
+  resolveEnvironment,
+  TestEnvironment,
+  TestPaths,
+} from "../../src/utils/resolve-env";
 import { buildAidData } from "../../src/utils/handle-json-config";
-import { generate_reports } from "../report";
+import { generate_reports } from "../../src/utils/report";
 import {
   ApiUser,
   getApiTestData,
@@ -17,8 +21,10 @@ import {
 } from "../reg-pilot-api";
 import { run_vlei_verification_test } from "../vlei-verification";
 
-const fs = require("fs");
-const yaml = require("js-yaml");
+import fs from "fs";
+import yaml from "js-yaml";
+
+const testPaths = new TestPaths();
 
 // Function to load and parse YAML file
 export function loadWorkflow(filePath: string) {
@@ -31,7 +37,11 @@ export function loadWorkflow(filePath: string) {
   // }
 }
 
-export async function runWorkflow(workflow: any, configJson: any, env: TestEnvironment) {
+export async function runWorkflow(
+  workflow: any,
+  configJson: any,
+  env: TestEnvironment
+) {
   let executedSteps = new Set();
   let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
   let vi: VleiIssuance;
@@ -40,7 +50,11 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
     await executeStep(k, v, env);
   }
 
-  async function executeStep(stepName: string, step: any, env: TestEnvironment) {
+  async function executeStep(
+    stepName: string,
+    step: any,
+    env: TestEnvironment
+  ) {
     if (step.type == "issue_credential") {
       if (!vi) {
         vi = new VleiIssuance(configJson);
@@ -56,7 +70,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
         step.issuee_aid,
         step.credential_source,
         Boolean(step.generate_test_data),
-        step.test_name,
+        step.test_name
       );
       if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "revoke_credential") {
@@ -66,7 +80,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
         step.issuer_aid,
         step.issuee_aid,
         Boolean(step.generate_test_data),
-        step.test_name,
+        step.test_name
       );
       if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "generate_report") {
@@ -76,7 +90,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
       const clients = await getOrCreateClients(
         1,
         [aidData[step.aid].agent.secret],
-        true,
+        true
       );
       const roleClient = clients[0];
       const ecrAid = await roleClient.identifiers().get(step.aid);
@@ -86,7 +100,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
         keeper,
         testData["unsignedReports"],
         testData["reportTypes"],
-        step.copy_folder,
+        step.copy_folder
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
@@ -96,7 +110,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
         const clients = await getOrCreateClients(
           1,
           [aidData[step.requestor_aid].agent.secret],
-          true,
+          true
         );
         const roleClient = clients[clients.length - 1];
         const requestorAid = await roleClient
@@ -108,7 +122,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
           step.requestor_aid,
           requestorAidPrefix,
           creds,
-          configJson,
+          configJson
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
@@ -122,7 +136,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
         const clients = await getOrCreateClients(
           1,
           [aidData[step.requestor_aid].agent.secret],
-          true,
+          true
         );
         const roleClient = clients[clients.length - 1];
         const requestorAid = await roleClient
@@ -134,7 +148,7 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
           step.requestor_aid,
           requestorAidPrefix,
           creds,
-          configJson,
+          configJson
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
@@ -150,14 +164,13 @@ export async function runWorkflow(workflow: any, configJson: any, env: TestEnvir
 }
 
 export async function launchWorkflow() {
-  const workflowsDir = "../src/workflows/";
   const env = resolveEnvironment();
   const workflowFile = env.workflow;
   const workflow = loadWorkflow(
-    path.join(process.cwd(), `${workflowsDir}${workflowFile}`)
+    path.join(process.cwd(), testPaths.workflowsDir, workflowFile)
   );
   const configFilePath = env.configuration;
-  
+
   const configJson = await getConfig(configFilePath, false);
   if (workflow && configJson) {
     await runWorkflow(workflow, configJson, env);

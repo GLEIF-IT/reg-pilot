@@ -1,19 +1,10 @@
-import { TEST_BANK_DATA } from "../src/utils/test-reports";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import { TestPaths } from "./resolve-env";
 
-const fs = require("fs");
-const yaml = require("js-yaml");
-const crypto = require("crypto");
+import fs from "fs";
+import yaml from "js-yaml";
+import crypto from "crypto";
 
-let env: TestEnvironment;
-
-afterAll((done) => {
-  done();
-});
-beforeAll((done) => {
-  done();
-  env = resolveEnvironment();
-});
+const testPaths = new TestPaths();
 
 function generateSecret() {
   return crypto
@@ -345,41 +336,40 @@ function generateBankConfig(bankId: number) {
           type: "generate_report",
           aid: "ecr-aid-1",
           description: "Generating reports for ecr-aid-1 user",
-          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
+          copy_folder: `${testPaths.testUserDir}/reports`,
         },
         gen_report_ecr2: {
           id: "gen_report_ecr2",
           type: "generate_report",
           aid: "ecr-aid-2",
           description: "Generating reports for ecr-aid-2 user",
-          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
+          copy_folder: `${testPaths.testUserDir}/reports`,
         },
         gen_report_ecr3: {
           id: "gen_report_ecr3",
           type: "generate_report",
           aid: "ecr-aid-3",
           description: "Generating reports for ecr-aid-3 user",
-          copy_folder: `${TEST_BANK_DATA}/Bank_${bankId}/reports`,
+          copy_folder: `${testPaths.testUserDir}/reports`,
         },
       },
     },
   };
 
-  if (!fs.existsSync(`./test/data/${TEST_BANK_DATA}`)) {
-    fs.mkdirSync(`./test/data/${TEST_BANK_DATA}`);
+  if (!fs.existsSync(testPaths.testUserDir)) {
+    fs.mkdirSync(testPaths.testUserDir);
   }
 
   // Write YAML and JSON files
-  const bankDir = `./test/data/${TEST_BANK_DATA}/Bank_${bankId}`;
-  if (!fs.existsSync(bankDir)) {
-    fs.mkdirSync(bankDir);
+  if (!fs.existsSync(testPaths.testUserDir)) {
+    fs.mkdirSync(testPaths.testUserDir);
     let yamlStr = yaml.dump(workflow);
     yamlStr = yamlStr.replace(/: (?!\d|true|false|null)(\S.*)/g, ': "$1"');
-    fs.writeFileSync(`${bankDir}/workflow.yaml`, yamlStr, "utf8");
+    fs.writeFileSync(`${testPaths.testUserDir}/workflow.yaml`, yamlStr, "utf8");
     fs.writeFileSync(
-      `${bankDir}/config.json`,
+      `${testPaths.testUserDir}/config.json`,
       JSON.stringify(config, null, 2),
-      "utf8",
+      "utf8"
     );
     const metaInf = {
       secrets: {
@@ -388,18 +378,9 @@ function generateBankConfig(bankId: number) {
       },
     };
     fs.writeFileSync(
-      `${bankDir}/metaInf.json`,
+      `${testPaths.testUserDir}/metaInf.json`,
       JSON.stringify(metaInf, null, 2),
-      "utf8",
+      "utf8"
     );
   }
 }
-
-test("generate-bank-workflows", async function run() {
-  // Generate configs and workflows for each bank
-  const amount = 601;
-  for (let i = 1; i < amount + 1; i++) {
-    generateBankConfig(i);
-  }
-  console.log(`${amount} configurations and workflows were generated`);
-}, 3600000);

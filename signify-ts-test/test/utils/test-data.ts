@@ -1,11 +1,12 @@
 import path from "path";
 import fs from "fs";
 import { buildAidData } from "../../src/utils/handle-json-config";
-import { TestEnvironment } from "./resolve-env";
+import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
 import { getOrCreateClients } from "./test-util";
 import { ECR_SCHEMA_SAID } from "../../src/constants";
 import { SignifyClient } from "signify-ts";
-import { TEST_BANK_DATA } from "../../src/utils/test-reports";
+
+const testPaths = new TestPaths();
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -13,12 +14,8 @@ export const UNFOLDERED_TYPE = "unfoldered";
 export const UNZIPPED_TYPE = "unzipped";
 export const FAIL_TYPE = "fail";
 
-const origDir = "orig_reports";
-const failDir = "fail_reports";
-const signedDir = "signed_reports";
-
 export function getConfig(configFilePath: string, bankTest = false) {
-  const configFile = fs.readFileSync(configFilePath, "utf-8")
+  const configFile = fs.readFileSync(configFilePath, "utf-8");
   const configJson = JSON.parse(configFile);
   return configJson;
 }
@@ -26,7 +23,7 @@ export function getConfig(configFilePath: string, bankTest = false) {
 export async function getApiTestData(
   configJson: any,
   env: TestEnvironment,
-  aids: string[],
+  aids: string[]
 ) {
   let apiUsers: Array<ApiUser> = [];
   const aidData = await buildAidData(configJson);
@@ -34,7 +31,7 @@ export async function getApiTestData(
     const clients = await getOrCreateClients(
       1,
       [aidData[aid].agent.secret],
-      true,
+      true
     );
     const roleClient = clients[clients.length - 1];
     let apiUser: ApiUser = {
@@ -88,10 +85,10 @@ export function getReportGenTestData() {
       ? [getDefaultOrigReports()[0]]
       : getDefaultOrigReports();
 
-  console.log("Unsigned reports: ", unsignedReports);
+  console.log("Original unsigned reports: ", testPaths.testOrigReportsDir);
   return {
-    failDir: failDir,
-    signedDir: signedDir,
+    failDir: testPaths.testFailReports,
+    signedDir: testPaths.testSignedReports,
     reportTypes: reportTypes,
     unsignedReports: unsignedReports,
   };
@@ -99,7 +96,7 @@ export function getReportGenTestData() {
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string,
+  credId: string
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -113,19 +110,16 @@ export async function getGrantedCredential(
 
 export function getDefaultOrigReports(): string[] {
   console.log(
-    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${origDir}`,
+    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${testPaths.testOrigReportsDir}`
   );
 
-  // Loop over the files in the ./data/orig_reports directory
-  const origReportsDir = path.join(process.cwd(), "./test/data", origDir);
-
-  const reports = fs.readdirSync(origReportsDir);
+  const reports = fs.readdirSync(testPaths.testOrigReportsDir);
   console.log("Available reports: ", reports);
 
   const unsignedReps = [] as string[];
   for (const reportFile of reports) {
     // const file = reports[0];
-    const filePath = path.join(origReportsDir, reportFile);
+    const filePath = path.join(testPaths.testOrigReportsDir, reportFile);
     unsignedReps.push(filePath);
   }
 

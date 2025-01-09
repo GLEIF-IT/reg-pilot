@@ -1,5 +1,4 @@
-import { SignifyClient } from "signify-ts";
-import { witnessIds } from "../../src/constants";
+import path from "path";
 
 export type TestEnvironmentPreset =
   | "local"
@@ -32,7 +31,7 @@ const WIL = "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM";
 const WES = "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX";
 
 export function resolveEnvironment(
-  input?: TestEnvironmentPreset,
+  input?: TestEnvironmentPreset
 ): TestEnvironment {
   const preset = input ?? process.env.TEST_ENVIRONMENT ?? "docker";
   let env;
@@ -169,13 +168,13 @@ export function resolveEnvironment(
         witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
-        apiBaseUrl: process.env.REG_PILOT_API || "Set bank reg-pilot-api",
+        apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
         filerBaseUrl: process.env.REG_PILOT_FILER || "",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
         workflow: process.env.WORKFLOW || "",
-        configuration: process.env.CONFIGURATION || "",
+        configuration: process.env.CONFIGURATION || "config.json",
       };
       break;
     case "eba_bank_test":
@@ -191,12 +190,11 @@ export function resolveEnvironment(
           process.env.REG_PILOT_API ||
           "https://errp.test.eba.europa.eu/api-security",
         filerBaseUrl:
-          process.env.REG_PILOT_FILER ||
-          "https://errp.test.eba.europa.eu/api",
+          process.env.REG_PILOT_FILER || "https://errp.test.eba.europa.eu/api",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "No test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
         workflow: process.env.WORKFLOW || "",
-        configuration: process.env.CONFIGURATION || "",
+        configuration: process.env.CONFIGURATION || "config.json",
       };
       break;
     case "nordlei_dev":
@@ -317,4 +315,121 @@ export function resolveEnvironment(
   }
   console.log("Test environment preset: ", JSON.stringify(env));
   return env;
+}
+
+export class TestPaths {
+  testDir: string;
+  testDataDir: string;
+  tmpReportsDir: string;
+  testUserConfigFile: string;
+  testUsersDir: string;
+  testUserDir: string;
+  testUserName: string;
+  testFailReports: string;
+  testSignedReports: string;
+  tmpReportUnpackDir: string;
+  testTmpFailReports: string;
+  testTmpSignedReports: string;
+  testOrigReportsDir: string;
+  workflowsDir: string;
+  // origReportsDir: string;
+  // configDir: string;
+
+  constructor() {
+    this.testDir = process.env.TEST_DIR
+      ? process.env.TEST_DIR
+      : path.join(process.cwd(), `test`);
+    this.testDataDir = process.env.TEST_DATA_DIR
+      ? process.env.TEST_DATA_DIR
+      : path.join(this.testDir, `data`);
+    this.testOrigReportsDir = process.env.TEST_ORIG_REPORTS_DIR
+      ? process.env.TEST_ORIG_REPORTS_DIR
+      : path.join(this.testDataDir, `orig_reports`);
+    this.tmpReportsDir = process.env.TEST_TEMP_REPORTS_DIR
+      ? process.env.TEST_TEMP_REPORTS_DIR
+      : path.join(this.testDataDir, `tmp_reports`);
+    this.testFailReports = process.env.TEST_FAIL_REPORTS
+      ? process.env.TEST_FAIL_REPORTS
+      : path.join(this.testDataDir, `fail_reports`);
+    this.testSignedReports = process.env.TEST_SIGNED_REPORTS
+      ? process.env.TEST_SIGNED_REPORTS
+      : path.join(this.testDataDir, `signed_reports`);
+    this.testUsersDir = process.env.TEST_USERS_DIR
+      ? process.env.TEST_USERS_DIR
+      : path.join(this.testDataDir, `600-banks-test-data`);
+    this.tmpReportUnpackDir = process.env.TEST_TEMP_REPORTS_UNPACK_DIR
+      ? process.env.TEST_TEMP_REPORTS_UNPACK_DIR
+      : path.join(this.testUsersDir, `tmp_reports_unpacked`);
+    this.testUserName = process.env.TEST_USER_NAME
+      ? process.env.TEST_USER_NAME
+      : "Bank_1";
+    this.testUserDir = process.env.TEST_USER_DIR
+      ? process.env.TEST_USER_DIR
+      : path.join(this.testUsersDir, this.testUserName);
+    this.testUserConfigFile = process.env.TEST_USER_CONFIG_FILE
+      ? process.env.TEST_USER_CONFIG_FILE
+      : path.join(this.testUserDir, `config.json`);
+    this.testTmpFailReports = process.env.TEST_TEMP_FAIL_REPORTS
+      ? process.env.TEST_TEMP_FAIL_REPORTS
+      : path.join(
+          this.tmpReportUnpackDir,
+          this.testUserName,
+          `/reports/signed_reports`
+        );
+    this.testTmpSignedReports = process.env.TEST_TEMP_SIGNED_REPORTS
+      ? process.env.TEST_TEMP_SIGNED_REPORTS
+      : path.join(
+          this.tmpReportUnpackDir,
+          this.testUserName,
+          `/reports/signed_reports`
+        );
+    this.workflowsDir = process.env.WORKFLOWS_DIR
+      ? process.env.WORKFLOWS_DIR
+      : path.join(process.cwd(), "src/workflows");
+  }
+}
+
+/**
+ * Replace the URL based on the environment variable and optional hosts
+ */
+export function convertDockerHost(
+  url: string,
+  moreHostsToReplace?: string,
+  newHost?: string
+): string {
+  if (newHost) {
+    return replaceUrlHost(url, newHost, moreHostsToReplace);
+  }
+  if (process.env.USE_DOCKER_INTERNAL === "true") {
+    url = replaceUrlHost(url, "host.docker.internal", moreHostsToReplace);
+    return url;
+  }
+  if (process.env.DOCKER_HOST) {
+    url = replaceUrlHost(url, process.env.DOCKER_HOST, moreHostsToReplace);
+    return url;
+  }
+  return url;
+}
+
+/**
+ * Replace the URL based on the environment variable and optional hosts
+ */
+export function replaceUrlHost(
+  url: string,
+  newHost: string = "host.docker.internal",
+  moreHostsToReplace: string = ""
+): string {
+  const defaultHosts = ["127.0.0.1", "localhost"];
+  const hostsToReplace = moreHostsToReplace
+    ? defaultHosts.concat(moreHostsToReplace.split(","))
+    : defaultHosts;
+
+  for (const host of hostsToReplace) {
+    if (url.includes(host)) {
+      console.log(`Replacing URL host: ${host} -> ${newHost}`);
+      return url.replace(host, newHost);
+    }
+  }
+
+  throw new Error(`Error appling replacement for URL: ${url}`);
 }

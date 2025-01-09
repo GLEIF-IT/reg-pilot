@@ -5,16 +5,10 @@ import path from "path";
 import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import {
-  ApiUser,
-  getApiTestData,
-  getConfig,
-  isEbaDataSubmitter,
-} from "./utils/test-data";
-import { buildUserData } from "../src/utils/handle-json-config";
-import { createSignedReports, SIMPLE_TYPE } from "./report";
-import { convertDockerHost, sleep } from "./utils/test-util";
+import { resolveEnvironment, TestEnvironment } from "../src/utils/resolve-env";
+import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
+import { createSignedReports, SIMPLE_TYPE } from "../src/utils/report";
+import { sleep } from "./utils/test-util";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -53,7 +47,8 @@ export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
-  else if (apiUsers.length == 1) await single_user_test(apiUsers[0], process.env.SPEED === "fast");
+  else if (apiUsers.length == 1)
+    await single_user_test(apiUsers[0], process.env.SPEED === "fast");
   else
     console.log(
       `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
@@ -90,7 +85,12 @@ async function single_user_test(user: ApiUser, fast = false) {
     user.ecrAid.prefix
   );
   const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(process.cwd(), "data", failDir, user.ecrAid.prefix);
+  failDirPrefixed = path.join(
+    process.cwd(),
+    "data",
+    failDir,
+    user.ecrAid.prefix
+  );
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -320,7 +320,7 @@ export async function single_user_eba_test(
   user: ApiUser,
   overrideEnv: TestEnvironment
 ) {
-  env = overrideEnv
+  env = overrideEnv;
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 
   // login with the ecr credential
@@ -804,7 +804,10 @@ export async function checkNonPrefixedDigestUpload(
   return true;
 }
 
-export function getSignedReports(signedDirPrefixed: string, files?: string[]): string[] {
+export function getSignedReports(
+  signedDirPrefixed: string,
+  files?: string[]
+): string[] {
   const fileNames = files || fs.readdirSync(signedDirPrefixed);
   return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
 }

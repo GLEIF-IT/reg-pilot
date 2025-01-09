@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import { resolveEnvironment, TestEnvironment } from "../src/utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";

@@ -1,4 +1,3 @@
-import * as os from "os";
 import signify, {
   CreateIdentiferArgs,
   EventResult,
@@ -13,10 +12,8 @@ import signify, {
 } from "signify-ts";
 import { RetryOptions, retry } from "./retry";
 import assert from "assert";
-import { resolveEnvironment } from "./resolve-env";
+import { resolveEnvironment } from "../../src/utils/resolve-env";
 import Docker from "dockerode";
-const fs = require("fs");
-const yaml = require("js-yaml");
 import axios from "axios";
 
 const docker = new Docker();
@@ -634,52 +631,6 @@ export async function sendAdmitMessage(
   await markAndRemoveNotification(senderClient, grantNotification);
 }
 
-/**
- * Replace the URL based on the environment variable and optional hosts
- */
-export function convertDockerHost(
-  url: string,
-  moreHostsToReplace?: string,
-  newHost?: string
-): string {
-  if (newHost) {
-    return replaceUrlHost(url, newHost, moreHostsToReplace);
-  }
-  const useDockerInternal = process.env.USE_DOCKER_INTERNAL === "true";
-  if (useDockerInternal) {
-    url = replaceUrlHost(url, "host.docker.internal", moreHostsToReplace);
-    return url;
-  }
-  if (process.env.DOCKER_HOST) {
-    url = replaceUrlHost(url, process.env.DOCKER_HOST, moreHostsToReplace);
-    return url;
-  }
-  return url;
-}
-
-/**
- * Replace the URL based on the environment variable and optional hosts
- */
-export function replaceUrlHost(
-  url: string,
-  newHost: string = "host.docker.internal",
-  moreHostsToReplace: string = ""
-): string {
-  const defaultHosts = ["127.0.0.1", "localhost"];
-  const hostsToReplace = moreHostsToReplace
-    ? defaultHosts.concat(moreHostsToReplace.split(","))
-    : defaultHosts;
-
-  for (const host of hostsToReplace) {
-    if (url.includes(host)) {
-      console.log(`Replacing URL host: ${host} -> ${newHost}`);
-      return url.replace(host, newHost);
-    }
-  }
-
-  throw new Error(`Error appling replacement for URL: ${url}`);
-}
-
 export async function launchTestKeria(
   kontainerName: string,
   kimageName: string,
@@ -692,93 +643,100 @@ export async function launchTestKeria(
   const existingContainer = containers.find((c) =>
     c.Names.includes(`/${kontainerName}`)
   );
+  let container: Docker.Container;
 
   // Check if any container is using the specified ports
   const portInUse = containers.find((c) => {
     const ports = c.Ports.map((p) => p.PublicPort);
-    return ports.includes(keriaAdminPort) || ports.includes(keriaHttpPort) || ports.includes(keriaBootPort);
+    return (
+      ports.includes(keriaAdminPort) ||
+      ports.includes(keriaHttpPort) ||
+      ports.includes(keriaBootPort)
+    );
   });
 
   if (existingContainer) {
-    if (existingContainer.State === 'running') {
+    if (existingContainer.State === "running") {
       console.warn(
         `Warning: Container with name ${kontainerName} is already running.\n` +
-        `Container ID: ${existingContainer.Id}\n` +
-        `Container Names: ${existingContainer.Names.join(', ')}\n` +
-        `Container Image: ${existingContainer.Image}\n` +
-        `Container State: ${existingContainer.State}\n` +
-        `Container Status: ${existingContainer.Status}`
+          `Container ID: ${existingContainer.Id}\n` +
+          `Container Names: ${existingContainer.Names.join(", ")}\n` +
+          `Container Image: ${existingContainer.Image}\n` +
+          `Container State: ${existingContainer.State}\n` +
+          `Container Status: ${existingContainer.Status}`
       );
-      return docker.getContainer(existingContainer.Id);
+      container = docker.getContainer(existingContainer.Id);
     } else {
       console.warn(
         `Warning: Container with name ${kontainerName} exists but is not running. Starting the container.\n` +
-        `Container ID: ${existingContainer.Id}\n` +
-        `Container Names: ${existingContainer.Names.join(', ')}\n` +
-        `Container Image: ${existingContainer.Image}\n` +
-        `Container State: ${existingContainer.State}\n` +
-        `Container Status: ${existingContainer.Status}`
+          `Container ID: ${existingContainer.Id}\n` +
+          `Container Names: ${existingContainer.Names.join(", ")}\n` +
+          `Container Image: ${existingContainer.Image}\n` +
+          `Container State: ${existingContainer.State}\n` +
+          `Container Status: ${existingContainer.Status}`
       );
-      const container = docker.getContainer(existingContainer.Id);
+      container = docker.getContainer(existingContainer.Id);
       await container.start();
-      return container;
     }
   } else if (portInUse) {
     console.warn(
       `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use.\n` +
-      `Container ID: ${portInUse.Id}\n` +
-      `Container Names: ${portInUse.Names.join(', ')}\n` +
-      `Container Image: ${portInUse.Image}\n` +
-      `Container State: ${portInUse.State}\n` +
-      `Container Status: ${portInUse.Status}`
+        `Container ID: ${portInUse.Id}\n` +
+        `Container Names: ${portInUse.Names.join(", ")}\n` +
+        `Container Image: ${portInUse.Image}\n` +
+        `Container State: ${portInUse.State}\n` +
+        `Container Status: ${portInUse.Status}`
     );
-    throw new Error(`Ports ${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort} are already in use.`);
+    throw new Error(
+      `Ports ${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort} are already in use.`
+    );
+  } else {
+    // Pull Docker image
+    await new Promise<void>((resolve, reject) => {
+      docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
+        if (err) return reject(err);
+        docker.modem.followProgress(stream, onFinished, onProgress);
+
+        function onFinished(err: any, output: any) {
+          if (err) return reject(err);
+          resolve();
+        }
+
+        function onProgress(event: any) {
+          console.log(event);
+        }
+      });
+    });
+
+    // Create and start the container
+    container = await docker.createContainer({
+      name: kontainerName,
+      Image: kimageName,
+      ExposedPorts: {
+        [`${keriaAdminPort}/tcp`]: {},
+        [`${keriaHttpPort}/tcp`]: {},
+        [`${keriaBootPort}/tcp`]: {},
+      },
+      HostConfig: {
+        PortBindings: {
+          [`${keriaAdminPort}/tcp`]: [{ HostPort: `${keriaAdminPort}` }],
+          [`${keriaHttpPort}/tcp`]: [{ HostPort: `${keriaHttpPort}` }],
+          [`${keriaBootPort}/tcp`]: [{ HostPort: `${keriaBootPort}` }],
+        },
+      },
+    });
+    await container.start();
   }
 
-  // Pull Docker image
-  await new Promise<void>((resolve, reject) => {
-    docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
-      if (err) return reject(err);
-      docker.modem.followProgress(stream, onFinished, onProgress);
-
-      function onFinished(err: any, output: any) {
-        if (err) return reject(err);
-        resolve();
-      }
-
-      function onProgress(event: any) {
-        console.log(event);
-      }
-    });
-  });
-
-  // Create and start the container
-  const container = await docker.createContainer({
-    name: kontainerName,
-    Image: kimageName,
-    ExposedPorts: {
-      [`${keriaAdminPort}/tcp`]: {},
-      [`${keriaHttpPort}/tcp`]: {},
-      [`${keriaBootPort}/tcp`]: {},
-    },
-    HostConfig: {
-      PortBindings: {
-        [`${keriaAdminPort}/tcp`]: [{ HostPort: `${keriaAdminPort}` }],
-        [`${keriaHttpPort}/tcp`]: [{ HostPort: `${keriaHttpPort}` }],
-        [`${keriaBootPort}/tcp`]: [{ HostPort: `${keriaBootPort}` }],
-      },
-    },
-  });
-
-  await container.start();
+  await performHealthCheck(`http://127.0.0.1:${keriaHttpPort}/spec.yaml`);
   return container;
 }
 
 // Function to perform health check
 async function performHealthCheck(
   url: string,
-  timeout: number = 60000,
-  interval: number = 5000
+  timeout: number = 12000,
+  interval: number = 1000
 ) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
@@ -789,7 +747,7 @@ async function performHealthCheck(
         return;
       }
     } catch (error) {
-      console.log("Waiting for service to be healthy...");
+      console.log(`Waiting for service to be healthy ${url}: ${error}`);
     }
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
