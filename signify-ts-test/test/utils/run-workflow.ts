@@ -10,7 +10,11 @@ import {
   getConfig,
   getReportGenTestData,
 } from "./test-data";
-import { run_api_revocation_test, run_api_test } from "../reg-pilot-api.test";
+import {
+  run_api_admin_test,
+  run_api_revocation_test,
+  run_api_test,
+} from "../reg-pilot-api.test";
 import { run_vlei_verification_test } from "../vlei-verification.test";
 
 const fs = require("fs");
@@ -126,7 +130,7 @@ export async function runWorkflow(workflow: any, configJson: any) {
         const adminUser = await getApiTestData(configJson, env, [
           step.admin_aid,
         ]);
-        await run_api_test(apiUsers, configJson, adminUser[0]);
+        await run_api_admin_test(apiUsers, configJson, adminUser[0]);
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
         await run_api_test(apiUsers, configJson);

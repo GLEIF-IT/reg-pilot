@@ -49,19 +49,23 @@ if (require.main === module) {
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(
-  apiUsers: ApiUser[],
-  configJson: any,
-  adminUser?: ApiUser,
-) {
+export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
   await apiAdapter.addRootOfTrust(configJson);
-  if (adminUser) await multi_user_admin_test(apiUsers, adminUser);
-  else if (apiUsers.length == 3) await multi_user_test(apiUsers);
+  if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
   else
     console.log(
       `Invalid acr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
     );
+}
+
+export async function run_api_admin_test(
+  apiUsers: ApiUser[],
+  configJson: any,
+  adminUser: ApiUser,
+) {
+  await apiAdapter.addRootOfTrust(configJson);
+  await admin_test(apiUsers, adminUser);
 }
 
 export async function run_api_revocation_test(
@@ -80,7 +84,7 @@ export async function run_api_revocation_test(
   );
 }
 
-module.exports = { run_api_test, run_api_revocation_test };
+module.exports = { run_api_test, run_api_admin_test, run_api_revocation_test };
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -480,10 +484,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sbody = await sresp.json();
 }
 
-async function multi_user_admin_test(
-  apiUsers: Array<ApiUser>,
-  adminUser: ApiUser,
-) {
+async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
   let user1: ApiUser;
   let user2: ApiUser;
   let user3: ApiUser;
