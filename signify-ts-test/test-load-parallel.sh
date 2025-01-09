@@ -183,7 +183,7 @@ validate_inputs() {
             # Check for images in Docker Hub
             for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
                 BANK_NAME="Bank_$i"
-                BANK_IMAGE_TAG="$(echo "$BANK_NAME" | tr '[:upper:]' '[:lower:]')_api_test:latest"
+                BANK_IMAGE_TAG="$(echo "$BANK_NAME" | tr '[:upper:]' '[:lower:]')_api_test"
                 IMAGE_NAME="$BANK_API_TEST_REPO:$BANK_IMAGE_TAG" 
 
                 if ! docker manifest inspect "$IMAGE_NAME" &> /dev/null; then 
@@ -408,12 +408,12 @@ run_api_test() {
                 docker run \
                     -e TEST_ENVIRONMENT="$TEST_ENVIRONMENT" \
                     -e REG_PILOT_API="$REG_PILOT_API" \
-                    -e REG_PILOT_FILER="${REG_PILOT_FILER:-}" \
+                    -e REG_PILOT_FILER="$REG_PILOT_FILER" \
                     --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
             else 
                 docker run \
                     -e REG_PILOT_API="$REG_PILOT_API" \
-                    -e REG_PILOT_FILER="${REG_PILOT_FILER:-}" \
+                    -e REG_PILOT_FILER="$REG_PILOT_FILER" \
                     --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
             fi
     else        
@@ -453,6 +453,10 @@ load_test_banks() {
 
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
+
+    STAGING_SUMMARY_FILE="./bank_test_logs/staging_summary.txt"
+    mkdir -p $(dirname "$STAGING_SUMMARY_FILE")
+    {
     echo "========================================================="
     echo "                   STAGING SUMMARY                       "
     echo "========================================================="
@@ -461,6 +465,7 @@ load_test_banks() {
     echo "TOTAL BANKS STAGED : $BANK_COUNT"
     echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
     echo "=========================================================="
+    } | tee "$STAGING_SUMMARY_FILE"
     fi
 
     if [[ "$FAST_MODE" == true ]]; then
@@ -610,6 +615,10 @@ load_test_banks() {
             stop_services_local
     fi
 
+
+    TEST_SUMMARY_FILE="./bank_test_logs/test_summary.txt"
+    mkdir -p $(dirname "$TEST_SUMMARY_FILE")
+    {
     echo "========================================================="
     echo "                   TEST SUMMARY                          "
     echo "========================================================="
@@ -621,6 +630,7 @@ load_test_banks() {
     echo "FAILED BANK(S)     : ${FAILED_BANKS[*]:-None}"
     echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
     echo "=========================================================="
+    } | tee "$TEST_SUMMARY_FILE"
     fi
 }
 
