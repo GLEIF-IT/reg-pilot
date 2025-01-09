@@ -59,6 +59,15 @@ export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
     );
 }
 
+export async function run_api_admin_test(
+  apiUsers: ApiUser[],
+  configJson: any,
+  adminUser: ApiUser,
+) {
+  await apiAdapter.addRootOfTrust(configJson);
+  await admin_test(apiUsers, adminUser);
+}
+
 export async function run_api_revocation_test(
   requestorClient: SignifyClient,
   requestorAidAlias: string,
@@ -75,7 +84,7 @@ export async function run_api_revocation_test(
   );
 }
 
-module.exports = { run_api_test, run_api_revocation_test };
+module.exports = { run_api_test, run_api_admin_test, run_api_revocation_test };
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -473,6 +482,132 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   );
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
+}
+
+async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
+  let user1: ApiUser;
+  let user2: ApiUser;
+  let user3: ApiUser;
+  assert.equal(apiUsers.length, 3);
+  user1 = apiUsers[0];
+  user2 = apiUsers[1];
+  user3 = apiUsers[2];
+
+  for (const user of apiUsers) {
+    const signedDirPrefixed = path.join(
+      __dirname,
+      "data",
+      signedDir,
+      user.ecrAid.prefix,
+    );
+    // try to ping the api
+    let ppath = "/ping";
+    let preq = { method: "GET", body: null };
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
+    console.log("ping response", presp);
+    assert.equal(presp.status, 200);
+
+    // fails to query report status because not logged in with ecr yet
+    let sresp = await apiAdapter.getReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+
+    // login with the ecr credential
+    let ecrCred;
+    let ecrLei;
+    let ecrCredCesr;
+    for (let i = 0; i < user.creds.length; i++) {
+      await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
+      const foundEcr = isEbaDataSubmitter(
+        user.creds[i]["cred"],
+        user.ecrAid.prefix,
+      );
+      if (foundEcr) {
+        ecrCred = user.creds[i]["cred"];
+        ecrLei = ecrCred.sad.a.LEI;
+        ecrCredCesr = user.creds[i]["credCesr"];
+      }
+
+      await checkLogin(user, user.creds[i]["cred"], false);
+    }
+
+    // try to get status without signed headers provided
+    const heads = new Headers();
+    let sreq = { headers: heads, method: "GET", body: null };
+    let spath = `/status/${user.ecrAid.prefix}`;
+    sresp = await fetch(env.apiBaseUrl + spath, sreq);
+    assert.equal(sresp.status, 422); // no signed headers provided
+
+    await apiAdapter.dropReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+    // succeeds to query report status
+    sresp = await apiAdapter.getReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient,
+    );
+    assert.equal(sresp.status, 202);
+    const sbody = await sresp.json();
+    assert.equal(sbody.length, 0);
+
+    // Get the current working directory
+    const currentDirectory = process.cwd();
+    // Print the current working directory
+    console.log("Current Directory:", currentDirectory);
+
+    // sanity check that the report verifies
+    const keeper = user.roleClient.manager!.get(user.ecrAid);
+    const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+
+    const signedReports = getSignedReports(signedDirPrefixed);
+    // Check signed reports
+    for (const signedReport of signedReports) {
+      if (fs.lstatSync(signedReport).isFile()) {
+        await apiAdapter.dropReportStatusByAid(
+          user.idAlias,
+          user.ecrAid.prefix,
+          user.roleClient,
+        );
+        console.log(`Processing file: ${signedReport}`);
+        const signedZipBuf = fs.readFileSync(`${signedReport}`);
+        const signedZipDig = generateFileDigest(signedZipBuf);
+        const signedUpResp = await apiAdapter.uploadReport(
+          user.idAlias,
+          user.ecrAid.prefix,
+          signedReport,
+          signedZipBuf,
+          signedZipDig,
+          user.roleClient,
+        );
+        await checkSignedUpload(
+          signedUpResp,
+          path.basename(signedReport),
+          signedZipDig,
+          user,
+          ecrCred,
+        );
+        user.uploadDig = signedZipDig;
+        break;
+      }
+    }
+  }
+  await login(
+    adminUser,
+    adminUser.creds[0]["cred"],
+    adminUser.creds[0]["credCesr"],
+  );
+  let sresp = await apiAdapter.getReportsStatusAdmin(
+    adminUser.idAlias,
+    adminUser.ecrAid.prefix,
+    adminUser.roleClient,
+  );
+  assert.equal(sresp.status, 200);
+  let sbody = await sresp.json();
 }
 
 async function revoked_cred_upload_test(
