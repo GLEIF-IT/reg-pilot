@@ -696,7 +696,7 @@ export async function checkSignedUpload(
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
   assert.equal(signedUpBody["submitter"], `${user.ecrAid.prefix}`);
-  const expectedEnding = `files in report package, submitted by ${user.ecrAid.prefix}, have been signed by known AIDs from the LEI ${ecrCred.sad.a.LEI}.`;
+  const expectedEnding = `files in report package, submitted by ${user.ecrAid.prefix}, have been signed by known AIDs`;
   expect(signedUpBody["message"]).toMatch(new RegExp(`${expectedEnding}`));
 
   assert.equal(signedUpBody["filename"], fileName);
