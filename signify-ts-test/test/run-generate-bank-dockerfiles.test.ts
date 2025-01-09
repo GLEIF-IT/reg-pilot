@@ -34,21 +34,20 @@ function generateDockerfiles(
     testName = "api-verifier-bank-test-workflow";
   }
 
+  const apiBaseUrl = process.env.REG_PILOT_API;
+  const filerBaseUrl = process.env.REG_PILOT_FILER;
+
   // Generate Dockerfiles
   const lastbank = firstbank + bankAmount - 1;
+
   for (let i = firstbank; i <= lastbank; i++) {
     const bankName = `Bank_${i}`;
     const offset = (i - 1) * 10;
     const kAdminPort = keriaAdminPort + offset;
     const kHttpPort = keriaHttpPort + offset;
     const kBootPort = keriaBootPort + offset;
-    const keriaAdminUrl = convertDockerHost(
-      `http://localhost:${kAdminPort}`
-    );
+    const keriaAdminUrl = convertDockerHost(`http://localhost:${kAdminPort}`);
     const keriaBootUrl = convertDockerHost(`http://localhost:${kBootPort}`);
-    const apiBaseUrl = process.env.REG_PILOT_API;
-    const filerBaseUrl = process.env.REG_PILOT_FILER;
-
     const dockerfileContent = `
   # Use a base image with the correct platform
   FROM node:20-alpine AS base
