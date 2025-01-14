@@ -81,7 +81,7 @@ workflow:
     api_test_admin:
       id: "api_test_admin"
       type: "api_test"
-      test_case: "admin_test"
+      test_case: "api_test_admin"
       aids: ["ecr-aid-1", "ecr-aid-2", "ecr-aid-3"]
       admin_aid: "ecr-admin-aid-1"
       description: "Running API test for ecr-aid-1 user"

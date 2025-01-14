@@ -148,8 +148,7 @@ export class VleiIssuance {
         let aid: any;
         if (!identifier.identifiers) {
           this.aidsInfo.set(identifier.name, identifier);
-          const client = this.clients.get(identifier.agent.name)![0];
-          aid = await getOrCreateAID(client, identifier.name, this.kargsAID);
+          aid = await this.createAidSinglesig(identifier);
           if (this.aids.has(identifier.name)) {
             this.aids.get(identifier.name)?.push(aid);
           } else {
@@ -306,6 +305,75 @@ export class VleiIssuance {
     registryName: string,
   ) {
     return await getOrCreateRegistry(client, aid, registryName);
+  }
+
+  public async createAidSinglesig(aidInfo: any) {
+    const delegator = aidInfo.delegator;
+    let kargsSinglesigAID: CreateIdentiferArgs = {
+      toad: this.kargsAID.toad,
+      wits: this.kargsAID.wits,
+    };
+    const client = this.clients.get(aidInfo.agent.name)![0];
+
+    if (delegator != null) {
+      kargsSinglesigAID.delpre = this.aids.get(delegator)![0].prefix;
+      const delegatorClient = this.clients.get(
+        this.aidsInfo.get(delegator).agent.name,
+      )![0];
+
+      const delegatorAid = this.aids.get(delegator)![0];
+      // Resolve delegator's oobi
+      const oobi1 = await delegatorClient.oobis().get(delegator, "agent");
+      await resolveOobi(client, oobi1.oobis[0], delegator);
+
+      // Delegate client creates delegate AID
+      const icpResult2 = await client
+        .identifiers()
+        .create(aidInfo.name, { delpre: delegatorAid.prefix });
+      const op2 = await icpResult2.op();
+      const delegateAidPrefix = op2.name.split(".")[1];
+
+      console.log("Delegate's prefix:", delegateAidPrefix);
+
+      // Client 1 approves delegation
+      const anchor = {
+        i: delegateAidPrefix,
+        s: "0",
+        d: delegateAidPrefix,
+      };
+
+      const result = await retry(async () => {
+        const apprDelRes = await delegatorClient
+          .delegations()
+          .approve(delegator, anchor);
+        await waitOperation(delegatorClient, await apprDelRes.op());
+        console.log("Delegator approve delegation submitted");
+        return apprDelRes;
+      });
+      assert.equal(
+        JSON.stringify(result.serder.ked.a[0]),
+        JSON.stringify(anchor),
+      );
+
+      const op3 = await client.keyStates().query(delegatorAid.prefix, "1");
+      await waitOperation(client, op3);
+
+      // Delegate client checks approval
+      await waitOperation(client, op2);
+      const aid2 = await client.identifiers().get(aidInfo.name);
+      assert.equal(aid2.prefix, delegateAidPrefix);
+      console.log("Delegation approved for aid:", aid2.prefix);
+
+      await assertOperations(delegatorClient, client);
+      const rpyResult2 = await client
+        .identifiers()
+        .addEndRole(aidInfo.name, "agent", client!.agent!.pre);
+      await waitOperation(client, await rpyResult2.op());
+      return aid2;
+    } else {
+      const aid = await getOrCreateAID(client, aidInfo.name, kargsSinglesigAID);
+      return aid;
+    }
   }
 
   public async createAidMultisig(aidInfo: any) {

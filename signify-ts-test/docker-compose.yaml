@@ -97,6 +97,8 @@ services:
     image: gleif/vlei-verifier:dev
     container_name: vlei-verifier
     hostname: vlei-verifier
+    environment:
+      - VERIFIER_CONFIG_FILE=verifier-config-test.json
     depends_on:
       - vlei-server
       - witness-demo

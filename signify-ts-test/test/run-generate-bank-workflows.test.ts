@@ -92,6 +92,7 @@ function generateBankConfig(bankId: number) {
         name: "gleif-aid-1",
       },
       "qvi-aid-1": {
+        delegator: "gleif-aid-1",
         agent: "qvi-agent-1",
         name: "qvi-aid-1",
       },

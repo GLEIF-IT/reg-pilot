@@ -11,6 +11,7 @@ jobs:
   test-single-aid-singlesig-admin:
     name: Run singlesig single user admin integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: signify-ts-test/
