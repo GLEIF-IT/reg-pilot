@@ -11,6 +11,7 @@ REG_PILOT_FILER=""
 FAST_MODE=false
 STAGE_MODE=false
 EBA=""
+USE_DOCKER_INTERNAL=""
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
@@ -70,7 +71,9 @@ parse_args() {
                 ;;
             --eba)
                 EBA="true"
-                shift
+                ;;
+            --mac)
+                USE_DOCKER_INTERNAL="true"
                 ;;
             --first-bank)
                 FIRST_BANK="$2"
@@ -125,7 +128,7 @@ validate_inputs() {
         usage
     fi
 
-    if [[ "$MODE" != "local" && "$MODE" != "remote" ]]; then
+    if [[ "$MODE" != "local" && "$MODE" != "remote" && "$MODE" != "local_mac" ]]; then
         echo "ERROR: Please enter valid mode"
         usage
     fi
@@ -318,32 +321,36 @@ stop_services_local() {
 }
 
 download_reports() {
-        export BANK_NAME="Bank_$i"
+        export TEST_USER_NAME="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Downloading reports for $BANK_NAME..."
+        echo "Downloading reports for $TEST_USER_NAME..."
         echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-download
-        check_status "Downloading report for $BANK_NAME"
+        check_status "Downloading report for $TEST_USER_NAME"
 }
 
 cleanup_reports() {
-        export BANK_NAME="Bank_$i"
+        export TEST_USER_NAME="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Cleaning up report files for $BANK_NAME..."
+        echo "Cleaning up report files for $TEST_USER_NAME..."
         echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-cleanup
-        check_status "Cleaning up report for $BANK_NAME"
+        check_status "Cleaning up report for $TEST_USER_NAME"
 }
 
 generate_dockerfiles() {
     echo "------------------------------------------------------------"
-    echo "Generating Dockerfiles for running API test for all banks..."
+    echo "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA, is USE_DOCKER_INTERNAL?: $USE_DOCKER_INTERNAL"
     echo "------------------------------------------------------------"
     export BANK_COUNT=$BANK_COUNT
     export FIRST_BANK=$FIRST_BANK
     export EBA=$EBA
-    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit
-    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA"
+    export REG_PILOT_API=$REG_PILOT_API
+    export REG_PILOT_FILER=$REG_PILOT_FILER
+    export USE_DOCKER_INTERNAL=$USE_DOCKER_INTERNAL
+    export TEST_DOCKER="false"
+    npx jest ./run-generate-bank-dockerfiles.test.ts --runInBand --forceExit --detectOpenHandles
+    check_status "Generating Dockerfiles for $FIRST_BANK to $((BANK_COUNT + FIRST_BANK)) bank(s), is EBA?: $EBA, is USE_DOCKER_INTERNAL?: $USE_DOCKER_INTERNAL"
 }
 
 build_api_docker_image() {
@@ -358,7 +365,7 @@ build_api_docker_image() {
     fi
 
     echo "---------------------------------------------------"
-    echo "Building Docker image for $BANK_NAME..."
+    echo "Building Docker image for $BANK_NAME: $BANK_DOCKERFILE"
     echo "---------------------------------------------------"
     LOG_FILE="./bank_test_logs/docker_build_logs/$BANK_NAME-build.log"
     mkdir -p $(dirname "$LOG_FILE") 
@@ -394,6 +401,7 @@ build_api_docker_image() {
 run_api_test() {
     BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]') 
     BANK_IMAGE_TAG="${BANK_NAME}_api_test"
+    export USE_DOCKER_INTERNAL=$USE_DOCKER_INTERNAL
 
     LOG_FILE="./bank_test_logs/api_test_logs/$BANK_NAME-api-test.log"
     mkdir -p $(dirname "$LOG_FILE")

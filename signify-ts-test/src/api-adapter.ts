@@ -2,16 +2,17 @@ import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
 import { getOrCreateClients } from "../test/utils/test-util";
 import path from "path";
-import { string } from "mathjs";
+import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
 
 export class ApiAdapter {
   apiBaseUrl: string;
   filerBaseUrl: string = "";
   constructor(apiBaseUrl: string, filerBaseUrl: string) {
     this.apiBaseUrl = apiBaseUrl;
-    this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
     if (!filerBaseUrl || filerBaseUrl === "") {
-      console.log("Filer base URL not provided. Using API base URL.");
+      console.log(
+        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`
+      );
       this.filerBaseUrl = apiBaseUrl;
     } else {
       console.log(`Filer base URL provided ${filerBaseUrl}`);
@@ -22,7 +23,7 @@ export class ApiAdapter {
   public async dropReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const dreq = { headers: heads, method: "POST", body: null };
@@ -35,7 +36,7 @@ export class ApiAdapter {
   public async getReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -49,7 +50,7 @@ export class ApiAdapter {
     aidName: string,
     aidPrefix: string,
     dig: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -62,7 +63,7 @@ export class ApiAdapter {
   public async getLeiReportStatusesByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -78,7 +79,7 @@ export class ApiAdapter {
     fileName: string,
     zipBuffer: Buffer,
     zipDigest: string,
-    client: SignifyClient,
+    client: SignifyClient
   ): Promise<Response> {
     let formData = new FormData();
     let ctype = "application/zip";
@@ -108,7 +109,12 @@ export class ApiAdapter {
     zipBuffer: Buffer,
     client: SignifyClient,
     token: string,
+    envOverride?: TestEnvironment
   ): Promise<Response> {
+    if (envOverride) {
+      this.apiBaseUrl = envOverride.apiBaseUrl;
+      this.filerBaseUrl = envOverride.filerBaseUrl;
+    }
     let formData = new FormData();
     let ctype = "application/zip";
     formData.append("file", zipBuffer, {
@@ -124,7 +130,7 @@ export class ApiAdapter {
         ...formData.getHeaders(),
         "errp-load-test": "74b63b0fd729",
         Authorization: `Bearer ${token}`,
-        uiversion: "1.3.10-474-FINAL-PILLAR3-trunk",
+        uiversion: "1.3.10-475-FINAL-PILLAR3-trunk",
         "sec-ch-ua-platform": "macOS",
         "sec-ch-ua":
           '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
@@ -218,6 +224,7 @@ export class ApiAdapter {
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
     heads.set("Content-Type", "application/json");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
@@ -246,8 +253,9 @@ export class ApiAdapter {
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
-      true,
+      true
     );
+
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
       .identifiers()
@@ -260,16 +268,20 @@ export class ApiAdapter {
     // if (url.hostname === "keria")
     // oobiUrl = oobiUrl.replace("keria", "localhost");
     // console.log(`OobiUrl: ${oobiUrl}`);
-    if (url.hostname === "keria")
-      oobiUrl = oobiUrl.replace("keria", "host.docker.internal");
-    if (process.env.KERIA_AGENT_PORT) {
-      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_AGENT_PORT);
+    console.log(`Original OobiUrl ${oobiUrl}`);
+    if (url.hostname === "keria") {
+      oobiUrl = convertDockerHost(oobiUrl, "keria");
     }
-    // console.log(`OobiUrl: ${oobiUrl}`);
+    if (process.env.KERIA_HTTP_PORT) {
+      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_HTTP_PORT);
+      console.log(`Replaced OobiUrl port ${url.port}: ${oobiUrl}`);
+    }
+    console.log(`Fetcching OobiUrl: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
     heads.set("Content-Type", "application/json");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
@@ -281,6 +293,8 @@ export class ApiAdapter {
       body: JSON.stringify(lbody),
     };
     const lurl = `${this.apiBaseUrl}/add_root_of_trust`;
+    console.log("Adding test Root of trust URL: ", lurl);
+    console.log("Adding test Root of trust Req: ", lreq);
     const lresp = await fetch(lurl, lreq);
     return lresp;
   }

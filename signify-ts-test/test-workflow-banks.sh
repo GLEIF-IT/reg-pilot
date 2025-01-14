@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Extracted values from resolve-env.ts
-WAN='BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha'
-WIL='BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM'
-WES='BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX'
-
 # Check if TEST_ENVIRONMENT is set
 if [ -z "$TEST_ENVIRONMENT" ]; then
     # Default values for 'docker' environment
@@ -55,7 +50,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --reports-download)
-            npx jest ./run-bank-reports-download.test.ts --runInBand --forceExit
+            npx tsx ./src/scripts/run-download-reports.ts
             download_exit_code=$?  
                 if [[ $download_exit_code -ne 0 ]]; then
                 exit 1  
@@ -63,7 +58,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --reports-cleanup)
-            npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit
+            npx tsx ./test/bank-reports-cleanup.ts
             cleanup_exit_code=$?  
                 if [[ $cleanup_exit_code -ne 0 ]]; then
                 exit 1  
@@ -79,7 +74,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;     
         --verify-proxy)
-            npx jest ./run-workflow-bank-api.test.ts --runInBand --detectOpenHandles --forceExit
+            npx jest ./run-workflow-bank.test.ts --runInBand --detectOpenHandles --forceExit
             verify_exit_code=$?  
                 if [[ $verify_exit_code -ne 0 ]]; then
                 exit 1  

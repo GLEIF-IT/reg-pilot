@@ -1,23 +1,27 @@
-import path from "path";
-const fs = require("fs");
-const yaml = require("js-yaml");
-import axios from "axios";
 import AdmZip from "adm-zip";
+import axios from "axios";
+import fs from "fs";
+import path from "path";
+import { TestPaths } from "./resolve-env";
 
 const bankReportsUrl =
   "https://raw.githubusercontent.com/aydarng/bank_reports/main";
-const tmpReportsPath = path.join(__dirname, "./data/tmp_reports");
 
-const downloadFileFromUrl = async (url: string, destFilePath: string) => {
-  const filePath = destFilePath;
+const testPaths = new TestPaths();
 
+export async function downloadFileFromUrl(url: string, destFilePath: string) {
   const response = await axios.get(url, {
     responseType: "stream",
   });
-  if (!fs.existsSync(tmpReportsPath)) {
-    fs.mkdirSync(tmpReportsPath);
+  if (!fs.existsSync(testPaths.tmpReportUnpackDir)) {
+    fs.mkdirSync(testPaths.tmpReportUnpackDir, { recursive: true });
   }
-  const writer = fs.createWriteStream(filePath);
+  // Ensure the parent directory for destFilePath exists
+  const parentDir = path.dirname(destFilePath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+  const writer = fs.createWriteStream(destFilePath);
 
   return new Promise<void>((resolve, reject) => {
     response.data.pipe(writer);
@@ -32,49 +36,58 @@ const downloadFileFromUrl = async (url: string, destFilePath: string) => {
       reject(err);
     });
   });
-};
+}
 
-const unpackZipFile = (
+export async function downloadReports() {
+  const bankName = testPaths.testUserName;
+  const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
+  const zipFilePath = `${testPaths.tmpReportsDir}/${bankName}.zip`;
+  await downloadFileFromUrl(curBankReportsUrl, zipFilePath);
+
+  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
+  const doFailReps = includeFailReports?.toLowerCase() === "true";
+  const includeAllSignedReports =
+    process.env.INCLUDE_ALL_SIGNED_REPORTS || "false";
+  const doAllSigned = includeAllSignedReports?.toLowerCase() === "true";
+
+  unpackZipFile(zipFilePath, bankName, doAllSigned, doFailReps);
+}
+
+export function unpackZipFile(
   zipFilePath: string,
-  destFolder: string,
   bankName: string,
   includeAllSignedReports = false,
-  includeFailReports = false,
-) => {
+  includeFailReports = false
+) {
   const zip = new AdmZip(zipFilePath);
-  zip.extractAllTo(destFolder, false); // if true overwrites existing files
-  const signedReportsPath = path.join(__dirname, "./data/signed_reports");
-  const failReportsPath = path.join(__dirname, "./data/fail_reports");
-  const confPath = path.join(__dirname, "./data/600-banks-test-data");
+
+  zip.extractAllTo(testPaths.tmpReportUnpackDir, false); // if true overwrites existing files
 
   if (!includeAllSignedReports) {
     const specificPrefix = "external_manifest";
     console.log(`Only moving reports with specific prefix: ${specificPrefix}`);
     moveReports(
-      path.join(destFolder, bankName, `/reports/signed_reports`),
-      signedReportsPath,
-      specificPrefix,
+      testPaths.testTmpSignedReports,
+      testPaths.testSignedReports,
+      specificPrefix
     );
   } else {
     console.log(`Moving all signed reports`);
-    moveReports(
-      path.join(destFolder, bankName, `/reports/signed_reports`),
-      signedReportsPath,
-    );
+    moveReports(testPaths.testTmpSignedReports, testPaths.testSignedReports);
   }
   if (includeFailReports) {
-    moveReports(
-      path.join(destFolder, bankName, `/reports/fail_reports`),
-      failReportsPath,
-    );
+    moveReports(testPaths.testTmpFailReports, testPaths.testFailReports);
   }
-  moveFiles(path.join(destFolder, bankName), path.join(confPath, bankName));
-};
+  moveFiles(
+    path.join(testPaths.tmpReportUnpackDir, bankName),
+    testPaths.testUserDir
+  );
+}
 
 const moveReports = (
   srcDir: string,
   destDir: string,
-  specificPrefix?: string,
+  specificPrefix?: string
 ) => {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
@@ -118,25 +131,3 @@ const moveFiles = (srcDir: string, destDir: string) => {
     }
   });
 };
-
-test("bank-reports-download", async function run() {
-  // You need to set the BANK_NAME environment variable. Ex.: export BANK_NAME=Bank_2.
-  const bankName = process.env.BANK_NAME || "Bank_1";
-  const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
-  const destFilePath = `${tmpReportsPath}/${bankName}.zip`;
-  await downloadFileFromUrl(curBankReportsUrl, destFilePath);
-
-  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
-  const doFailReps = includeFailReports?.toLowerCase() === "true";
-  const includeAllSignedReports =
-    process.env.INCLUDE_ALL_SIGNED_REPORTS || "false";
-  const doAllSigned = includeAllSignedReports?.toLowerCase() === "true";
-
-  unpackZipFile(
-    destFilePath,
-    path.join(__dirname, "/data/tmp_reports_unpacked"),
-    bankName,
-    doAllSigned,
-    doFailReps,
-  );
-}, 3600000);
