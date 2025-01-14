@@ -11,6 +11,7 @@ jobs:
   test-revocation:
     name: Run credential revocation test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: signify-ts-test/
