@@ -14,6 +14,7 @@ import {
   run_api_admin_test,
   run_api_revocation_test,
   run_api_test,
+  run_api_test_no_delegation,
 } from "../reg-pilot-api.test";
 import { run_vlei_verification_test } from "../vlei-verification.test";
 
@@ -105,8 +106,8 @@ export async function runWorkflow(workflow: any, configJson: any) {
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
-      if (step.test_case == "revoked_cred_upload_test") {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
+      const apiUsers = await getApiTestData(configJson, env, step.aids);
+      if (step.test_case == "api_test_revocation") {
         const aidData = await buildAidData(configJson);
         const clients = await getOrCreateClients(
           1,
@@ -125,20 +126,24 @@ export async function runWorkflow(workflow: any, configJson: any) {
           creds,
           configJson,
         );
-      } else if (step.test_case == "admin_test") {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
+      } else if (step.test_case == "api_test_admin") {
         const adminUser = await getApiTestData(configJson, env, [
           step.admin_aid,
         ]);
         await run_api_admin_test(apiUsers, configJson, adminUser[0]);
-      } else {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
+      } else if (step.test_case == "api_test_no_delegation") {
+        await run_api_test_no_delegation(apiUsers, configJson);
+      } else if (step.test_case == "api_test") {
         await run_api_test(apiUsers, configJson);
+      } else {
+        console.log(`invalid workflow API test case: ${step.test_case}`);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       await run_vlei_verification_test(apiUsers, configJson);
+    } else {
+      console.log(`invalid workflow step type: ${step.type}`);
     }
     executedSteps.add(step.id);
   }

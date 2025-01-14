@@ -59,6 +59,14 @@ export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
     );
 }
 
+export async function run_api_test_no_delegation(
+  apiUsers: ApiUser[],
+  configJson: any,
+) {
+  await apiAdapter.addRootOfTrust(configJson);
+  await api_test_no_delegation(apiUsers);
+}
+
 export async function run_api_admin_test(
   apiUsers: ApiUser[],
   configJson: any,
@@ -84,7 +92,12 @@ export async function run_api_revocation_test(
   );
 }
 
-module.exports = { run_api_test, run_api_admin_test, run_api_revocation_test };
+module.exports = {
+  run_api_test,
+  run_api_admin_test,
+  run_api_revocation_test,
+  run_api_test_no_delegation,
+};
 
 async function single_user_test(user: ApiUser) {
   const signedDirPrefixed = path.join(
@@ -485,14 +498,6 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 }
 
 async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
-  let user1: ApiUser;
-  let user2: ApiUser;
-  let user3: ApiUser;
-  assert.equal(apiUsers.length, 3);
-  user1 = apiUsers[0];
-  user2 = apiUsers[1];
-  user3 = apiUsers[2];
-
   for (const user of apiUsers) {
     const signedDirPrefixed = path.join(
       __dirname,
@@ -608,6 +613,23 @@ async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
   );
   assert.equal(sresp.status, 200);
   let sbody = await sresp.json();
+}
+
+async function api_test_no_delegation(apiUsers: Array<ApiUser>) {
+  for (const user of apiUsers) {
+    // try to ping the api
+    let ppath = "/ping";
+    let preq = { method: "GET", body: null };
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
+    console.log("ping response", presp);
+    assert.equal(presp.status, 200);
+
+    // login with the ecr credential
+    for (let i = 0; i < user.creds.length; i++) {
+      await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
+      await checkLogin(user, user.creds[i]["cred"], false, true);
+    }
+  }
 }
 
 async function revoked_cred_upload_test(
@@ -860,7 +882,12 @@ export function getSignedReports(signedDirPrefixed: string): string[] {
   }
 }
 
-async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
+async function checkLogin(
+  user: ApiUser,
+  cred: any,
+  credRevoked: boolean = false,
+  noDelegation: boolean = false,
+) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   let creq = { headers: heads, method: "GET", body: null };
@@ -873,7 +900,12 @@ async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
       assert.equal(
         cbody["msg"],
         `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential revoked, info: Credential was revoked`,
-        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
+      );
+    } else if (noDelegation) {
+      assert.equal(cresp.status, 401);
+      assert.equal(
+        cbody["msg"],
+        `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, info: ECR chain validation failed, LE chain validation failed, The QVI AID must be delegated`,
       );
     } else {
       assert.equal(cresp.status, 200);
