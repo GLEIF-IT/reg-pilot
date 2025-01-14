@@ -39,8 +39,8 @@ export function resolveEnvironment(
     case "docker":
       env = {
         preset: preset,
-        url: process.env.KERIA || "http://127.0.0.1:3901",
-        bootUrl: process.env.KERIA_BOOT || "http://127.0.0.1:3903",
+        url: process.env.KERIA || "http://localhost:3901",
+        bootUrl: process.env.KERIA_BOOT || "http://localhost:3903",
         witnessUrls:
           process.env.WITNESS_URLS === ""
             ? []
@@ -54,10 +54,10 @@ export function resolveEnvironment(
             ? []
             : process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         vleiServerUrl: process.env.VLEI_SERVER || "http://vlei-server:7723",
-        apiBaseUrl: process.env.REG_PILOT_API || "http://127.0.0.1:8000",
-        filerBaseUrl: process.env.REG_PILOT_FILER || "",
-        proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://127.0.0.1:3434",
-        verifierBaseUrl: process.env.VLEI_VERIFIER || "http://127.0.0.1:7676",
+        apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "http://localhost:7878",
+        proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
+        verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
         workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
         configuration:
           process.env.CONFIGURATION ||
@@ -67,8 +67,8 @@ export function resolveEnvironment(
     case "local":
       env = {
         preset: preset,
-        url: process.env.KERIA || "http://127.0.0.1:3901",
-        bootUrl: process.env.KERIA_BOOT || "http://127.0.0.1:3903",
+        url: process.env.KERIA || "http://localhost:3901",
+        bootUrl: process.env.KERIA_BOOT || "http://localhost:3903",
         vleiServerUrl: process.env.VLEI_SERVER || "http://localhost:7723",
         witnessUrls:
           process.env.WITNESS_URLS === ""
@@ -83,7 +83,7 @@ export function resolveEnvironment(
             ? []
             : process.env.WITNESS_IDS?.split(",") || [WAN, WIL, WES],
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
-        filerBaseUrl: process.env.REG_PILOT_FILER || "",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "http://localhost:7878",
         proxyBaseUrl: process.env.REG_PILOT_PROXY || "http://localhost:3434",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "http://localhost:7676",
         workflow: process.env.WORKFLOW || "singlesig-single-user.yaml",
@@ -162,14 +162,14 @@ export function resolveEnvironment(
     case "bank_test":
       env = {
         preset: preset,
-        url: process.env.KERIA || "http://127.0.0.1:3901",
-        bootUrl: process.env.KERIA_BOOT || "http://127.0.0.1:3903",
+        url: process.env.KERIA || "http://localhost:3901",
+        bootUrl: process.env.KERIA_BOOT || "http://localhost:3903",
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [""],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:
           process.env.VLEI_SERVER || "http://schemas.rootsid.cloud",
         apiBaseUrl: process.env.REG_PILOT_API || "http://localhost:8000",
-        filerBaseUrl: process.env.REG_PILOT_FILER || "",
+        filerBaseUrl: process.env.REG_PILOT_FILER || "http://localhost:7878",
         proxyBaseUrl:
           process.env.REG_PILOT_PROXY || "No RootsID test proxy set",
         verifierBaseUrl: process.env.VLEI_VERIFIER || "Demo verifier not set",
@@ -180,8 +180,8 @@ export function resolveEnvironment(
     case "eba_bank_test":
       env = {
         preset: preset,
-        url: process.env.KERIA || "http://127.0.0.1:3901",
-        bootUrl: process.env.KERIA_BOOT || "http://127.0.0.1:3903",
+        url: process.env.KERIA || "http://localhost:3901",
+        bootUrl: process.env.KERIA_BOOT || "http://localhost:3903",
         witnessUrls: process.env.WITNESS_URLS?.split(",") || [""],
         witnessIds: process.env.WITNESS_IDS?.split(",") || [],
         vleiServerUrl:

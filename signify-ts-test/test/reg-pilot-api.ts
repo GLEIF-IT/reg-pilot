@@ -5,7 +5,7 @@ import path from "path";
 import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
-import { resolveEnvironment, TestEnvironment } from "../src/utils/resolve-env";
+import { resolveEnvironment, TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
 import { createSignedReports, SIMPLE_TYPE } from "../src/utils/report";
 import { sleep } from "./utils/test-util";
@@ -16,6 +16,8 @@ const signedDir = "signed_reports";
 
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
+
+const testPaths = new TestPaths();
 
 // afterEach(async () => {});
 // beforeAll(async () => {
@@ -78,19 +80,11 @@ module.exports = {
 };
 
 async function single_user_test(user: ApiUser, fast = false) {
-  const signedDirPrefixed = path.join(
-    process.cwd(),
-    "test/data",
-    signedDir,
+  const signedDirPrefixed = path.join(testPaths.testSignedReports,
     user.ecrAid.prefix
   );
   const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(
-    process.cwd(),
-    "data",
-    failDir,
-    user.ecrAid.prefix
-  );
+  failDirPrefixed = path.join(testPaths.testFailReports,user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -356,6 +350,7 @@ export async function single_user_eba_test(
         // sanity check that the report verifies
         const keeper = user.roleClient.manager!.get(user.ecrAid);
 
+        // upload signed report
         // upload signed report
         const filePath =
           "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip";
@@ -757,7 +752,7 @@ export async function checkFailUpload(
     const failUpBody = await failUpResp.json();
     return true;
   } else if (fileName.includes("wrongAid")) {
-    failMessage = "signature from AID that is not a known";
+    failMessage = `signature from ${ecrAid.prefix} does not match the report signer`;
   }
 
   assert.equal(failUpResp.status, 200);
@@ -813,11 +808,13 @@ export function getSignedReports(
 }
 
 async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
-  let heads = new Headers();
+  const heads = new Headers();
   heads.set("Content-Type", "application/json");
-  let creq = { headers: heads, method: "GET", body: null };
-  let cpath = `/checklogin/${user.ecrAid.prefix}`;
-  const cresp = await fetch(env.apiBaseUrl + cpath, creq);
+  heads.set("Connection", "close"); // avoids debugging fetch failures
+  const creq = { headers: heads, method: "GET", body: null };
+  const cpath = `/checklogin/${user.ecrAid.prefix}`;
+  const curl = env.apiBaseUrl + cpath;
+  const cresp = await fetch(curl, creq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
@@ -849,6 +846,7 @@ async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
 async function login(user: ApiUser, cred: any, credCesr: any) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  heads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     vlei: credCesr,
     said: cred.sad.d,
@@ -883,6 +881,7 @@ async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   lheads.set("Content-Type", "application/json");
   lheads.set("uiversion", "1.3.10-475-FINAL-PILLAR3-trunk");
   lheads.set("Accept", "application/json, text/plain, */*");
+  lheads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     credential: {
       cesr: credCesr,
@@ -919,6 +918,7 @@ async function presentRevocation(
 ) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  heads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     vlei: credCesr,
     said: cred.sad.d,

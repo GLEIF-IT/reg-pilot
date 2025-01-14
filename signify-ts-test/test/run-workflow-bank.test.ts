@@ -75,7 +75,7 @@ async function setupBank() {
 }
 
 test("api-verifier-bank-test-workflow", async function run() {
-  process.env.TEST_ENVIRONMENT = "bank_test";
+  // process.env.TEST_ENVIRONMENT = "bank_test";
   const env = resolveEnvironment();
 
   const workflowPath = path.join(

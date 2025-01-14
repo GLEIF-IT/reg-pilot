@@ -640,9 +640,6 @@ export async function launchTestKeria(
 ): Promise<Docker.Container> {
   // Check if the container is already running
   const containers = await docker.listContainers({ all: true });
-  const existingContainer = containers.find((c) =>
-    c.Names.includes(`/${kontainerName}`)
-  );
   let container: Docker.Container;
 
   // Check if any container is using the specified ports
@@ -654,7 +651,22 @@ export async function launchTestKeria(
       ports.includes(keriaBootPort)
     );
   });
+  if (portInUse) {
+    const pContainer = docker.getContainer(portInUse.Id);
+    console.warn(
+      `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use. Stopping that one\n` +
+        `Container ID: ${portInUse.Id}\n` +
+        `Container Names: ${portInUse.Names.join(", ")}\n` +
+        `Container Image: ${portInUse.Image}\n` +
+        `Container State: ${portInUse.State}\n` +
+        `Container Status: ${portInUse.Status}`
+    );
+    await pContainer.stop();
+  }
 
+  const existingContainer = containers.find((c) =>
+    c.Names.includes(`/${kontainerName}`)
+  );
   if (existingContainer) {
     if (existingContainer.State === "running") {
       console.warn(
@@ -678,18 +690,6 @@ export async function launchTestKeria(
       container = docker.getContainer(existingContainer.Id);
       await container.start();
     }
-  } else if (portInUse) {
-    console.warn(
-      `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use.\n` +
-        `Container ID: ${portInUse.Id}\n` +
-        `Container Names: ${portInUse.Names.join(", ")}\n` +
-        `Container Image: ${portInUse.Image}\n` +
-        `Container State: ${portInUse.State}\n` +
-        `Container Status: ${portInUse.Status}`
-    );
-    throw new Error(
-      `Ports ${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort} are already in use.`
-    );
   } else {
     // Pull Docker image
     await new Promise<void>((resolve, reject) => {
@@ -728,7 +728,7 @@ export async function launchTestKeria(
     await container.start();
   }
 
-  await performHealthCheck(`http://127.0.0.1:${keriaHttpPort}/spec.yaml`);
+  await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
   return container;
 }
 

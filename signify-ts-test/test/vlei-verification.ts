@@ -76,6 +76,7 @@ export async function vlei_verification(user: ApiUser) {
 
     let heads = new Headers();
     heads.set("Content-Type", "application/json+cesr");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
     let preq = { headers: heads, method: "PUT", body: ecrCredCesr };
     let ppath = `/presentations/${ecrCred.sad.d}`;
     let presp = await fetch(env.verifierBaseUrl + ppath, preq);
@@ -96,6 +97,7 @@ export async function vlei_verification(user: ApiUser) {
 
     heads = new Headers();
     heads.set("method", "POST");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
 
     let vurl = `${env.verifierBaseUrl}/request/verify/${user.ecrAid.prefix}?${params}`;
     let vreq = await user.roleClient.createSignedRequest(user.idAlias, vurl, {
