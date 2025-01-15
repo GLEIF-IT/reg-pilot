@@ -1,4 +1,4 @@
-name: Run Multisig Single User Delegated AIDs Tests
+name: Run Multisig Single User Non Delegated AIDs Tests
 on:
   push:
     branches:
@@ -8,9 +8,10 @@ on:
       - "main"
   workflow_dispatch:
 jobs:
-  test-single-aid-multisig-delegated-aids:
-    name: Run multisig single user delegated aids integration test using keria:${{ matrix.keria-version }}
+  test-single-aid-multisig-non-delegated-aids:
+    name: Run multisig single user non delegated aids integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: signify-ts-test/
@@ -40,6 +41,6 @@ jobs:
         run: ./test-workflow.sh --build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: SPEED=fast WORKFLOW=multisig-single-user-delegated-aids.yaml CONFIGURATION=configuration-multisig-single-user-delegated-aids-light.json ./test-workflow.sh --data-report-verify-proxy
+        run: SPEED=fast WORKFLOW=multisig-single-user-non-delegated-aids.yaml CONFIGURATION=configuration-multisig-single-user-non-delegated-aids.json ./test-workflow.sh --data-report-verify-proxy
 
 
