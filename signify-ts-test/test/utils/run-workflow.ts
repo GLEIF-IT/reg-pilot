@@ -2,7 +2,6 @@ import { VleiIssuance } from "../../src/vlei-issuance";
 import path from "path";
 import { getOrCreateClients } from "./test-util";
 import {
-  resolveEnvironment,
   TestEnvironment,
   TestPaths,
 } from "../../src/utils/resolve-env";
@@ -23,8 +22,6 @@ import { run_vlei_verification_test } from "../vlei-verification";
 
 import fs from "fs";
 import yaml from "js-yaml";
-
-const testPaths = new TestPaths();
 
 // Function to load and parse YAML file
 export function loadWorkflow(filePath: string) {
@@ -164,14 +161,15 @@ export async function runWorkflow(
 }
 
 export async function launchWorkflow() {
-  const env = resolveEnvironment();
+  const env = TestEnvironment.getInstance();
   const workflowFile = env.workflow;
+  const testPaths = TestPaths.getInstance();
   const workflow = loadWorkflow(
     path.join(process.cwd(), testPaths.workflowsDir, workflowFile)
   );
   const configFilePath = env.configuration;
 
-  const configJson = await getConfig(configFilePath, false);
+  const configJson = await getConfig(configFilePath);
   if (workflow && configJson) {
     await runWorkflow(workflow, configJson, env);
   }

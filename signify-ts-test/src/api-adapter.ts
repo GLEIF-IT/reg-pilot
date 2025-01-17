@@ -171,11 +171,11 @@ export class ApiAdapter {
     );
   }
 
-  public async addRootOfTrust(configJson: any): Promise<Response> {
+  public async addRootOfTrust(configJson: any, keriaHttpPort?: number): Promise<Response> {
     if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
     } else {
-      return await this.addRootOfTrustSinglesig(configJson);
+      return await this.addRootOfTrustSinglesig(configJson, keriaHttpPort);
     }
   }
 
@@ -240,7 +240,7 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any): Promise<Response> {
+  public async addRootOfTrustSinglesig(configJson: any, keriaHttpPort?: number): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
       (usr: any) => usr.type == "GLEIF",
     )[0].identifiers[0];
@@ -272,8 +272,8 @@ export class ApiAdapter {
     if (url.hostname === "keria") {
       oobiUrl = convertDockerHost(oobiUrl, "keria");
     }
-    if (process.env.KERIA_HTTP_PORT) {
-      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_HTTP_PORT);
+    if (keriaHttpPort) {
+      oobiUrl = oobiUrl.replace("3902", keriaHttpPort.toString());
       console.log(`Replaced OobiUrl port ${url.port}: ${oobiUrl}`);
     }
     console.log(`Fetcching OobiUrl: ${oobiUrl}`);

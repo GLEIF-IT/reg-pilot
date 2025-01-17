@@ -1,7 +1,4 @@
 import { downloadReports } from '../utils/bank-reports';
-import { TestPaths } from '../utils/resolve-env';
-
-const testPaths = new TestPaths();
 
 async function main() {
   let bankNum;

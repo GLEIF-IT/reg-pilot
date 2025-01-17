@@ -1,6 +1,6 @@
 import path from "path";
 import Docker from "dockerode";
-import { resolveEnvironment, TestPaths } from "../src/utils/resolve-env";
+import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 
 import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 
@@ -10,35 +10,36 @@ import { downloadReports } from "../src/utils/bank-reports";
 import { launchTestKeria } from "./utils/test-util";
 
 let testPaths: TestPaths;
+let env: TestEnvironment;
 let configJson: any;
 let containers: Map<string, Docker.Container> = new Map<
   string,
   Docker.Container
 >();
 
-const bankNum = process.env.BANK_NUM ? parseInt(process.env.BANK_NUM) : 1;
+console.log(`run-workflow-bank process.argv array: ${process.argv}`);
+const bankNum = parseInt(process.argv[process.argv.length - 1], 10) || 1;
 const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankContainer = `bank${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const offset = 10 * (bankNum - 1);
 const keriaAdminPort =
+  parseInt(process.argv[process.argv.length - 4], 10) + offset ||
   (process.env.KERIA_ADMIN_PORT
     ? parseInt(process.env.KERIA_ADMIN_PORT)
-    : 3901) + offset;
+    : 20001) + offset;
 const keriaHttpPort =
-  (process.env.KERIA_HTTP_PORT ? parseInt(process.env.KERIA_HTTP_PORT) : 3902) +
-  offset;
+  parseInt(process.argv[process.argv.length - 3], 10) + offset ||
+  (process.env.KERIA_HTTP_PORT
+    ? parseInt(process.env.KERIA_HTTP_PORT)
+    : 20002) + offset;
 const keriaBootPort =
-  (process.env.KERIA_BOOT_PORT ? parseInt(process.env.KERIA_BOOT_PORT) : 3903) +
-  offset;
+  parseInt(process.argv[process.argv.length - 2], 10) + offset ||
+  (process.env.KERIA_BOOT_PORT
+    ? parseInt(process.env.KERIA_BOOT_PORT)
+    : 20003) + offset;
 
 beforeAll(async () => {
-  process.env.KERIA = process.env.KERIA
-    ? process.env.KERIA
-    : `http://localhost:${keriaAdminPort}`;
-  process.env.KERIA_BOOT = process.env.KERIA_BOOT
-    ? process.env.KERIA_BOOT
-    : `http://localhost:${keriaBootPort}`;
   process.env.DOCKER_HOST = process.env.DOCKER_HOST
     ? process.env.DOCKER_HOST
     : "localhost";
@@ -49,34 +50,44 @@ beforeAll(async () => {
     ? process.env.TEST_USER_NAME
     : bankName;
 
-  testPaths = new TestPaths();
+  testPaths = TestPaths.getInstance(bankName);
   await downloadReports();
-  configJson = getConfig(testPaths.testUserConfigFile, true);
+  // await generateBankConfig(bankNum);
+  configJson = getConfig(testPaths.testUserConfigFile);
 
+  // should we try to launch a user container?
   if (
     process.env.START_TEST_KERIA === undefined ||
     process.env.START_TEST_KERIA === "true"
   ) {
-    await setupBank();
+    const keriaContainer = await launchTestKeria(
+      bankContainer,
+      bankImage,
+      keriaAdminPort,
+      keriaHttpPort,
+      keriaBootPort
+    );
+    containers.set(bankName, keriaContainer);
   }
+
+  env = TestEnvironment.getInstance(
+    keriaAdminPort,
+    keriaHttpPort,
+    keriaBootPort
+  );
 });
 
 afterAll(async () => {
   for (const container of containers.values()) {
     await container.stop();
-    await container.remove();
+    // await container.remove();
     await containers.delete(bankName);
   }
 });
 
-async function setupBank() {
-  const keriaContainer = await launchTestKeria(bankContainer, bankImage);
-  containers.set(bankName, keriaContainer);
-}
-
 test("api-verifier-bank-test-workflow", async function run() {
+  console.log(`Running api-verifier-bank-test-workflow for bank: ${bankName}`);
   // process.env.TEST_ENVIRONMENT = "bank_test";
-  const env = resolveEnvironment();
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
@@ -91,7 +102,6 @@ test("api-verifier-bank-test-workflow", async function run() {
 
 test("eba-verifier-bank-test-workflow", async function run() {
   process.env.TEST_ENVIRONMENT = "eba_bank_test";
-  const env = resolveEnvironment();
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
@@ -106,7 +116,6 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
 test("vlei-issuance-reports-bank-test-workflow", async function run() {
   process.env.REPORT_TYPES = SIMPLE_TYPE;
-  const env = resolveEnvironment();
 
   console.log(
     `Running vlei issuance and reports generation test for bank: ${bankName}`

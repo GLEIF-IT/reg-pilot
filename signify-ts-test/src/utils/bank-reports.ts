@@ -7,9 +7,8 @@ import { TestPaths } from "./resolve-env";
 const bankReportsUrl =
   "https://raw.githubusercontent.com/aydarng/bank_reports/main";
 
-const testPaths = new TestPaths();
-
 export async function downloadFileFromUrl(url: string, destFilePath: string) {
+  const testPaths = TestPaths.getInstance();
   const response = await axios.get(url, {
     responseType: "stream",
   });
@@ -39,7 +38,9 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
 }
 
 export async function downloadReports() {
+  const testPaths = TestPaths.getInstance();
   const bankName = testPaths.testUserName;
+  console.log(`Downloading reports for bank: ${bankName}`);
   const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
   const zipFilePath = `${testPaths.tmpReportsDir}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, zipFilePath);
@@ -59,6 +60,7 @@ export function unpackZipFile(
   includeAllSignedReports = false,
   includeFailReports = false
 ) {
+  const testPaths = TestPaths.getInstance();
   const zip = new AdmZip(zipFilePath);
 
   zip.extractAllTo(testPaths.tmpReportUnpackDir, false); // if true overwrites existing files

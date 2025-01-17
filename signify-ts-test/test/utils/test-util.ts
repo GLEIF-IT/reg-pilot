@@ -12,7 +12,7 @@ import signify, {
 } from "signify-ts";
 import { RetryOptions, retry } from "./retry";
 import assert from "assert";
-import { resolveEnvironment } from "../../src/utils/resolve-env";
+import { TestEnvironment } from "../../src/utils/resolve-env";
 import Docker from "dockerode";
 import axios from "axios";
 
@@ -186,15 +186,22 @@ export async function getOrCreateClient(
   bran: string | undefined = undefined,
   getOnly: boolean = false
 ): Promise<SignifyClient> {
-  const env = resolveEnvironment();
+  const env = TestEnvironment.getInstance();
   await ready();
   bran ??= randomPasscode();
   bran = bran.padEnd(21, "_");
-  const client = new SignifyClient(env.url, bran, Tier.low, env.bootUrl);
+  const client = new SignifyClient(
+    env.keriaAdminUrl,
+    bran,
+    Tier.low,
+    env.keriaBootUrl
+  );
   try {
+    console.log("KERIA client connecting to ", env.keriaAdminUrl);
     await client.connect();
   } catch (e: any) {
     if (!getOnly) {
+      console.log("KERIA client connecting to ", env.keriaBootUrl);
       const res = await client.boot();
       if (!res.ok) throw new Error();
       await client.connect();
@@ -285,7 +292,7 @@ export async function getOrCreateIdentifier(
     // console.log("identifiers.get", identfier);
     id = identfier.prefix;
   } catch {
-    const env = resolveEnvironment();
+    const env = TestEnvironment.getInstance();
     kargs ??=
       env.witnessIds.length > 0
         ? { toad: env.witnessIds.length, wits: env.witnessIds }
@@ -667,30 +674,29 @@ export async function launchTestKeria(
   const existingContainer = containers.find((c) =>
     c.Names.includes(`/${kontainerName}`)
   );
-  if (existingContainer) {
-    if (existingContainer.State === "running") {
-      console.warn(
-        `Warning: Container with name ${kontainerName} is already running.\n` +
-          `Container ID: ${existingContainer.Id}\n` +
-          `Container Names: ${existingContainer.Names.join(", ")}\n` +
-          `Container Image: ${existingContainer.Image}\n` +
-          `Container State: ${existingContainer.State}\n` +
-          `Container Status: ${existingContainer.Status}`
-      );
-      container = docker.getContainer(existingContainer.Id);
-    } else {
-      console.warn(
-        `Warning: Container with name ${kontainerName} exists but is not running. Starting the container.\n` +
-          `Container ID: ${existingContainer.Id}\n` +
-          `Container Names: ${existingContainer.Names.join(", ")}\n` +
-          `Container Image: ${existingContainer.Image}\n` +
-          `Container State: ${existingContainer.State}\n` +
-          `Container Status: ${existingContainer.Status}`
-      );
-      container = docker.getContainer(existingContainer.Id);
-      await container.start();
-    }
+  if (existingContainer && existingContainer.State === "running") {
+    console.warn(
+      `Warning: Container with name ${kontainerName} is already running.\n` +
+        `Container ID: ${existingContainer.Id}\n` +
+        `Container Names: ${existingContainer.Names.join(", ")}\n` +
+        `Container Image: ${existingContainer.Image}\n` +
+        `Container State: ${existingContainer.State}\n` +
+        `Container Status: ${existingContainer.Status}`
+    );
+    container = docker.getContainer(existingContainer.Id);
   } else {
+    if (existingContainer) {
+      console.warn(
+        `Warning: Older container with name ${kontainerName} exists but is not running. Removing.\n` +
+          `Container ID: ${existingContainer.Id}\n` +
+          `Container Names: ${existingContainer.Names.join(", ")}\n` +
+          `Container Image: ${existingContainer.Image}\n` +
+          `Container State: ${existingContainer.State}\n` +
+          `Container Status: ${existingContainer.Status}`
+      );
+      docker.getContainer(existingContainer.Id).remove();
+    }
+
     // Pull Docker image
     await new Promise<void>((resolve, reject) => {
       docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
@@ -713,15 +719,15 @@ export async function launchTestKeria(
       name: kontainerName,
       Image: kimageName,
       ExposedPorts: {
-        [`${keriaAdminPort}/tcp`]: {},
-        [`${keriaHttpPort}/tcp`]: {},
-        [`${keriaBootPort}/tcp`]: {},
+        "3901/tcp": {},
+        "3902/tcp": {},
+        "3903/tcp": {},
       },
       HostConfig: {
         PortBindings: {
-          [`${keriaAdminPort}/tcp`]: [{ HostPort: `${keriaAdminPort}` }],
-          [`${keriaHttpPort}/tcp`]: [{ HostPort: `${keriaHttpPort}` }],
-          [`${keriaBootPort}/tcp`]: [{ HostPort: `${keriaBootPort}` }],
+          "3901/tcp": [{ HostPort: `${keriaAdminPort}` }],
+          "3902/tcp": [{ HostPort: `${keriaHttpPort}` }],
+          "3903/tcp": [{ HostPort: `${keriaBootPort}` }],
         },
       },
     });
@@ -751,5 +757,5 @@ async function performHealthCheck(
     }
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
-  throw new Error("Service did not become healthy in time");
+  throw new Error(`Service at ${url} did not become healthy in time`);
 }

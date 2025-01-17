@@ -4,8 +4,6 @@ import fs from "fs";
 import yaml from "js-yaml";
 import crypto from "crypto";
 
-const testPaths = new TestPaths();
-
 function generateSecret() {
   return crypto
     .randomBytes(16)
@@ -25,7 +23,7 @@ const qviSecrets = {
   qvi1: "BTaqgh1eeOjXO5iQJp6m1",
 };
 
-function generateBankConfig(bankId: number) {
+export function generateBankConfig(bankId: number) {
   const leSecrets = {
     le1: generateSecret(),
   };
@@ -211,6 +209,7 @@ function generateBankConfig(bankId: number) {
     ],
   };
 
+  const testPaths = TestPaths.getInstance();
   // Define workflow structure
   let workflow = {
     workflow: {

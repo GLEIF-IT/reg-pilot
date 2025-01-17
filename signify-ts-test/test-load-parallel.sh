@@ -12,6 +12,8 @@ FAST_MODE=false
 STAGE_MODE=false
 EBA=""
 USE_DOCKER_INTERNAL=""
+RETRY=3
+TEST_ENVIRONMENT="${TEST_ENVIRONMENT:=docker}"
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
@@ -101,6 +103,10 @@ parse_args() {
             --stage)
                 STAGE_MODE=true
                 ;;
+            --retry)
+                RETRY="$2"
+                shift
+                ;;
             *)
                 echo "Unknown parameter: $1"
                 usage
@@ -162,11 +168,11 @@ validate_inputs() {
 
         if [[ -z "$GITHUB_ACTIONS" ]]; then
         echo "FAST MODE: Ensure that all reports and Dockerfiles are staged and ready to run API tests."
-        read -p "Proceed with FAST MODE? (y/n): " confirm
-        if [[ "$confirm" != "y" ]]; then
-            echo "Exiting. Rerun with --stage if prerequisites are missing."
-            exit 1
-        fi
+        # read -p "Proceed with FAST MODE? (y/n): " confirm
+        # if [[ "$confirm" != "y" ]]; then
+        #     echo "Exiting. Rerun with --stage if prerequisites are missing."
+        #     exit 1
+        # fi
 
             echo "Validating if API test Docker image exists locally..."
             for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
@@ -209,6 +215,21 @@ check_available_banks() {
     fi
 }    
 
+setup_keria_ports() {
+    echo "---------------------------------------------------"
+    echo "Setting up KERIA ports for $BANK_NUM: $BANK_NAME"
+    echo "---------------------------------------------------"
+    local ADMIN_START_PORT=20001;
+    local BOOT_START_PORT=20003;
+    local HTTP_START_PORT=20002;
+    local PORT_OFFSET=$((10*(BANK_NUM-1)))
+    export KERIA_ADMIN_PORT=$((ADMIN_START_PORT + PORT_OFFSET))
+    export KERIA_HTTP_PORT=$((HTTP_START_PORT + PORT_OFFSET))
+    export KERIA_BOOT_PORT=$((BOOT_START_PORT + PORT_OFFSET))
+
+    echo "KERIA admin port $KERIA_ADMIN_PORT, KERIA http port $KERIA_HTTP_PORT, KERIA boot port $KERIA_BOOT_PORT"
+}
+
 start_keria() {
     echo "---------------------------------------------------"
     echo "Starting KERIA instance for $BANK_NAME"
@@ -216,40 +237,39 @@ start_keria() {
     BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]')
     BANK_INDEX=$(echo "$BANK_NAME" | sed 's/[^0-9]*//g')
     
-    set -x
-        local PORT_OFFSET=$((10*(BANK_INDEX-1)))
-        local ADMIN_PORT=$((20001 + PORT_OFFSET))
-        local HTTP_PORT=$((20002 + PORT_OFFSET))
-        local BOOT_PORT=$((20003 + PORT_OFFSET))
-        local CONTAINER_NAME=$BANK_NAME
-        local KERIA_CONFIG="{
+    local PORT_OFFSET=$((10*(BANK_INDEX-1)))
+    local ADMIN_PORT=$((20001 + PORT_OFFSET))
+    local HTTP_PORT=$((20002 + PORT_OFFSET))
+    local BOOT_PORT=$((20003 + PORT_OFFSET))
+    local CONTAINER_NAME=$BANK_NAME
+    local KERIA_CONFIG="{
+        \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
+        \"keria\": {
             \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
-            \"keria\": {
-                \"dt\": \"2023-12-01T10:05:25.062609+00:00\",
-                \"curls\": [\"http://host.docker.internal:$HTTP_PORT/\"]
-            },
-            \"iurls\": []
-        }"
+            \"curls\": [\"http://keria:$HTTP_PORT/\"]
+        },
+        \"iurls\": []
+    }"
 
-        # Check if the container is already running
-        if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
-            echo "Container ${CONTAINER_NAME} is already running. Skipping..."
-            return
-        fi
+    # Check if the container is already running
+    if [ "$(docker ps -q -f name=${CONTAINER_NAME})" ]; then
+        echo "Container ${CONTAINER_NAME} is already running. Skipping..."
+        return
+    fi
 
-        # -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
-        docker run --rm -d -p $ADMIN_PORT:3901 -p $HTTP_PORT:3902 -p $BOOT_PORT:3903 \
-        --name $CONTAINER_NAME \
-        -e KERI_AGENT_CORS=1 \
-        -e PYTHONUNBUFFERED=1 \
-        -e PYTHONIOENCODING=UTF-8 \
-        ronakseth96/keria:TestBank_$BANK_INDEX \
-        --config-dir /keria/config --config-file keria.json --loglevel DEBUG
+    # -v ./config/testkeria.json:/keria/config/keri/cf/keria.json \
+    docker run --rm -d -p $ADMIN_PORT:3901 -p $HTTP_PORT:3902 -p $BOOT_PORT:3903 \
+    --name $CONTAINER_NAME \
+    --network host \
+    -e KERI_AGENT_CORS=1 \
+    -e PYTHONUNBUFFERED=1 \
+    -e PYTHONIOENCODING=UTF-8 \
+    ronakseth96/keria:TestBank_$BANK_INDEX \
+    --config-dir /keria/config --config-file keria.json --loglevel DEBUG
 
-        # Write the JSON string to a file in the Docker container
-        docker exec $CONTAINER_NAME sh -c 'mkdir -p /keria/config/keri/cf'
-        echo "$KERIA_CONFIG" | docker exec -i $CONTAINER_NAME sh -c 'cat > /keria/config/keri/cf/keria.json'
-    set +x
+    # Write the JSON string to a file in the Docker container
+    docker exec $CONTAINER_NAME sh -c 'mkdir -p /keria/config/keri/cf'
+    echo "$KERIA_CONFIG" | docker exec -i $CONTAINER_NAME sh -c 'cat > /keria/config/keri/cf/keria.json'
 }
 
 stop_keria() {
@@ -410,25 +430,45 @@ run_api_test() {
 
     echo "Running API test for $BANK_NAME..."
 
+    TEST_FILE="./test/run-workflow-bank.test.ts"
+    if [[ "$EBA" == "true" ]]; then
+        TEST_NAME="eba-verifier-bank-test-workflow"
+    else
+        TEST_NAME="api-verifier-bank-test-workflow"
+    fi
+    echo "Running jest TEST_NAME: $TEST_NAME in $TEST_FILE"
 
     if [[ "$MODE" == "remote" ]]; then
             if [[ "$EBA" == "true" ]]; then
                 docker run \
+                    --network host \
                     -e TEST_ENVIRONMENT="$TEST_ENVIRONMENT" \
                     -e REG_PILOT_API="$REG_PILOT_API" \
                     -e REG_PILOT_FILER="$REG_PILOT_FILER" \
                     --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
             else 
                 docker run \
+                    --network host \
                     -e REG_PILOT_API="$REG_PILOT_API" \
                     -e REG_PILOT_FILER="$REG_PILOT_FILER" \
                     --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
             fi
+
+            docker rm "$BANK_IMAGE_TAG" > /dev/null 2>&1
+            check_status "Removing container for $BANK_NAME"
     else        
-        docker run --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
+        # docker run --network host --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
+            export TEST_ENVIRONMENT=$TEST_ENVIRONMENT
+            export BANK_NUM=$BANK_NUM
+            export BANK_NAME=$BANK_NAME
+            export REG_PILOT_API=$REG_PILOT_API
+            export REG_PILOT_FILER=$REG_PILOT_FILER
+            export START_TEST_KERIA="true"
+            # setup_keria_ports
+            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- "$BANK_NUM" 2>&1 | tee "$LOG_FILE"
     fi    
 
-    API_TEST_STATUS=$?
+    API_TEST_STATUS=${PIPESTATUS[0]}
     if [[ $API_TEST_STATUS -ne 0 ]]; then
         echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
         tail -n 25 "$LOG_FILE"
@@ -436,16 +476,13 @@ run_api_test() {
     else
         echo "API test for $BANK_NAME completed successfully."
     fi    
-
-    docker rm "$BANK_IMAGE_TAG" > /dev/null 2>&1
-    check_status "Removing container for $BANK_NAME"
 }
 
 load_test_banks() {
     SUCCESS_COUNT=0
     FAILURE_COUNT=0
     RETRY_COUNT=0
-    MAX_RETRIES=3
+    MAX_RETRIES=$RETRY
 
     LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
 
@@ -499,10 +536,10 @@ load_test_banks() {
     echo "---------------------------------------------------"
 
     # Start KERIA instances for the current batch
-    for ((i = BATCH_START; i <= BATCH_END; i++)); do
-            BANK_NAME="Bank_$i"
-            start_keria "$BANK_NAME"
-    done
+    # for ((i = BATCH_START; i <= BATCH_END; i++)); do
+    #         BANK_NAME="Bank_$i"
+    #         start_keria "$BANK_NAME"
+    # done
 
     # Running API tests for all banks in the current batch
     PIDS=()
@@ -511,7 +548,8 @@ load_test_banks() {
         for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="Bank_$i"
             BANK_NAMES+=("$BANK_NAME")
-            run_api_test $BANK_NAME &
+            BANK_NUM=$i
+            run_api_test $BANK_NAME $BANK_NUM &
             PIDS+=($!)  
         done
 
@@ -527,18 +565,18 @@ load_test_banks() {
             fi
         done
 
-        # Stop KERIA instances for the current batch
-        STOP_PIDS=()
-        for ((i = BATCH_START; i <= BATCH_END; i++)); do
-            BANK_NAME="Bank_$i"
-            stop_keria "$BANK_NAME" &
-            STOP_PIDS+=($!)
-        done
+        # # Stop KERIA instances for the current batch
+        # STOP_PIDS=()
+        # for ((i = BATCH_START; i <= BATCH_END; i++)); do
+        #     BANK_NAME="Bank_$i"
+        #     stop_keria "$BANK_NAME" &
+        #     STOP_PIDS+=($!)
+        # done
 
-        # Wait for all stop_keria processes to finish
-        for pid in "${STOP_PIDS[@]}"; do
-            wait "$pid"
-        done
+        # # Wait for all stop_keria processes to finish
+        # for pid in "${STOP_PIDS[@]}"; do
+        #     wait "$pid"
+        # done
     done   
   
     # List of failed banks after processing all batches
@@ -568,14 +606,15 @@ load_test_banks() {
             # Start KERIA instances for the failed banks in the current batch
             for ((i = BATCH_START; i <= BATCH_END; i++)); do
             BANK_NAME="${FAILED_BANKS[$i]}"
-            start_keria "$BANK_NAME"
+             "$BANK_NAME"
             done
 
             # Retries for failed banks in the current batch
             PIDS=()
             for ((i = BATCH_START; i <= BATCH_END; i++)); do
                 BANK_NAME="${FAILED_BANKS[$i]}"
-                run_api_test "$BANK_NAME" &
+                BANK_NUM=$(echo "$BANK_NAME" | sed 's/[^0-9]*//g')
+                run_api_test "$BANK_NAME" "$BANK_NUM" &
                 PIDS+=($!)
             done
 
@@ -592,17 +631,17 @@ load_test_banks() {
             done
 
             # Stop KERIA instances for the current batch
-            STOP_PIDS=()
-            for ((i = BATCH_START; i <= BATCH_END; i++)); do
-            BANK_NAME="${FAILED_BANKS[$i]}"
-            stop_keria "$BANK_NAME" &
-            STOP_PIDS+=($!)
-            done
+            # STOP_PIDS=()
+            # for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            # BANK_NAME="${FAILED_BANKS[$i]}"
+            # stop_keria "$BANK_NAME" &
+            # STOP_PIDS+=($!)
+            # done
 
             # Wait for all stop_keria processes to finish
-            for pid in "${STOP_PIDS[@]}"; do
-                wait "$pid"
-            done
+            # for pid in "${STOP_PIDS[@]}"; do
+            #     wait "$pid"
+            # done
         done
 
         FAILED_BANKS=("${NEW_FAILED_BANKS[@]}")

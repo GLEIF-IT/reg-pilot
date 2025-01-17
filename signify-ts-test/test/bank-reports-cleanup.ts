@@ -2,8 +2,6 @@ import path from "path";
 import { TestPaths } from "../src/utils/resolve-env";
 import fs from "fs";
 
-const testPaths = new TestPaths();
-
 const removeFolderRecursive = (folderPath: string) => {
   if (fs.existsSync(folderPath)) {
     fs.rmSync(folderPath, { recursive: true, force: true });
@@ -14,6 +12,7 @@ const removeFolderRecursive = (folderPath: string) => {
 };
 
 export function cleanupReports() {
+  const testPaths = TestPaths.getInstance();
   const signedItems = fs.readdirSync(testPaths.testTmpSignedReports);
   signedItems.forEach((item: any) => {
     removeFolderRecursive(path.join(testPaths.testTmpSignedReports, item));

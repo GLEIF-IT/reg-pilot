@@ -6,15 +6,13 @@ import { getOrCreateClients } from "./test-util";
 import { ECR_SCHEMA_SAID } from "../../src/constants";
 import { SignifyClient } from "signify-ts";
 
-const testPaths = new TestPaths();
-
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
 export const UNFOLDERED_TYPE = "unfoldered";
 export const UNZIPPED_TYPE = "unzipped";
 export const FAIL_TYPE = "fail";
 
-export function getConfig(configFilePath: string, bankTest = false) {
+export function getConfig(configFilePath: string) {
   const configFile = fs.readFileSync(configFilePath, "utf-8");
   const configJson = JSON.parse(configFile);
   return configJson;
@@ -85,6 +83,7 @@ export function getReportGenTestData() {
       ? [getDefaultOrigReports()[0]]
       : getDefaultOrigReports();
 
+  const testPaths = TestPaths.getInstance();
   console.log("Original unsigned reports: ", testPaths.testOrigReportsDir);
   return {
     failDir: testPaths.testFailReports,
@@ -109,6 +108,7 @@ export async function getGrantedCredential(
 }
 
 export function getDefaultOrigReports(): string[] {
+  const testPaths = TestPaths.getInstance();
   console.log(
     `UNSIGNED_REPORTS not set, getting default unsigned reports from ${testPaths.testOrigReportsDir}`
   );
