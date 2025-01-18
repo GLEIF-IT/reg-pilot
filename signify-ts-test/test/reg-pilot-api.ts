@@ -21,13 +21,13 @@ let apiAdapter: ApiAdapter;
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
+export async function run_api_test(apiUsers: ApiUser[], configJson: any, fast = true) {
   env = TestEnvironment.getInstance();
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1)
-    await single_user_test(apiUsers[0], process.env.SPEED === "fast");
+    await single_user_test(apiUsers[0], fast);
   else
     console.log(
       `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
@@ -857,7 +857,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
-  lheads.set("uiversion", "1.3.10-475-FINAL-PILLAR3-trunk");
+  lheads.set("uiversion", "1.3.10-483-FINAL-master");
   lheads.set("Accept", "application/json, text/plain, */*");
   lheads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {

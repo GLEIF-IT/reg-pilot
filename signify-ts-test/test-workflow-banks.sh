@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
             case $docker_action in
                 deps | verify)
                     docker compose down -v
-                    docker compose up $docker_action -d --pull always
+                    docker compose up "$docker_action" -d --pull always
                     ;;
                 *)
                     echo "Unknown docker action: $docker_action"
@@ -49,8 +49,9 @@ while [[ $# -gt 0 ]]; do
             npm run build
             shift # past argument
             ;;
-        --reports-download)
-            npx tsx ./src/scripts/run-download-reports.ts
+        --reports-download=*)
+            bank_name="${1#*=}"
+            npx tsx ./src/scripts/run-download-reports.ts "$bank_name"
             download_exit_code=$?  
                 if [[ $download_exit_code -ne 0 ]]; then
                 exit 1  
@@ -58,7 +59,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --reports-cleanup)
-            npx tsx ./test/bank-reports-cleanup.ts
+            npx tsx ./src/scripts/bank-reports-cleanup.ts "$bank_name"
             cleanup_exit_code=$?  
                 if [[ $cleanup_exit_code -ne 0 ]]; then
                 exit 1  

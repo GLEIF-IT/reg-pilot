@@ -1,15 +1,12 @@
 import { downloadReports } from '../utils/bank-reports';
 
-async function main() {
-  let bankNum;
-  if (!process.env.TEST_USER_NAME) {
-    throw new Error('TEST_USER_NAME environment variable is required to run the download reports script.')
-  } else {
-    bankNum = parseInt(process.env.TEST_USER_NAME);
+async function main(bankNum: number) {
+  if (isNaN(bankNum)) {
+    throw new Error('A valid bank number is required to run the download reports script.');
   }
 
   try {
-    await downloadReports();
+    await downloadReports(bankNum);
     console.log('Reports downloaded successfully.');
   } catch (error) {
     console.error('Error downloading reports:', error);
@@ -17,4 +14,8 @@ async function main() {
   }
 }
 
-main();
+// Parse command-line arguments
+const args = process.argv.slice(2);
+const bankNum = parseInt(args[0], 10);
+console.log(`Running download reports for bank number: ${bankNum}`);
+main(bankNum);

@@ -7,7 +7,11 @@ import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 
 import { downloadReports } from "../src/utils/bank-reports";
-import { launchTestKeria } from "./utils/test-util";
+import {
+  launchTestKeria,
+  runDockerCompose,
+  stopDockerCompose,
+} from "./utils/test-util";
 
 let testPaths: TestPaths;
 let env: TestEnvironment;
@@ -25,19 +29,13 @@ const bankName = "Bank_" + bankNum;
 const offset = 10 * (bankNum - 1);
 const keriaAdminPort =
   parseInt(process.argv[process.argv.length - 4], 10) + offset ||
-  (process.env.KERIA_ADMIN_PORT
-    ? parseInt(process.env.KERIA_ADMIN_PORT)
-    : 20001) + offset;
+  20001 + offset;
 const keriaHttpPort =
   parseInt(process.argv[process.argv.length - 3], 10) + offset ||
-  (process.env.KERIA_HTTP_PORT
-    ? parseInt(process.env.KERIA_HTTP_PORT)
-    : 20002) + offset;
+  20002 + offset;
 const keriaBootPort =
   parseInt(process.argv[process.argv.length - 2], 10) + offset ||
-  (process.env.KERIA_BOOT_PORT
-    ? parseInt(process.env.KERIA_BOOT_PORT)
-    : 20003) + offset;
+  20003 + offset;
 
 beforeAll(async () => {
   process.env.DOCKER_HOST = process.env.DOCKER_HOST
@@ -51,7 +49,7 @@ beforeAll(async () => {
     : bankName;
 
   testPaths = TestPaths.getInstance(bankName);
-  await downloadReports();
+  await downloadReports(bankNum);
   // await generateBankConfig(bankNum);
   configJson = getConfig(testPaths.testUserConfigFile);
 
@@ -60,6 +58,10 @@ beforeAll(async () => {
     process.env.START_TEST_KERIA === undefined ||
     process.env.START_TEST_KERIA === "true"
   ) {
+    console.log(
+      `Starting local services using ${testPaths.dockerComposeFile} up -d verify`
+    );
+    await runDockerCompose(testPaths.dockerComposeFile, "up -d", "verify");
     const keriaContainer = await launchTestKeria(
       bankContainer,
       bankImage,
@@ -69,12 +71,6 @@ beforeAll(async () => {
     );
     containers.set(bankName, keriaContainer);
   }
-
-  env = TestEnvironment.getInstance(
-    keriaAdminPort,
-    keriaHttpPort,
-    keriaBootPort
-  );
 });
 
 afterAll(async () => {
@@ -83,11 +79,18 @@ afterAll(async () => {
     // await container.remove();
     await containers.delete(bankName);
   }
+  console.log(`Stopping local services using ${testPaths.dockerComposeFile}`);
+  await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
 });
 
 test("api-verifier-bank-test-workflow", async function run() {
   console.log(`Running api-verifier-bank-test-workflow for bank: ${bankName}`);
-  // process.env.TEST_ENVIRONMENT = "bank_test";
+  env = TestEnvironment.getInstance(
+    "docker",
+    keriaAdminPort,
+    keriaHttpPort,
+    keriaBootPort
+  );
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
@@ -101,8 +104,13 @@ test("api-verifier-bank-test-workflow", async function run() {
 }, 3600000);
 
 test("eba-verifier-bank-test-workflow", async function run() {
-  process.env.TEST_ENVIRONMENT = "eba_bank_test";
-
+  console.log(`Running eba-verifier-bank-test-workflow for bank: ${bankName}`);
+  env = TestEnvironment.getInstance(
+    "eba_bank_test",
+    keriaAdminPort,
+    keriaHttpPort,
+    keriaBootPort
+  );
   const workflowPath = path.join(
     testPaths.workflowsDir,
     "eba-verifier-test-workflow.yaml"
@@ -115,7 +123,17 @@ test("eba-verifier-bank-test-workflow", async function run() {
 }, 3600000);
 
 test("vlei-issuance-reports-bank-test-workflow", async function run() {
+  console.log(
+    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`
+  );
   process.env.REPORT_TYPES = SIMPLE_TYPE;
+
+  env = TestEnvironment.getInstance(
+    "docker",
+    keriaAdminPort,
+    keriaHttpPort,
+    keriaBootPort
+  );
 
   console.log(
     `Running vlei issuance and reports generation test for bank: ${bankName}`

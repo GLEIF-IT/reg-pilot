@@ -15,6 +15,7 @@ import assert from "assert";
 import { TestEnvironment } from "../../src/utils/resolve-env";
 import Docker from "dockerode";
 import axios from "axios";
+import { exec } from "child_process";
 
 const docker = new Docker();
 
@@ -758,4 +759,91 @@ async function performHealthCheck(
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
   throw new Error(`Service at ${url} did not become healthy in time`);
+}
+
+export async function runDockerCompose(
+  file: string,
+  command: string,
+  service: string
+): Promise<boolean> {
+  const running = await isDockerComposeRunning(file, service);
+  if (!running) {
+    console.log(
+      `Starting docker compose command: ${file} ${command} ${service}`
+    );
+    return new Promise((resolve, reject) => {
+      exec(
+        `docker compose -f ${file} ${command} ${service}`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error running docker compose command: ${stderr}`);
+            return reject(error);
+          }
+          console.log(stdout);
+          resolve(true);
+        }
+      );
+    });
+  } else {
+    console.log(
+      `Docker compose is already running: ${file} ${command} ${service}`
+    );
+    return running;
+  }
+}
+
+export async function stopDockerCompose(
+  file: string,
+  command: string,
+  service: string
+): Promise<boolean> {
+  const running = await isDockerComposeRunning(file, service);
+  if (running) {
+    console.log(
+      `Stopping docker compose command: ${file} ${command} ${service}`
+    );
+    return new Promise((resolve, reject) => {
+      exec(
+        `docker compose -f ${file} ${command} ${service}`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error stopping docker compose command: ${stderr}`);
+            return reject(error);
+          }
+          console.log(stdout);
+          resolve(true);
+        }
+      );
+    });
+  } else {
+    console.log(
+      `Docker compose is already running: ${file} ${command} ${service}`
+    );
+    return running;
+  }
+}
+
+export async function isDockerComposeRunning(
+  file: string,
+  service: string
+): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    exec(`docker compose -f ${file} ps ${service}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error checking docker compose status: ${stderr}`);
+        return reject(error);
+      }
+      // Check if the output contains only headers and no running services
+      const lines = stdout.trim().split("\n");
+      if (lines.length <= 1) {
+        console.log(`docker compose status: ${lines}\n Service is not running`);
+        resolve(false);
+      } else {
+        // Check if the service is listed as running
+        const isRunning = stdout.includes("Up");
+        console.log(`docker compose status: ${lines}\n Service is running`);
+        resolve(isRunning);
+      }
+    });
+  });
 }

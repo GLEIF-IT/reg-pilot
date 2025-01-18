@@ -36,10 +36,10 @@ usage() {
     echo "  --api-url       (Required for 'remote' mode)"
     echo "                  API URL of the reg-pilot-api service (e.g., https://api.example.com)."
     echo ""
-    echo "  --filer-url     (Required for --eba)"
+    echo "  --filer-url     (Can override default filer url for --eba)"
     echo "                  FILER API URL of the reg-pilot-api service (e.g., https://api.example.com)."
     echo ""
-    echo "  --eba           Enable EBA mode for API tests. --mode "remote" and --api-url must be specified"
+    echo "  --eba           Enable EBA mode for API tests. --api-url and --filer-url must be specified"
     echo ""
     echo "  --stage         Perform all setup tasks (generate bank reports, generate and build api test dockerfiles)."
     echo ""
@@ -151,16 +151,6 @@ validate_inputs() {
 
     if [[ "$MODE" == "remote" && ! ("$REG_PILOT_API" =~ ^https?://)]]; then
         echo "ERROR: Please enter a valid --api-url"
-        usage
-    fi
-
-    if [[ "$MODE" != "remote" && "$EBA" ]]; then
-        echo "ERROR: --eba should be used with --mode remote."
-        usage
-    fi
-
-    if [[ "$MODE" == "remote" && "$EBA" && (-z "$REG_PILOT_FILER")]]; then
-        echo "ERROR: --eba requires --filer-url specified."
         usage
     fi
 
@@ -341,21 +331,21 @@ stop_services_local() {
 }
 
 download_reports() {
-        export TEST_USER_NAME="Bank_$i"
+        BANK_USER="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Downloading reports for $TEST_USER_NAME..."
+        echo "Downloading reports for $BANK_USER..."
         echo "---------------------------------------------------"
-        ./test-workflow-banks.sh --reports-download
-        check_status "Downloading report for $TEST_USER_NAME"
+        ./test-workflow-banks.sh --reports-download="$BANK_USER"
+        check_status "Downloading report for $BANK_USER"
 }
 
 cleanup_reports() {
-        export TEST_USER_NAME="Bank_$i"
+        BANK_USER="Bank_$i"
         echo "---------------------------------------------------"
-        echo "Cleaning up report files for $TEST_USER_NAME..."
+        echo "Cleaning up report files for $BANK_USER..."
         echo "---------------------------------------------------"
         ./test-workflow-banks.sh --reports-cleanup
-        check_status "Cleaning up report for $TEST_USER_NAME"
+        check_status "Cleaning up report for $BANK_USER"
 }
 
 generate_dockerfiles() {
@@ -433,6 +423,7 @@ run_api_test() {
     TEST_FILE="./test/run-workflow-bank.test.ts"
     if [[ "$EBA" == "true" ]]; then
         TEST_NAME="eba-verifier-bank-test-workflow"
+        TEST_ENVIRONMENT="eba_bank_test"
     else
         TEST_NAME="api-verifier-bank-test-workflow"
     fi
@@ -463,7 +454,6 @@ run_api_test() {
             export BANK_NAME=$BANK_NAME
             export REG_PILOT_API=$REG_PILOT_API
             export REG_PILOT_FILER=$REG_PILOT_FILER
-            export START_TEST_KERIA="true"
             # setup_keria_ports
             npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- "$BANK_NUM" 2>&1 | tee "$LOG_FILE"
     fi    

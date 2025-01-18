@@ -35,6 +35,8 @@ export class TestEnvironment {
   configuration: string;
 
   private constructor(
+    preset: TestEnvironmentPreset = (process.env
+      .TEST_ENVIRONMENT as TestEnvironmentPreset) ?? "docker",
     keriaAdminPort = process.env.KERIA_ADMIN_PORT
       ? parseInt(process.env.KERIA_ADMIN_PORT)
       : 3901,
@@ -45,8 +47,7 @@ export class TestEnvironment {
       ? parseInt(process.env.KERIA_BOOT_PORT)
       : 3903
   ) {
-    this.preset =
-      (process.env.TEST_ENVIRONMENT as TestEnvironmentPreset) ?? "docker";
+    this.preset = preset;
     this.keriaAdminPort = keriaAdminPort;
     this.keriaHttpPort = keriaHttpPort;
     this.keriaBootPort = keriaBootPort;
@@ -85,6 +86,7 @@ export class TestEnvironment {
           (this.configuration =
             process.env.CONFIGURATION ||
             "configuration-singlesig-single-user.json");
+        break;
       case "local":
         (this.keriaAdminUrl =
           process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
@@ -216,6 +218,7 @@ export class TestEnvironment {
             process.env.VLEI_VERIFIER || "Demo verifier not set"),
           (this.workflow = process.env.WORKFLOW || ""),
           (this.configuration = process.env.CONFIGURATION || "config.json");
+        break;
       case "eba_bank_test":
         (this.keriaAdminUrl =
           process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
@@ -239,6 +242,7 @@ export class TestEnvironment {
             process.env.VLEI_VERIFIER || "Demo verifier not set"),
           (this.workflow = process.env.WORKFLOW || ""),
           (this.configuration = process.env.CONFIGURATION || "config.json");
+        break;
       case "nordlei_dev":
         (this.keriaAdminUrl =
           process.env.KERIA_ADMIN_URL || "https://demo.wallet.vlei.tech"),
@@ -281,6 +285,7 @@ export class TestEnvironment {
           (this.configuration =
             process.env.CONFIGURATION ||
             "configuration-singlesig-single-user.json");
+        break;
       case "nordlei_demo":
         (this.keriaAdminUrl =
           process.env.KERIA_ADMIN_URL || "https://errp.wallet.vlei.io"),
@@ -323,6 +328,7 @@ export class TestEnvironment {
           (this.configuration =
             process.env.CONFIGURATION ||
             "configuration-singlesig-single-user.json");
+        break;
       case "nordlei_dry":
         (this.keriaAdminUrl =
           process.env.KERIA_ADMIN_URL ||
@@ -359,6 +365,7 @@ export class TestEnvironment {
           (this.configuration =
             process.env.CONFIGURATION ||
             "configuration-singlesig-single-user.json");
+        break;
       default:
         throw new Error(`Unknown test environment preset '${this.preset}'`);
     }
@@ -366,21 +373,39 @@ export class TestEnvironment {
   }
 
   public static getInstance(
+    preset?: TestEnvironmentPreset,
     kAdminPort?: number,
     kHttpPort?: number,
     kBootPort?: number
   ): TestEnvironment {
     if (!TestEnvironment.instance) {
       if (
+        preset === undefined ||
         kAdminPort === undefined ||
         kHttpPort === undefined ||
         kBootPort === undefined
       ) {
         throw new Error(
-          "TestEnvironment.getInstance() called without port config means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
+          "TestEnvironment.getInstance() called without preset or port config means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
         );
       }
       TestEnvironment.instance = new TestEnvironment(
+        preset,
+        kAdminPort,
+        kHttpPort,
+        kBootPort
+      );
+    } else if (
+      preset !== undefined &&
+      kAdminPort !== undefined &&
+      kHttpPort !== undefined &&
+      kBootPort !== undefined
+    ) {
+      console.warn(
+        "TestEnvironment.getInstance() called with preset and port config, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects."
+      );
+      TestEnvironment.instance = new TestEnvironment(
+        preset,
         kAdminPort,
         kHttpPort,
         kBootPort
@@ -392,6 +417,7 @@ export class TestEnvironment {
 
 export class TestPaths {
   private static instance: TestPaths;
+  dockerComposeFile: string;
   testDir: string;
   testDataDir: string;
   tmpReportsDir: string;
@@ -409,7 +435,10 @@ export class TestPaths {
   // origReportsDir: string;
   // configDir: string;
 
-  private constructor(userName = "Bank_1") {
+  private constructor(userName: string) {
+    this.dockerComposeFile =
+      process.env.DOCKER_COMPOSE_FILE ||
+      path.join(process.cwd(), "docker-compose-banktest.yaml");
     this.testDir = process.env.TEST_DIR
       ? process.env.TEST_DIR
       : path.join(process.cwd(), `test`);

@@ -143,7 +143,7 @@ stop_keria() {
 # Run Bank Test Workflow (Local or Remote)
 run_bank_test_workflow() {
     echo "Downloading reports for $BANK_NAME..."
-    ./test-workflow-banks.sh --build --reports-download
+    ./test-workflow-banks.sh --build --reports-download="$BANK_NAME"
     check_status "Downloading reports for $BANK_NAME"
 
     if [[ "$MODE" == "local" ]]; then
@@ -176,7 +176,7 @@ load_test_banks() {
 
         start_keria
         run_bank_test_workflow
-        if [[ $? -eq 0 ]]; then
+        if [[ "$?" -eq 0 ]]; then
             echo "Test successful for $BANK_NAME."
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         else

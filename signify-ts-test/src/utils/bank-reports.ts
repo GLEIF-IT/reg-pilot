@@ -37,19 +37,17 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
   });
 }
 
-export async function downloadReports() {
-  const testPaths = TestPaths.getInstance();
-  const bankName = testPaths.testUserName;
+export async function downloadReports(
+  bankNum: number,
+  doAllSigned = false,
+  doFailReps = false
+) {
+  const bankName = `Bank_${bankNum}`;
+  const testPaths = TestPaths.getInstance(bankName);
   console.log(`Downloading reports for bank: ${bankName}`);
   const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
   const zipFilePath = `${testPaths.tmpReportsDir}/${bankName}.zip`;
   await downloadFileFromUrl(curBankReportsUrl, zipFilePath);
-
-  const includeFailReports = process.env.INCLUDE_FAIL_REPORTS || "false";
-  const doFailReps = includeFailReports?.toLowerCase() === "true";
-  const includeAllSignedReports =
-    process.env.INCLUDE_ALL_SIGNED_REPORTS || "false";
-  const doAllSigned = includeAllSignedReports?.toLowerCase() === "true";
 
   unpackZipFile(zipFilePath, bankName, doAllSigned, doFailReps);
 }
@@ -133,3 +131,26 @@ const moveFiles = (srcDir: string, destDir: string) => {
     }
   });
 };
+
+const removeFolderRecursive = (folderPath: string) => {
+  if (fs.existsSync(folderPath)) {
+    fs.rmSync(folderPath, { recursive: true, force: true });
+    console.log(`Deleted folder: ${folderPath}`);
+  } else {
+    console.log(`Folder not found: ${folderPath}`);
+  }
+};
+
+export function cleanupReports(bankNum: number) {
+  const testPaths = TestPaths.getInstance("Bank_" + bankNum);
+  const signedItems = fs.readdirSync(testPaths.testTmpSignedReports);
+  signedItems.forEach((item: any) => {
+    removeFolderRecursive(path.join(testPaths.testTmpSignedReports, item));
+  });
+  const failItems = fs.readdirSync(testPaths.testTmpFailReports);
+  failItems.forEach((item: any) => {
+    removeFolderRecursive(path.join(testPaths.testTmpFailReports, item));
+  });
+  removeFolderRecursive(testPaths.tmpReportsDir);
+  removeFolderRecursive(testPaths.tmpReportUnpackDir);
+}

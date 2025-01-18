@@ -68,7 +68,6 @@ function generateDockerfiles(
   ENV KERIA_HTTP_PORT=${kHttpPort} 
   ENV REG_PILOT_API=${apiBaseUrl}
   ENV REG_PILOT_FILER=${filerBaseUrl}
-  ENV START_TEST_KERIA="false"
   # ENV USE_DOCKER_INTERNAL=${process.env.USE_DOCKER_INTERNAL}
   
   CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank.test.ts"]
