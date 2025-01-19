@@ -583,8 +583,10 @@ load_test_banks() {
         NEW_FAILED_BANKS=()
 
         # Process failed banks in batches
-        for ((BATCH_START = 0; BATCH_START < ${#FAILED_BANKS[@]}; BATCH_START += BATCH_SIZE)); do
-            BATCH_END=$((BATCH_START + BATCH_SIZE - 1))
+        # for ((BATCH_START = 0; BATCH_START < ${#FAILED_BANKS[@]}; BATCH_START += BATCH_SIZE)); do
+        for ((BATCH_START = 0; BATCH_START < ${#FAILED_BANKS[@]}; BATCH_START += 1)); do
+            # BATCH_END=$((BATCH_START + BATCH_SIZE - 1))
+            BATCH_END=$((BATCH_START))
             if [[ $BATCH_END -ge ${#FAILED_BANKS[@]} ]]; then
                 BATCH_END=$((${#FAILED_BANKS[@]} - 1))
             fi
@@ -594,10 +596,10 @@ load_test_banks() {
             echo "-----------------------------------------------------------------------------------------------------------"
             
             # Start KERIA instances for the failed banks in the current batch
-            for ((i = BATCH_START; i <= BATCH_END; i++)); do
-            BANK_NAME="${FAILED_BANKS[$i]}"
-             "$BANK_NAME"
-            done
+            # for ((i = BATCH_START; i <= BATCH_END; i++)); do
+            # BANK_NAME="${FAILED_BANKS[$i]}"
+            #  "$BANK_NAME"
+            # done
 
             # Retries for failed banks in the current batch
             PIDS=()

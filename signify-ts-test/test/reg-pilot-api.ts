@@ -21,13 +21,16 @@ let apiAdapter: ApiAdapter;
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[], configJson: any, fast = true) {
+export async function run_api_test(
+  apiUsers: ApiUser[],
+  configJson: any,
+  fast = true
+) {
   env = TestEnvironment.getInstance();
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
   await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
-  else if (apiUsers.length == 1)
-    await single_user_test(apiUsers[0], fast);
+  else if (apiUsers.length == 1) await single_user_test(apiUsers[0], fast);
   else
     console.log(
       `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
@@ -58,11 +61,12 @@ module.exports = {
 
 async function single_user_test(user: ApiUser, fast = false) {
   const testPaths = TestPaths.getInstance();
-  const signedDirPrefixed = path.join(testPaths.testSignedReports,
+  const signedDirPrefixed = path.join(
+    testPaths.testSignedReports,
     user.ecrAid.prefix
   );
   const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(testPaths.testFailReports,user.ecrAid.prefix);
+  failDirPrefixed = path.join(testPaths.testFailReports, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -345,6 +349,7 @@ export async function single_user_eba_test(
           token,
           overrideEnv
         );
+        console.log("EBA upload response", signedUpResp);
         assert.equal(signedUpResp.status, 200);
         const resBod = await signedUpResp.json();
         console.log("EBA upload response body", resBod["message"]);
@@ -446,9 +451,10 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
       user.ecrAid.prefix,
       user.roleClient
     );
-    assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
+    console.log("Multi-user current report status", sbody);
     assert.equal(sbody.length, 0);
+    assert.equal(sresp.status, 202);
 
     // Get the current working directory
     const currentDirectory = process.cwd();

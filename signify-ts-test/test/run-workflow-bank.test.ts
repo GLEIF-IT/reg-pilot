@@ -42,8 +42,6 @@ beforeAll(async () => {
     ? process.env.DOCKER_HOST
     : "localhost";
   process.env.SPEED = "fast";
-  process.env.INCLUDE_ALL_SIGNED_REPORTS = "false";
-  process.env.INCLUDE_FAIL_REPORTS = "false";
   process.env.TEST_USER_NAME = process.env.TEST_USER_NAME
     ? process.env.TEST_USER_NAME
     : bankName;

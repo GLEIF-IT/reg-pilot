@@ -644,11 +644,12 @@ export async function launchTestKeria(
   kimageName: string,
   keriaAdminPort: number = 3901,
   keriaHttpPort: number = 3902,
-  keriaBootPort: number = 3903
+  keriaBootPort: number = 3903,
+  pullImage: boolean = false
 ): Promise<Docker.Container> {
   // Check if the container is already running
   const containers = await docker.listContainers({ all: true });
-  let container: Docker.Container;
+  let container: Docker.Container | undefined;
 
   // Check if any container is using the specified ports
   const portInUse = containers.find((c) => {
@@ -688,54 +689,77 @@ export async function launchTestKeria(
   } else {
     if (existingContainer) {
       console.warn(
-        `Warning: Older container with name ${kontainerName} exists but is not running. Removing.\n` +
+        `Warning: Older container with name ${kontainerName} exists but is not running.\n` +
           `Container ID: ${existingContainer.Id}\n` +
           `Container Names: ${existingContainer.Names.join(", ")}\n` +
           `Container Image: ${existingContainer.Image}\n` +
           `Container State: ${existingContainer.State}\n` +
           `Container Status: ${existingContainer.Status}`
       );
-      docker.getContainer(existingContainer.Id).remove();
+      if (pullImage) {
+        await docker.getContainer(existingContainer.Id).remove();
+      } else {
+        container = docker.getContainer(existingContainer.Id);
+      }
     }
-
-    // Pull Docker image
-    await new Promise<void>((resolve, reject) => {
-      docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
-        if (err) return reject(err);
-        docker.modem.followProgress(stream, onFinished, onProgress);
-
-        function onFinished(err: any, output: any) {
-          if (err) return reject(err);
-          resolve();
-        }
-
-        function onProgress(event: any) {
-          console.log(event);
-        }
-      });
-    });
-
-    // Create and start the container
-    container = await docker.createContainer({
-      name: kontainerName,
-      Image: kimageName,
-      ExposedPorts: {
-        "3901/tcp": {},
-        "3902/tcp": {},
-        "3903/tcp": {},
-      },
-      HostConfig: {
-        PortBindings: {
-          "3901/tcp": [{ HostPort: `${keriaAdminPort}` }],
-          "3902/tcp": [{ HostPort: `${keriaHttpPort}` }],
-          "3903/tcp": [{ HostPort: `${keriaBootPort}` }],
-        },
-      },
-    });
-    await container.start();
   }
 
+  if (!container || pullImage) {
+    container = await pullContainer(
+      kontainerName,
+      kimageName,
+      keriaAdminPort,
+      keriaHttpPort,
+      keriaBootPort
+    );
+  }
+  await container.start();
   await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
+  return container;
+}
+
+export async function pullContainer(
+  kontainerName: string,
+  kimageName: string,
+  keriaAdminPort: number,
+  keriaHttpPort: number,
+  keriaBootPort: number
+): Promise<Docker.Container> {
+  // Pull Docker image
+  await new Promise<void>((resolve, reject) => {
+    docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
+      if (err) return reject(err);
+      docker.modem.followProgress(stream, onFinished, onProgress);
+
+      function onFinished(err: any, output: any) {
+        if (err) return reject(err);
+        resolve();
+      }
+
+      function onProgress(event: any) {
+        console.log(event);
+      }
+    });
+  });
+
+  // Create and start the container
+  const container = await docker.createContainer({
+    name: kontainerName,
+    Image: kimageName,
+    ExposedPorts: {
+      "3901/tcp": {},
+      "3902/tcp": {},
+      "3903/tcp": {},
+    },
+    HostConfig: {
+      PortBindings: {
+        "3901/tcp": [{ HostPort: `${keriaAdminPort}` }],
+        "3902/tcp": [{ HostPort: `${keriaHttpPort}` }],
+        "3903/tcp": [{ HostPort: `${keriaBootPort}` }],
+      },
+    },
+  });
+
   return container;
 }
 
