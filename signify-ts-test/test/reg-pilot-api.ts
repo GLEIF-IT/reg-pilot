@@ -294,7 +294,8 @@ async function single_user_test(user: ApiUser, fast = false) {
 // Specail test for eba api
 export async function single_user_eba_test(
   user: ApiUser,
-  overrideEnv: TestEnvironment
+  overrideEnv: TestEnvironment,
+  paths: TestPaths
 ) {
   env = overrideEnv;
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
@@ -331,13 +332,9 @@ export async function single_user_eba_test(
 
         // sanity check that the report verifies
         const keeper = user.roleClient.manager!.get(user.ecrAid);
-
         // upload signed report
-        // upload signed report
-        const filePath =
-          "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip";
         const signedReport = await getEbaSignedReport(
-          filePath,
+          paths.testBankReportZip,
           user.ecrAid.prefix,
           keeper
         );

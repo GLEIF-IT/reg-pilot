@@ -431,6 +431,8 @@ export class TestPaths {
   testTmpFailReports: string;
   testTmpSignedReports: string;
   testOrigReportsDir: string;
+  testDataEbaDir: string;
+  testBankReportZip: string; //TODO we should generate all test data, but still allow a specific zip to be pointed to
   workflowsDir: string;
   // origReportsDir: string;
   // configDir: string;
@@ -485,6 +487,15 @@ export class TestPaths {
           this.tmpReportUnpackDir,
           this.testUserName,
           `/reports/signed_reports`
+        );
+    this.testDataEbaDir = process.env.TEST_DATA_EBA_DIR
+      ? process.env.TEST_DATA_EBA_DIR
+      : path.join(this.testDataDir, `eba_reports`);
+    this.testBankReportZip = process.env.TEST_BANK_REPORT_ZIP
+      ? process.env.TEST_BANK_REPORT_ZIP
+      : path.join(
+          this.testDataEbaDir,
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip`
         );
     this.workflowsDir = process.env.WORKFLOWS_DIR
       ? process.env.WORKFLOWS_DIR

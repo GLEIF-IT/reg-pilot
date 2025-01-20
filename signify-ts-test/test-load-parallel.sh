@@ -14,6 +14,7 @@ EBA=""
 USE_DOCKER_INTERNAL=""
 RETRY=3
 TEST_ENVIRONMENT="${TEST_ENVIRONMENT:=docker}"
+MAX_REPORT_SIZE="1" # 1MB
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
@@ -45,6 +46,10 @@ usage() {
     echo ""
     echo "  --fast          Skip setup steps (requires bank reports and Dockerfiles to already be staged and ready)."
     echo ""
+    echo "  --max-report-size Maximum size of the report files (e.g., \"2\" to specify 2MB)."
+    echo ""
+    echo "  --retry         Number of times to retry failed tests."
+    echo ""    
     echo "EXAMPLES:"
     echo ""
     echo "  $0 --mode local --bank-count 5 --stage | --fast"
@@ -105,6 +110,10 @@ parse_args() {
                 ;;
             --retry)
                 RETRY="$2"
+                shift
+                ;;
+            --max-report-size)
+                MAX_REPORT_SIZE=$2;
                 shift
                 ;;
             *)
@@ -456,7 +465,7 @@ run_api_test() {
             export REG_PILOT_API=$REG_PILOT_API
             export REG_PILOT_FILER=$REG_PILOT_FILER
             # setup_keria_ports
-            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- "$BANK_NUM" 2>&1 | tee "$LOG_FILE"
+            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- "$BANK_NUM" "$MAX_REPORT_SIZE" 2>&1 | tee "$LOG_FILE"
     fi    
 
     API_TEST_STATUS=${PIPESTATUS[0]}

@@ -154,3 +154,37 @@ export function cleanupReports(bankNum: number) {
   removeFolderRecursive(testPaths.tmpReportsDir);
   removeFolderRecursive(testPaths.tmpReportUnpackDir);
 }
+
+export function createZipWithCopies(pdfPath: string, maxSizeMb: number, replaceZip = "true"): string {
+  const zip = new AdmZip();
+  const pdfData = fs.readFileSync(pdfPath);
+  const pdfSize = pdfData.length;
+  let currentSize = 0;
+  let copyIndex = 1;
+  const maxSizeBytes = maxSizeMb * 1024 * 1024; // Convert MB to bytes
+  while (currentSize < maxSizeBytes) {
+    const pdfName = `${path.basename(pdfPath, ".pdf")}_${copyIndex}.pdf`;
+    zip.addFile(pdfName, pdfData);
+    console.log(`Added ${pdfName} to ZIP file`);
+    currentSize += pdfSize;
+    copyIndex++;
+    console.log(`Current ZIP size: ${currentSize} bytes`);
+  }
+  const outputZipPath = path.format({
+    dir: path.dirname(pdfPath),
+    name: path.basename(pdfPath, '.pdf'),
+    ext: '.zip'
+  });
+
+  // Remove the ZIP file if it already exists
+  if (fs.existsSync(outputZipPath) && replaceZip) {
+    fs.unlinkSync(outputZipPath);
+    console.log(`Removed existing ZIP file at ${outputZipPath}`);
+  }
+
+  zip.writeZip(outputZipPath);
+  console.log(
+    `Created ZIP file at ${outputZipPath} with size ${currentSize} bytes`
+  );
+  return outputZipPath;
+}

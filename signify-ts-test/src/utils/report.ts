@@ -245,8 +245,18 @@ export async function createSignedReports(
     }
     if (reportTypes.includes(SIMPLE_TYPE)) {
       console.log(`Processing simple file signature: ${filePath}`);
+      // if (path.extname(filePath).toLowerCase() === ".zip") {
+      //   // If the file is a ZIP file, unzip it to fullTemp
+      //   const zip = new AdmZip(filePath);
+      //   zip.extractAllTo(fullTemp, true);
+      //   console.log(`Unzipped ${filePath} to ${fullTemp}`);
+      // } else {
+      // Handle other SIMPLE_TYPE cases
       // just copy the zip file here for a single digest/signature
       fsExtra.copySync(filePath, path.join(fullTemp, path.basename(filePath)));
+      console.log(`Copied ${filePath} to ${fullTemp}`);
+      // }
+
       const simpleManifest = await buildManifest(
         fullTemp,
         true,

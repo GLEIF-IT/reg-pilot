@@ -1,10 +1,7 @@
 import { VleiIssuance } from "../../src/vlei-issuance";
 import path from "path";
 import { getOrCreateClients } from "./test-util";
-import {
-  TestEnvironment,
-  TestPaths,
-} from "../../src/utils/resolve-env";
+import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
 import { buildAidData } from "../../src/utils/handle-json-config";
 import { generate_reports } from "../../src/utils/report";
 import {
@@ -37,7 +34,8 @@ export function loadWorkflow(filePath: string) {
 export async function runWorkflow(
   workflow: any,
   configJson: any,
-  env: TestEnvironment
+  env: TestEnvironment,
+  paths: TestPaths
 ) {
   let executedSteps = new Set();
   let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
@@ -149,7 +147,7 @@ export async function runWorkflow(
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await single_user_eba_test(apiUsers[0], env);
+        await single_user_eba_test(apiUsers[0], env, paths);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
@@ -162,6 +160,7 @@ export async function runWorkflow(
 
 export async function launchWorkflow() {
   const env = TestEnvironment.getInstance();
+  const paths = TestPaths.getInstance();
   const workflowFile = env.workflow;
   const testPaths = TestPaths.getInstance();
   const workflow = loadWorkflow(
@@ -171,6 +170,6 @@ export async function launchWorkflow() {
 
   const configJson = await getConfig(configFilePath);
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env);
+    await runWorkflow(workflow, configJson, env, paths);
   }
 }

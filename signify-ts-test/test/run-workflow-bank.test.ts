@@ -6,7 +6,10 @@ import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 
 import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 
-import { downloadReports } from "../src/utils/bank-reports";
+import {
+  createZipWithCopies,
+  downloadReports,
+} from "../src/utils/bank-reports";
 import {
   launchTestKeria,
   runDockerCompose,
@@ -22,20 +25,22 @@ let containers: Map<string, Docker.Container> = new Map<
 >();
 
 console.log(`run-workflow-bank process.argv array: ${process.argv}`);
-const bankNum = parseInt(process.argv[process.argv.length - 1], 10) || 1;
+const bankNum = parseInt(process.argv[process.argv.length - 2], 10) || 1;
 const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankContainer = `bank${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const offset = 10 * (bankNum - 1);
 const keriaAdminPort =
-  parseInt(process.argv[process.argv.length - 4], 10) + offset ||
+  parseInt(process.argv[process.argv.length - 5], 10) + offset ||
   20001 + offset;
 const keriaHttpPort =
-  parseInt(process.argv[process.argv.length - 3], 10) + offset ||
+  parseInt(process.argv[process.argv.length - 4], 10) + offset ||
   20002 + offset;
 const keriaBootPort =
-  parseInt(process.argv[process.argv.length - 2], 10) + offset ||
+  parseInt(process.argv[process.argv.length - 3], 10) + offset ||
   20003 + offset;
+const maxReportMb =
+  parseInt(process.argv[process.argv.length - 1], 10) || 1; // 1 MB
 
 beforeAll(async () => {
   process.env.DOCKER_HOST = process.env.DOCKER_HOST
@@ -97,7 +102,7 @@ test("api-verifier-bank-test-workflow", async function run() {
   const workflow = loadWorkflow(workflowPath);
 
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env);
+    await runWorkflow(workflow, configJson, env, testPaths);
   }
 }, 3600000);
 
@@ -115,8 +120,16 @@ test("eba-verifier-bank-test-workflow", async function run() {
   );
   const workflow = loadWorkflow(workflowPath);
 
+  const pdfFilePath = path.format({
+    dir: path.dirname(testPaths.testBankReportZip),
+    name: path.basename(testPaths.testBankReportZip, ".zip"),
+    ext: ".pdf",
+  });
+  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb);
+  expect(zipWithCopies).toBe(testPaths.testBankReportZip);
+
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env);
+    await runWorkflow(workflow, configJson, env, testPaths);
   }
 }, 3600000);
 
@@ -142,6 +155,6 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
   const workflow = loadWorkflow(workflowPath);
 
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env);
+    await runWorkflow(workflow, configJson, env, testPaths);
   }
 }, 3600000);
