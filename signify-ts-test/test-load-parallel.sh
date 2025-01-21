@@ -46,7 +46,7 @@ usage() {
     echo ""
     echo "  --fast          Skip setup steps (requires bank reports and Dockerfiles to already be staged and ready)."
     echo ""
-    echo "  --max-report-size Maximum size of the report files (e.g., \"2\" to specify 2MB)."
+    echo "  --max-report-size Maximum size of the report files (e.g., \"2\" to specify 2MB). 0 means add a single pdf"
     echo ""
     echo "  --retry         Number of times to retry failed tests."
     echo ""    

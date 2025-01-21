@@ -860,7 +860,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
-  lheads.set("uiversion", "1.3.10-483-FINAL-master");
+  lheads.set("uiversion", "1.3.10-484-FINAL-master");
   lheads.set("Accept", "application/json, text/plain, */*");
   lheads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {

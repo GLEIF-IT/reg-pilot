@@ -162,14 +162,14 @@ export function createZipWithCopies(pdfPath: string, maxSizeMb: number, replaceZ
   let currentSize = 0;
   let copyIndex = 1;
   const maxSizeBytes = maxSizeMb * 1024 * 1024; // Convert MB to bytes
-  while (currentSize < maxSizeBytes) {
+  do {
     const pdfName = `${path.basename(pdfPath, ".pdf")}_${copyIndex}.pdf`;
     zip.addFile(pdfName, pdfData);
     console.log(`Added ${pdfName} to ZIP file`);
     currentSize += pdfSize;
     copyIndex++;
     console.log(`Current ZIP size: ${currentSize} bytes`);
-  }
+  } while (currentSize < maxSizeBytes);
   const outputZipPath = path.format({
     dir: path.dirname(pdfPath),
     name: path.basename(pdfPath, '.pdf'),

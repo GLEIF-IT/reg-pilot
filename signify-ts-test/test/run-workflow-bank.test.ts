@@ -39,8 +39,30 @@ const keriaHttpPort =
 const keriaBootPort =
   parseInt(process.argv[process.argv.length - 3], 10) + offset ||
   20003 + offset;
-const maxReportMb =
-  parseInt(process.argv[process.argv.length - 1], 10) || 1; // 1 MB
+// Explicitly check for undefined to handle zero as a valid value
+const maxReportMbArg = parseInt(process.argv[process.argv.length - 1], 10);
+const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 0; // 1 MB
+
+console.log(
+  "bankNum:",
+  bankNum,
+  "bankImage:",
+  bankImage,
+  "bankContainer:",
+  bankContainer,
+  "bankName:",
+  bankName,
+  "offset:",
+  offset,
+  "keriaAdminPort:",
+  keriaAdminPort,
+  "keriaHttpPort:",
+  keriaHttpPort,
+  "keriaBootPort:",
+  keriaBootPort,
+  "maxReportMb:",
+  maxReportMb
+);
 
 beforeAll(async () => {
   process.env.DOCKER_HOST = process.env.DOCKER_HOST
