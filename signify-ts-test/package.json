@@ -25,6 +25,7 @@
     "jszip": "^3.10.1",
     "libsodium-wrappers-sumo": "^0.7.9",
     "mathjs": "^12.4.0",
+    "minimist": "^1.2.8",
     "signify-ts": "github:weboftrust/signify-ts#main",
     "structured-headers": "^0.5.0"
   },
@@ -36,6 +37,7 @@
     "@types/jest": "^29.5.8",
     "@types/js-yaml": "^4.0.9",
     "@types/libsodium-wrappers-sumo": "^0.7.5",
+    "@types/minimist": "^1.2.5",
     "@types/node": "^18.11.18",
     "@types/node-fetch": "^2.6.12",
     "@types/urlsafe-base64": "^1.0.28",

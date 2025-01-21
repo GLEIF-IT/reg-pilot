@@ -1,3 +1,4 @@
+import minimist from "minimist";
 import path from "path";
 import Docker from "dockerode";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
@@ -8,7 +9,7 @@ import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 
 import {
   createZipWithCopies,
-  downloadReports,
+  downloadUnpackReports,
 } from "../src/utils/bank-reports";
 import {
   launchTestKeria,
@@ -25,23 +26,37 @@ let containers: Map<string, Docker.Container> = new Map<
 >();
 
 console.log(`run-workflow-bank process.argv array: ${process.argv}`);
-const bankNum = parseInt(process.argv[process.argv.length - 2], 10) || 1;
+
+// Parse command-line arguments using minimist
+const args = minimist(process.argv.slice(2), {
+  unknown: (arg: string) => {
+    console.error(`Unknown argument: ${arg}`);
+    return false;
+  },
+});
+
+// Access named arguments
+const ARG_MAX_REPORT_SIZE = "max-report-size";
+const ARG_BANK_NUM = "bank-num";
+const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
+const ARG_KERIA_HTTP_PORT = "keria-http-port";
+const ARG_KERIA_BOOT_PORT = "keria-boot-port";
+const ARG_REFRESH = "refresh";
+
+const maxReportMbArg = parseInt(args[ARG_MAX_REPORT_SIZE], 10);
+const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 0; // 1 MB
+const bankNum = parseInt(args[ARG_BANK_NUM], 10) || 1;
 const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankContainer = `bank${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const offset = 10 * (bankNum - 1);
 const keriaAdminPort =
-  parseInt(process.argv[process.argv.length - 5], 10) + offset ||
-  20001 + offset;
+  parseInt(args[ARG_KERIA_ADMIN_PORT], 10) + offset || 20001 + offset;
 const keriaHttpPort =
-  parseInt(process.argv[process.argv.length - 4], 10) + offset ||
-  20002 + offset;
+  parseInt(args[ARG_KERIA_HTTP_PORT], 10) + offset || 20002 + offset;
 const keriaBootPort =
-  parseInt(process.argv[process.argv.length - 3], 10) + offset ||
-  20003 + offset;
-// Explicitly check for undefined to handle zero as a valid value
-const maxReportMbArg = parseInt(process.argv[process.argv.length - 1], 10);
-const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 0; // 1 MB
+  parseInt(args[ARG_KERIA_BOOT_PORT], 10) + offset || 20003 + offset;
+const refresh = args[ARG_REFRESH] === "true";
 
 console.log(
   "bankNum:",
@@ -74,7 +89,7 @@ beforeAll(async () => {
     : bankName;
 
   testPaths = TestPaths.getInstance(bankName);
-  await downloadReports(bankNum);
+  await downloadUnpackReports(bankNum, refresh);
   // await generateBankConfig(bankNum);
   configJson = getConfig(testPaths.testUserConfigFile);
 

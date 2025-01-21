@@ -1,4 +1,4 @@
-import { downloadReports } from '../utils/bank-reports';
+import { downloadUnpackReports } from '../utils/bank-reports';
 
 async function main(bankNum: number) {
   if (isNaN(bankNum)) {
@@ -6,7 +6,7 @@ async function main(bankNum: number) {
   }
 
   try {
-    await downloadReports(bankNum);
+    await downloadUnpackReports(bankNum);
     console.log('Reports downloaded successfully.');
   } catch (error) {
     console.error('Error downloading reports:', error);

@@ -464,8 +464,8 @@ run_api_test() {
             export BANK_NAME=$BANK_NAME
             export REG_PILOT_API=$REG_PILOT_API
             export REG_PILOT_FILER=$REG_PILOT_FILER
-            # setup_keria_ports
-            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- "$BANK_NUM" "$MAX_REPORT_SIZE" 2>&1 | tee "$LOG_FILE"
+
+            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" 2>&1 | tee "$LOG_FILE"
     fi    
 
     API_TEST_STATUS=${PIPESTATUS[0]}
