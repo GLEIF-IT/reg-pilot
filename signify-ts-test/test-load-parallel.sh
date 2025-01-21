@@ -731,6 +731,9 @@ main() {
     parse_args "$@"
     check_available_banks
 
+    npm install
+    npm run build
+
     if [[ "$FAST_MODE" == true && "$MODE" == "local" ]]; then
         start_services_local
     fi
