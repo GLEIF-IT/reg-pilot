@@ -273,22 +273,23 @@ start_keria() {
 
 stop_keria() {
     BANK_NAME=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+    BANK_NAME_KERIA="${BANK_NAME}_keria"
 
     echo "---------------------------------------------------"
-    echo "Stopping KERIA container for $BANK_NAME..."
+    echo "Stopping KERIA container for $BANK_NAME_KERIA..."
     echo "---------------------------------------------------"
 
-    local MAX_RETRIES=3
-    local ATTEMPT=1
+    # local MAX_RETRIES=3
+    # local ATTEMPT=1
 
-    while (( ATTEMPT <= MAX_RETRIES )); do
-        if docker stop "$BANK_NAME" > /dev/null 2>&1; then
-            break
-        else
-            (( ATTEMPT++ ))
-        fi
-    done 
-    check_status "Stopping KERIA container for $BANK_NAME"
+    # while (( ATTEMPT <= MAX_RETRIES )); do
+    docker stop "$BANK_NAME_KERIA" > /dev/null 2>&1 || true &
+    #         break
+    #     else
+    #         (( ATTEMPT++ ))
+    #     fi
+    # done 
+    # check_status "Stopping KERIA container for $BANK_NAME_KERIA"
 }
 
 remove_keria_containers() {
@@ -332,7 +333,7 @@ start_services_local() {
 }
 
 stop_services_local() {
-    echo "---------------------------------------------------"
+    echo "---------------------------------------------------"ƒ
     echo "Stopping all local services..."
     echo "---------------------------------------------------"
     docker compose -f $DOCKER_COMPOSE_FILE down -v
@@ -431,12 +432,15 @@ run_api_test() {
 
     TEST_FILE="./test/run-workflow-bank.test.ts"
     if [[ "$EBA" == "true" ]]; then
-        TEST_NAME="eba-verifier-bank-test-workflow"
         TEST_ENVIRONMENT="eba_bank_test"
+        if [[ "$STAGE_MODE" == true ]]; then
+            TEST_NAME="eba-verifier-prep-only"
+        else
+            TEST_NAME="eba-verifier-bank-test-workflow"
+        fi
     else
         TEST_NAME="api-verifier-bank-test-workflow"
     fi
-    echo "Running jest TEST_NAME: $TEST_NAME in $TEST_FILE"
     START_TIME=$(date +%s)
 
     if [[ "$MODE" == "remote" ]]; then
@@ -460,12 +464,13 @@ run_api_test() {
     else        
         # docker run --network host --name $BANK_IMAGE_TAG $BANK_API_TEST_REPO:$BANK_IMAGE_TAG > "$LOG_FILE" 2>&1
             export TEST_ENVIRONMENT=$TEST_ENVIRONMENT
-            export BANK_NUM=$BANK_NUM
-            export BANK_NAME=$BANK_NAME
-            export REG_PILOT_API=$REG_PILOT_API
-            export REG_PILOT_FILER=$REG_PILOT_FILER
+            # export BANK_NUM=$BANK_NUM
+            # export BANK_NAME=$BANK_NAME
+            # export REG_PILOT_API=$REG_PILOT_API
+            # export REG_PILOT_FILER=$REG_PILOT_FILER
+            echo "Running npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num $BANK_NUM --max-report-size $MAX_REPORT_SIZE 2>&1 | tee $LOG_FILE"
 
-            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" 2>&1 | tee "$LOG_FILE"
+            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" --clean "false" 2>&1 | tee "$LOG_FILE"
     fi    
 
     API_TEST_STATUS=${PIPESTATUS[0]}
@@ -474,11 +479,11 @@ run_api_test() {
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
     if [[ $API_TEST_STATUS -ne 0 ]]; then
-        echo "API test for $BANK_NAME failed. See $LOG_FILE for details."
+        echo "API test/staging for $BANK_NAME failed. See $LOG_FILE for details."
         tail -n 25 "$LOG_FILE"
         return 1
     else
-        echo "API test for $BANK_NAME completed successfully."
+        echo "API test/staging for $BANK_NAME completed successfully."
         echo "$BANK_NAME,$ELAPSED_TIME" >> "./bank_test_logs/timing_data.csv"
     fi    
 }
@@ -526,34 +531,7 @@ load_test_banks() {
 
     LAST_BANK=$((FIRST_BANK + BANK_COUNT - 1))
 
-    if [[ "$STAGE_MODE" == true ]]; then
-    # Building docker images for all banks
-    START_TIME=$(date +%s)
-    for ((i = FIRST_BANK; i <= LAST_BANK; i++)); do
-        BANK_NAME="Bank_$i"
-        download_reports $BANK_NAME
-        build_api_docker_image $BANK_NAME
-        cleanup_reports $BANK_NAME
-    done
-
-    END_TIME=$(date +%s)
-    ELAPSED_TIME=$((END_TIME - START_TIME))
-
-    STAGING_SUMMARY_FILE="./bank_test_logs/staging_summary.txt"
-    mkdir -p $(dirname "$STAGING_SUMMARY_FILE")
-    {
-    echo "========================================================="
-    echo "                   STAGING SUMMARY                       "
-    echo "========================================================="
-    echo "START TIME         : $(TZ="America/New_York" date -r $START_TIME '+%B %d, %Y %I:%M %p %Z')"
-    echo "END TIME           : $(TZ="America/New_York" date -r $END_TIME '+%B %d, %Y %I:%M %p %Z')"
-    echo "TOTAL BANKS STAGED : $BANK_COUNT"
-    echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
-    echo "=========================================================="
-    } | tee "$STAGING_SUMMARY_FILE"
-    fi
-
-    if [[ "$FAST_MODE" == true ]]; then
+    # if [[ "$FAST_MODE" == true ]]; then
     remove_keria_containers
     remove_api_test_containers
 
@@ -602,6 +580,7 @@ load_test_banks() {
             API_TEST_STATUS=$?
             if [[ $API_TEST_STATUS -eq 0 ]]; then
                 SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                stop_keria "$BANK_NAME"
             else
                 FAILURE_COUNT=$((FAILURE_COUNT + 1))
                 FAILED_BANKS+=("${BANK_NAMES[$pid]}")
@@ -621,7 +600,7 @@ load_test_banks() {
         #     wait "$pid"
         # done
     done   
-  
+
     # List of failed banks after processing all batches
     if [[ ${#FAILED_BANKS[@]} -gt 0 ]]; then
         echo "-----------------------------------------------------------------------------------------------------------"
@@ -669,6 +648,7 @@ load_test_banks() {
                 API_TEST_STATUS=$?
                 if [[ $API_TEST_STATUS -eq 0 ]]; then
                     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                    stop_keria "$BANK_NAME"
                 else
                     FAILURE_COUNT=$((FAILURE_COUNT + 1))
                     NEW_FAILED_BANKS+=("${FAILED_BANKS[$BATCH_START + pid]}")
@@ -703,27 +683,41 @@ load_test_banks() {
     END_TIME=$(date +%s)
     ELAPSED_TIME=$((END_TIME - START_TIME))
 
-    if [[ "$MODE" == "local" && "$FAILURE_COUNT" -eq 0 ]]; then
-            stop_services_local
-    fi
+    # if [[ "$MODE" == "local" && "$FAILURE_COUNT" -eq 0 ]]; then
+    #         stop_services_local
+    # fi
 
+    if [[ "$STAGE_MODE" == true ]]; then
 
-    TEST_SUMMARY_FILE="./bank_test_logs/test_summary.txt"
-    mkdir -p $(dirname "$TEST_SUMMARY_FILE")
-    {
-    echo "========================================================="
-    echo "                   TEST SUMMARY                          "
-    echo "========================================================="
-    echo "START TIME         : $(TZ="America/New_York" date -r $START_TIME '+%B %d, %Y %I:%M %p %Z')"
-    echo "END TIME           : $(TZ="America/New_York" date -r $END_TIME '+%B %d, %Y %I:%M %p %Z')"
-    echo "TOTAL BANKS TESTED : $BANK_COUNT test bank logins/uploads"
-    echo "SUCCESS COUNT      : $SUCCESS_COUNT"
-    echo "FAILURE COUNT      : $FAILURE_COUNT"
-    echo "FAILED BANK(S)     : ${FAILED_BANKS[*]:-None}"
-    echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
-    process_timing_data 
-    echo "=========================================================="
-    } | tee "$TEST_SUMMARY_FILE"
+        STAGING_SUMMARY_FILE="./bank_test_logs/staging_summary.txt"
+        mkdir -p "$(dirname "$STAGING_SUMMARY_FILE")"
+        {
+        echo "========================================================="
+        echo "                   STAGING SUMMARY                       "
+        echo "========================================================="
+        echo "START TIME         : $(TZ="America/New_York" date -r "$START_TIME" '+%B %d, %Y %I:%M %p %Z')"
+        echo "END TIME           : $(TZ="America/New_York" date -r "$END_TIME" '+%B %d, %Y %I:%M %p %Z')"
+        echo "TOTAL BANKS STAGED : $BANK_COUNT"
+        echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
+        echo "=========================================================="
+        } | tee "$STAGING_SUMMARY_FILE"
+    elif [[ "$FAST_MODE" == true ]]; then
+        TEST_SUMMARY_FILE="./bank_test_logs/test_summary.txt"
+        mkdir -p "$(dirname "$TEST_SUMMARY_FILE")"
+        {
+        echo "========================================================="
+        echo "                   TEST SUMMARY                          "
+        echo "========================================================="
+        echo "START TIME         : $(TZ="America/New_York" date -r $START_TIME '+%B %d, %Y %I:%M %p %Z')"
+        echo "END TIME           : $(TZ="America/New_York" date -r $END_TIME '+%B %d, %Y %I:%M %p %Z')"
+        echo "TOTAL BANKS TESTED : $BANK_COUNT test bank logins/uploads"
+        echo "SUCCESS COUNT      : $SUCCESS_COUNT"
+        echo "FAILURE COUNT      : $FAILURE_COUNT"
+        echo "FAILED BANK(S)     : ${FAILED_BANKS[*]:-None}"
+        echo "TOTAL RUNTIME      : $((ELAPSED_TIME / 3600))h:$((ELAPSED_TIME % 3600 / 60))m:$((ELAPSED_TIME % 60))s"
+        process_timing_data 
+        echo "=========================================================="
+        } | tee "$TEST_SUMMARY_FILE"
     fi
 }
 
@@ -734,13 +728,14 @@ main() {
     npm install
     npm run build
 
-    if [[ "$FAST_MODE" == true && "$MODE" == "local" ]]; then
-        start_services_local
-    fi
+    # if [[ "$FAST_MODE" == true && "$MODE" == "local" ]]; then
+    #     start_services_local
+    # fi
 
-    if [[ "$STAGE_MODE" == true ]]; then
-        generate_dockerfiles
-    fi
+    # if [[ "$STAGE_MODE" == true ]]; then
+    #     # generate_dockerfiles
+
+    # fi
 
     load_test_banks
 }

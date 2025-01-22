@@ -27,14 +27,6 @@ let containers: Map<string, Docker.Container> = new Map<
 
 console.log(`run-workflow-bank process.argv array: ${process.argv}`);
 
-// Parse command-line arguments using minimist
-const args = minimist(process.argv.slice(2), {
-  unknown: (arg: string) => {
-    console.error(`Unknown argument: ${arg}`);
-    return false;
-  },
-});
-
 // Access named arguments
 const ARG_MAX_REPORT_SIZE = "max-report-size";
 const ARG_BANK_NUM = "bank-num";
@@ -42,13 +34,52 @@ const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
 const ARG_KERIA_HTTP_PORT = "keria-http-port";
 const ARG_KERIA_BOOT_PORT = "keria-boot-port";
 const ARG_REFRESH = "refresh";
+const ARG_CLEAN = "clean";
+
+// Parse command-line arguments using minimist
+const args = minimist(process.argv.slice(process.argv.indexOf('--') + 1), {
+  alias: {
+    [ARG_MAX_REPORT_SIZE]: 'm',
+    [ARG_BANK_NUM]: 'b',
+    [ARG_KERIA_ADMIN_PORT]: 'kap',
+    [ARG_KERIA_HTTP_PORT]: 'khp',
+    [ARG_KERIA_BOOT_PORT]: 'kbp',
+    [ARG_REFRESH]: 'r',
+    [ARG_CLEAN]: 'c'
+  },
+  default: {
+    [ARG_MAX_REPORT_SIZE]: 1, // Default to 1 MB
+    [ARG_BANK_NUM]: 1,
+    [ARG_KERIA_ADMIN_PORT]: 20001,
+    [ARG_KERIA_HTTP_PORT]: 20002,
+    [ARG_KERIA_BOOT_PORT]: 20003,
+    [ARG_REFRESH]: false,
+    [ARG_CLEAN]: true
+  },
+  '--': true,
+  unknown: (arg) => {
+    console.warn(`Unknown argument, likely you aren't running from a test script: ${arg}`);
+    // throw new Error(`Unknown argument: ${arg}`);
+    return false;
+  }
+});
+
+console.log("Parsed arguments:", {
+  [ARG_MAX_REPORT_SIZE]: args[ARG_MAX_REPORT_SIZE],
+  [ARG_BANK_NUM]: args[ARG_BANK_NUM],
+  [ARG_KERIA_ADMIN_PORT]: args[ARG_KERIA_ADMIN_PORT],
+  [ARG_KERIA_HTTP_PORT]: args[ARG_KERIA_HTTP_PORT],
+  [ARG_KERIA_BOOT_PORT]: args[ARG_KERIA_BOOT_PORT],
+  [ARG_REFRESH]: args[ARG_REFRESH],
+  [ARG_CLEAN]: args[ARG_CLEAN]
+});
 
 const maxReportMbArg = parseInt(args[ARG_MAX_REPORT_SIZE], 10);
 const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 0; // 1 MB
 const bankNum = parseInt(args[ARG_BANK_NUM], 10) || 1;
 const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
-const bankContainer = `bank${bankNum}`;
 const bankName = "Bank_" + bankNum;
+const bankContainer = `${bankName}_keria`.toLowerCase();
 const offset = 10 * (bankNum - 1);
 const keriaAdminPort =
   parseInt(args[ARG_KERIA_ADMIN_PORT], 10) + offset || 20001 + offset;
@@ -57,6 +88,7 @@ const keriaHttpPort =
 const keriaBootPort =
   parseInt(args[ARG_KERIA_BOOT_PORT], 10) + offset || 20003 + offset;
 const refresh = args[ARG_REFRESH] === "true";
+const clean = args[ARG_CLEAN] === "true";
 
 console.log(
   "bankNum:",
@@ -76,7 +108,11 @@ console.log(
   "keriaBootPort:",
   keriaBootPort,
   "maxReportMb:",
-  maxReportMb
+  maxReportMb,
+  "refresh:",
+  refresh,
+  "clean:",
+  clean
 );
 
 beforeAll(async () => {
@@ -114,13 +150,17 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const container of containers.values()) {
-    await container.stop();
-    // await container.remove();
-    await containers.delete(bankName);
+  if (clean) {
+    console.log("Cleaning up test data");
+    await downloadUnpackReports(bankNum, true);
+    for (const container of containers.values()) {
+      await container.stop();
+      // await container.remove();
+      await containers.delete(bankName);
+    }
+    console.log(`Stopping local services using ${testPaths.dockerComposeFile}`);
+    await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
   }
-  console.log(`Stopping local services using ${testPaths.dockerComposeFile}`);
-  await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
 });
 
 test("api-verifier-bank-test-workflow", async function run() {
@@ -142,6 +182,12 @@ test("api-verifier-bank-test-workflow", async function run() {
     await runWorkflow(workflow, configJson, env, testPaths);
   }
 }, 3600000);
+
+test("eba-verifier-prep-only", async function run() {
+  console.warn(
+    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test"
+  );
+});
 
 test("eba-verifier-bank-test-workflow", async function run() {
   console.log(`Running eba-verifier-bank-test-workflow for bank: ${bankName}`);

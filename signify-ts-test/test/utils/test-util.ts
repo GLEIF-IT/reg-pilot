@@ -651,6 +651,9 @@ export async function launchTestKeria(
   const containers = await docker.listContainers({ all: true });
   let container: Docker.Container | undefined;
 
+  const existingContainer = containers.find((c) =>
+    c.Names.includes(`/${kontainerName}`)
+  );
   // Check if any container is using the specified ports
   const portInUse = containers.find((c) => {
     const ports = c.Ports.map((p) => p.PublicPort);
@@ -660,7 +663,7 @@ export async function launchTestKeria(
       ports.includes(keriaBootPort)
     );
   });
-  if (portInUse) {
+  if (portInUse && !existingContainer) {
     const pContainer = docker.getContainer(portInUse.Id);
     console.warn(
       `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use. Stopping that one\n` +
@@ -672,10 +675,6 @@ export async function launchTestKeria(
     );
     await pContainer.stop();
   }
-
-  const existingContainer = containers.find((c) =>
-    c.Names.includes(`/${kontainerName}`)
-  );
   if (existingContainer && existingContainer.State === "running") {
     console.warn(
       `Warning: Container with name ${kontainerName} is already running.\n` +
@@ -697,14 +696,22 @@ export async function launchTestKeria(
           `Container Status: ${existingContainer.Status}`
       );
       if (pullImage) {
+        console.warn(
+          `Warning: Pulling new image for existing/runner container.\n`
+        );
         await docker.getContainer(existingContainer.Id).remove();
       } else {
+        console.warn(`Warning: Running existing/runner container.\n`);
         container = docker.getContainer(existingContainer.Id);
+        await container.start();
       }
     }
   }
 
   if (!container || pullImage) {
+    console.warn(
+      `Warning: Either existing container doesn't exist or refreshing it.\n`
+    );
     container = await pullContainer(
       kontainerName,
       kimageName,
@@ -712,8 +719,9 @@ export async function launchTestKeria(
       keriaHttpPort,
       keriaBootPort
     );
+    await container.start();
   }
-  await container.start();
+
   await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
   return container;
 }
@@ -790,7 +798,7 @@ export async function runDockerCompose(
   command: string,
   service: string
 ): Promise<boolean> {
-  const running = await isDockerComposeRunning(file, service);
+  const running = await isDockerComposeRunning(file);
   if (!running) {
     console.log(
       `Starting docker compose command: ${file} ${command} ${service}`
@@ -821,7 +829,7 @@ export async function stopDockerCompose(
   command: string,
   service: string
 ): Promise<boolean> {
-  const running = await isDockerComposeRunning(file, service);
+  const running = await isDockerComposeRunning(file);
   if (running) {
     console.log(
       `Stopping docker compose command: ${file} ${command} ${service}`
@@ -847,12 +855,9 @@ export async function stopDockerCompose(
   }
 }
 
-export async function isDockerComposeRunning(
-  file: string,
-  service: string
-): Promise<boolean> {
+export async function isDockerComposeRunning(file: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
-    exec(`docker compose -f ${file} ps ${service}`, (error, stdout, stderr) => {
+    exec(`docker compose -f ${file} ps`, (error, stdout, stderr) => {
       if (error) {
         console.error(`Error checking docker compose status: ${stderr}`);
         return reject(error);
