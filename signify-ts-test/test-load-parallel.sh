@@ -580,7 +580,9 @@ load_test_banks() {
             API_TEST_STATUS=$?
             if [[ $API_TEST_STATUS -eq 0 ]]; then
                 SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-                stop_keria "$BANK_NAME"
+                if [[ "$STAGE_MODE" == false ]]; then
+                    stop_keria "$BANK_NAME"
+                fi
             else
                 FAILURE_COUNT=$((FAILURE_COUNT + 1))
                 FAILED_BANKS+=("${BANK_NAMES[$pid]}")
@@ -648,7 +650,9 @@ load_test_banks() {
                 API_TEST_STATUS=$?
                 if [[ $API_TEST_STATUS -eq 0 ]]; then
                     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-                    stop_keria "$BANK_NAME"
+                    if [[ "$STAGE_MODE" == false ]]; then
+                        stop_keria "$BANK_NAME"
+                    fi
                 else
                     FAILURE_COUNT=$((FAILURE_COUNT + 1))
                     NEW_FAILED_BANKS+=("${FAILED_BANKS[$BATCH_START + pid]}")
