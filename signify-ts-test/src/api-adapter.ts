@@ -110,14 +110,16 @@ export class ApiAdapter {
     client: SignifyClient,
     token: string,
     envOverride?: TestEnvironment
-  ): Promise<void> {
+  ): Promise<Response> {
     if (envOverride) {
       this.apiBaseUrl = envOverride.apiBaseUrl;
       this.filerBaseUrl = envOverride.filerBaseUrl;
     }
     let formData = new FormData();
     let ctype = "application/zip";
-    console.log(`Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`);
+    console.log(
+      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`
+    );
     formData.append("file", zipBuffer, {
       filename: `${fileName}`,
       contentType: `${ctype}`,
@@ -157,22 +159,29 @@ export class ApiAdapter {
     };
     // const url = `https://errp.test.eba.europa.eu/api/upload`;
     const url = `${this.filerBaseUrl}/upload`;
-    console.log(`EBA upload URL and req: ${url} and ${req}`);
+
+    const reqJsonString = JSON.stringify(req);
+    const last500Chars = reqJsonString.slice(-500);
+    console.log(`EBA upload URL: ${url} and last 500 chars of req: ${last500Chars}`);
+
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
-    // const resp = await fetch(url, sreq);
-    // return resp;
+    const resp = await fetch(url, sreq);
+    return resp;
   }
 
   public hasGLEIFWithMultisig(data: any): boolean {
     return data.users.some(
       (user: any) =>
         (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
-        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
+        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers)
     );
   }
 
-  public async addRootOfTrust(configJson: any, keriaHttpPort?: number): Promise<Response> {
+  public async addRootOfTrust(
+    configJson: any,
+    keriaHttpPort?: number
+  ): Promise<Response> {
     if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
     } else {
@@ -183,18 +192,18 @@ export class ApiAdapter {
   public async addRootOfTrustMultisig(configJson: any): Promise<Response> {
     const rootOfTrustMultisigIdentifierName = configJson.users
       .filter(
-        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL"
       )[0]
       .identifiers.filter((identifier: string) =>
-        identifier.includes("multisig"),
+        identifier.includes("multisig")
       )![0];
 
     const rootOfTrustIdentifierName = configJson.users
       .filter(
-        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL"
       )[0]
       .identifiers.filter(
-        (identifier: string) => !identifier.includes("multisig"),
+        (identifier: string) => !identifier.includes("multisig")
       )![0];
 
     const rootOfTrustIdentifierAgent =
@@ -206,7 +215,7 @@ export class ApiAdapter {
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
-      true,
+      true
     );
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
@@ -241,9 +250,12 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any, keriaHttpPort?: number): Promise<Response> {
+  public async addRootOfTrustSinglesig(
+    configJson: any,
+    keriaHttpPort?: number
+  ): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
-      (usr: any) => usr.type == "GLEIF",
+      (usr: any) => usr.type == "GLEIF"
     )[0].identifiers[0];
     const rootOfTrustIdentifierAgent =
       configJson.agents[

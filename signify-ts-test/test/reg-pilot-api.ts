@@ -339,9 +339,9 @@ export async function single_user_eba_test(
           overrideEnv
         );
         console.log("EBA upload response", signedUpResp);
-        // assert.equal(signedUpResp.status, 200);
-        // const resBod = await signedUpResp.json();
-        // console.log("EBA upload response body", resBod["message"]);
+        assert.equal(signedUpResp.status, 200);
+        const resBod = await signedUpResp.json();
+        console.log("EBA upload response body", resBod["message"]);
       }
     }
   }
