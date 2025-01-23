@@ -580,24 +580,23 @@ load_test_banks() {
             API_TEST_STATUS=$?
             if [[ $API_TEST_STATUS -eq 0 ]]; then
                 SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-                if [[ "$STAGE_MODE" == false ]]; then
-                    stop_keria "$BANK_NAME"
-                fi
             else
                 FAILURE_COUNT=$((FAILURE_COUNT + 1))
                 FAILED_BANKS+=("${BANK_NAMES[$pid]}")
             fi
         done
 
-        # # Stop KERIA instances for the current batch
-        # STOP_PIDS=()
-        # for ((i = BATCH_START; i <= BATCH_END; i++)); do
-        #     BANK_NAME="Bank_$i"
-        #     stop_keria "$BANK_NAME" &
-        #     STOP_PIDS+=($!)
-        # done
+        # Stop KERIA instances for the current batch
+        if [[ "$STAGE_MODE" == false ]]; then
+            STOP_PIDS=()
+            for ((i = BATCH_START; i <= BATCH_END; i++)); do
+                BANK_NAME="Bank_$i"
+                stop_keria "$BANK_NAME" &                
+                STOP_PIDS+=($!)
+            done
+        fi
 
-        # # Wait for all stop_keria processes to finish
+        # Wait for all stop_keria processes to finish
         # for pid in "${STOP_PIDS[@]}"; do
         #     wait "$pid"
         # done
@@ -660,12 +659,14 @@ load_test_banks() {
             done
 
             # Stop KERIA instances for the current batch
-            # STOP_PIDS=()
-            # for ((i = BATCH_START; i <= BATCH_END; i++)); do
-            # BANK_NAME="${FAILED_BANKS[$i]}"
-            # stop_keria "$BANK_NAME" &
-            # STOP_PIDS+=($!)
-            # done
+            if [[ "$STAGE_MODE" == false ]]; then
+                STOP_PIDS=()
+                for ((i = BATCH_START; i <= BATCH_END; i++)); do
+                    BANK_NAME="${FAILED_BANKS[$i]}"
+                    stop_keria "$BANK_NAME" &
+                    STOP_PIDS+=($!)
+                done
+            fi
 
             # Wait for all stop_keria processes to finish
             # for pid in "${STOP_PIDS[@]}"; do

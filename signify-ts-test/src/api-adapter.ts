@@ -160,9 +160,9 @@ export class ApiAdapter {
     // const url = `https://errp.test.eba.europa.eu/api/upload`;
     const url = `${this.filerBaseUrl}/upload`;
 
-    const reqJsonString = JSON.stringify(req);
-    const last500Chars = reqJsonString.slice(-500);
-    console.log(`EBA upload URL: ${url} and last 500 chars of req: ${last500Chars}`);
+    // const reqJsonString = JSON.stringify(req);
+    // const last500Chars = reqJsonString.slice(-500);
+    // console.log(`EBA upload URL: ${url} and last 500 chars of req: ${last500Chars}`);
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
