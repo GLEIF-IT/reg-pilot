@@ -110,7 +110,7 @@ export class ApiAdapter {
     client: SignifyClient,
     token: string,
     envOverride?: TestEnvironment
-  ): Promise<Response> {
+  ): Promise<void> {
     if (envOverride) {
       this.apiBaseUrl = envOverride.apiBaseUrl;
       this.filerBaseUrl = envOverride.filerBaseUrl;
@@ -157,11 +157,11 @@ export class ApiAdapter {
     };
     // const url = `https://errp.test.eba.europa.eu/api/upload`;
     const url = `${this.filerBaseUrl}/upload`;
-    console.log(`EBA upload URL: ${url}`);
+    console.log(`EBA upload URL and req: ${url} and ${req}`);
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
-    const resp = await fetch(url, sreq);
-    return resp;
+    // const resp = await fetch(url, sreq);
+    // return resp;
   }
 
   public hasGLEIFWithMultisig(data: any): boolean {
