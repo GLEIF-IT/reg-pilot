@@ -160,6 +160,7 @@ export function cleanupReports(bankNum: number) {
 
 export function createZipWithCopies(
   pdfPath: string,
+  bankName: string,
   maxSizeMb: number,
   replaceZip = true,
   divisor = 1,
@@ -169,7 +170,7 @@ export function createZipWithCopies(
   //    zipFileName += `_${userNum}`
   // }
   const outputZipPath = path.format({
-    dir: path.dirname(pdfPath),
+    dir: path.join(path.dirname(pdfPath), bankName),
     name:zipFileName,
     ext: ".zip",
   });
@@ -198,6 +199,12 @@ export function createZipWithCopies(
     console.log(`Current ZIP size: ${currentSize} bytes`);
   } while (currentSize < maxSizeBytes);
 
+  // make the parent path for the output ZIP file
+  const parentDir = path.dirname(outputZipPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir
+    , { recursive: true });
+  }
   zip.writeZip(outputZipPath);
   console.log(
     `Created ZIP file at ${outputZipPath} with size ${currentSize} bytes`

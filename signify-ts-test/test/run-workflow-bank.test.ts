@@ -207,6 +207,7 @@ test("eba-verifier-prep-only", async function run() {
 
   const zipWithCopies = createZipWithCopies(
     pdfFilePath,
+    bankName,
     maxReportMb,
     refresh,
     bankNum
@@ -235,6 +236,7 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
   const zipWithCopies = createZipWithCopies(
     pdfFilePath,
+    bankName,
     maxReportMb,
     refresh,
     bankNum
