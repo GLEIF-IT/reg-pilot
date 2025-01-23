@@ -1,0 +1,3 @@
+for BANK_NUM in {1..100}; do docker start "bank_${BANK_NUM}_keria" & done
+./test-load-parallel.sh --mode local --bank-count 1 --batch-size 1 --first-bank 112 --retry 1 --eba --max-report-size 150 --stage
+./test-load-parallel.sh --mode local --bank-count 1 --batch-size 1 --first-bank 112 --retry 1 --eba --max-report-size 150 --fast
