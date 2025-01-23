@@ -12,6 +12,7 @@ import {
   downloadConfigWorkflowReports,
 } from "../src/utils/bank-reports";
 import {
+  dockerLogin,
   launchTestKeria,
   runDockerCompose,
   stopDockerCompose,
@@ -140,6 +141,13 @@ beforeAll(async () => {
     console.log(
       `Starting local services using ${testPaths.dockerComposeFile} up -d verify`
     );
+    if (process.env.DOCKER_USER && process.env.DOCKER_PASSWORD) {
+      await dockerLogin(process.env.DOCKER_USER, process.env.DOCKER_PASSWORD);
+    } else {
+      console.warn(
+        "Docker login credentials not provided, skipping docker login"
+      );
+    }
     await runDockerCompose(testPaths.dockerComposeFile, "up -d", "verify");
     const keriaContainer = await launchTestKeria(
       bankContainer,
@@ -197,7 +205,12 @@ test("eba-verifier-prep-only", async function run() {
   // await generateBankConfig(bankNum);
   configJson = getConfig(testPaths.testUserConfigFile);
 
-  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb, refresh, bankNum);
+  const zipWithCopies = createZipWithCopies(
+    pdfFilePath,
+    maxReportMb,
+    refresh,
+    bankNum
+  );
   testPaths.testBankReportZip = zipWithCopies;
 });
 
@@ -220,7 +233,12 @@ test("eba-verifier-bank-test-workflow", async function run() {
   );
   const workflow = loadWorkflow(workflowPath);
 
-  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb, refresh, bankNum);
+  const zipWithCopies = createZipWithCopies(
+    pdfFilePath,
+    maxReportMb,
+    refresh,
+    bankNum
+  );
   testPaths.testBankReportZip = zipWithCopies;
   expect(zipWithCopies).toBe(testPaths.testBankReportZip);
 

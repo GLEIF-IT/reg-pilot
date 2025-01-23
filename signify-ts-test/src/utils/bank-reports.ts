@@ -69,7 +69,7 @@ export function unpackZipFile(
   const testPaths = TestPaths.getInstance();
   const zip = new AdmZip(zipFilePath);
 
-  zip.extractAllTo(testPaths.testUserDir, true); // if true overwrites existing files
+  zip.extractAllTo(testPaths.testUsersDir, true); // if true overwrites existing files
 
   if (includeReports && !includeAllSignedReports) {
     const specificRepType = "external_manifest";

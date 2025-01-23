@@ -639,6 +639,19 @@ export async function sendAdmitMessage(
   await markAndRemoveNotification(senderClient, grantNotification);
 }
 
+export async function dockerLogin(username: string, password: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    exec(`docker login -u ${username} -p ${password}`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error logging into Docker: ${stderr}`);
+        return reject(error);
+      }
+      console.log(`Docker login successful: ${stdout}`);
+      resolve();
+    });
+  });
+}
+
 export async function launchTestKeria(
   kontainerName: string,
   kimageName: string,
