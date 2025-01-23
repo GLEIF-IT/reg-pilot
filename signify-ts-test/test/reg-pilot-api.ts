@@ -852,7 +852,7 @@ async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
     method: "POST",
     body: JSON.stringify({ payload: base64Payload }),
   };
-  console.log("eba login lreq", lreq);
+  console.log(`eba login lreq ${JSON.stringify(lreq).slice(0,500)}`);
   let lpath = `/signifyLogin`;
   const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
