@@ -206,7 +206,7 @@ validate_inputs() {
 }
 
 check_available_banks() {
-    local TOTAL_AVAILABLE_BANKS=601
+    local TOTAL_AVAILABLE_BANKS=751
 
     if (( BANK_COUNT + FIRST_BANK - 1 > TOTAL_AVAILABLE_BANKS )); then
         echo "WARNING: You have selected more banks ($((BANK_COUNT + FIRST_BANK - 1))) than available ($TOTAL_AVAILABLE_BANKS)."

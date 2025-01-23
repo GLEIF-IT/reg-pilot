@@ -3,7 +3,7 @@ import path from "path";
 import { getOrCreateClients } from "./test-util";
 import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
 import { buildAidData } from "../../src/utils/handle-json-config";
-import { generate_reports } from "../../src/utils/report";
+import { generate_reports, getEbaSignedReport } from "../../src/utils/report";
 import {
   ApiUser,
   getApiTestData,
@@ -147,7 +147,16 @@ export async function runWorkflow(
         );
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await single_user_eba_test(apiUsers[0], env, paths);
+        const apiUser = apiUsers[0];
+        const keeper = apiUser.roleClient.manager!.get(apiUser.ecrAid);
+        // upload signed report
+        const signedReport = await getEbaSignedReport(
+          paths.testBankReportZip,
+          paths.testSignedReports,
+          apiUser.ecrAid.prefix,
+          keeper
+        );
+        await single_user_eba_test(apiUser, env, signedReport);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);

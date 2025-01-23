@@ -9,7 +9,7 @@ import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 
 import {
   createZipWithCopies,
-  downloadUnpackReports,
+  downloadConfigWorkflowReports,
 } from "../src/utils/bank-reports";
 import {
   launchTestKeria,
@@ -37,15 +37,15 @@ const ARG_REFRESH = "refresh";
 const ARG_CLEAN = "clean";
 
 // Parse command-line arguments using minimist
-const args = minimist(process.argv.slice(process.argv.indexOf('--') + 1), {
+const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
   alias: {
-    [ARG_MAX_REPORT_SIZE]: 'm',
-    [ARG_BANK_NUM]: 'b',
-    [ARG_KERIA_ADMIN_PORT]: 'kap',
-    [ARG_KERIA_HTTP_PORT]: 'khp',
-    [ARG_KERIA_BOOT_PORT]: 'kbp',
-    [ARG_REFRESH]: 'r',
-    [ARG_CLEAN]: 'c'
+    [ARG_MAX_REPORT_SIZE]: "m",
+    [ARG_BANK_NUM]: "b",
+    [ARG_KERIA_ADMIN_PORT]: "kap",
+    [ARG_KERIA_HTTP_PORT]: "khp",
+    [ARG_KERIA_BOOT_PORT]: "kbp",
+    [ARG_REFRESH]: "r",
+    [ARG_CLEAN]: "c",
   },
   default: {
     [ARG_MAX_REPORT_SIZE]: 1, // Default to 1 MB
@@ -54,14 +54,16 @@ const args = minimist(process.argv.slice(process.argv.indexOf('--') + 1), {
     [ARG_KERIA_HTTP_PORT]: 20002,
     [ARG_KERIA_BOOT_PORT]: 20003,
     [ARG_REFRESH]: false,
-    [ARG_CLEAN]: true
+    [ARG_CLEAN]: true,
   },
-  '--': true,
+  "--": true,
   unknown: (arg) => {
-    console.warn(`Unknown argument, likely you aren't running from a test script: ${arg}`);
+    console.warn(
+      `Unknown argument, likely you aren't running from a test script: ${arg}`
+    );
     // throw new Error(`Unknown argument: ${arg}`);
     return false;
-  }
+  },
 });
 
 console.log("Parsed arguments:", {
@@ -71,7 +73,7 @@ console.log("Parsed arguments:", {
   [ARG_KERIA_HTTP_PORT]: args[ARG_KERIA_HTTP_PORT],
   [ARG_KERIA_BOOT_PORT]: args[ARG_KERIA_BOOT_PORT],
   [ARG_REFRESH]: args[ARG_REFRESH],
-  [ARG_CLEAN]: args[ARG_CLEAN]
+  [ARG_CLEAN]: args[ARG_CLEAN],
 });
 
 const maxReportMbArg = parseInt(args[ARG_MAX_REPORT_SIZE], 10);
@@ -89,6 +91,12 @@ const keriaBootPort =
   parseInt(args[ARG_KERIA_BOOT_PORT], 10) + offset || 20003 + offset;
 const refresh = args[ARG_REFRESH] === "true";
 const clean = args[ARG_CLEAN] === "true";
+testPaths = TestPaths.getInstance(bankName);
+const pdfFilePath = path.format({
+  dir: path.dirname(testPaths.testBankReportZip),
+  name: path.basename(testPaths.testBankReportZip, ".zip"),
+  ext: ".pdf",
+});
 
 console.log(
   "bankNum:",
@@ -120,14 +128,9 @@ beforeAll(async () => {
     ? process.env.DOCKER_HOST
     : "localhost";
   process.env.SPEED = "fast";
-  process.env.TEST_USER_NAME = process.env.TEST_USER_NAME
-    ? process.env.TEST_USER_NAME
-    : bankName;
-
-  testPaths = TestPaths.getInstance(bankName);
-  await downloadUnpackReports(bankNum, refresh);
-  // await generateBankConfig(bankNum);
-  configJson = getConfig(testPaths.testUserConfigFile);
+  // process.env.TEST_USER_NAME = process.env.TEST_USER_NAME
+  //   ? process.env.TEST_USER_NAME
+  //   : bankName;
 
   // should we try to launch a user container?
   if (
@@ -152,7 +155,6 @@ beforeAll(async () => {
 afterAll(async () => {
   if (clean) {
     console.log("Cleaning up test data");
-    await downloadUnpackReports(bankNum, true);
     for (const container of containers.values()) {
       await container.stop();
       // await container.remove();
@@ -172,6 +174,10 @@ test("api-verifier-bank-test-workflow", async function run() {
     keriaBootPort
   );
 
+  await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
+  // await generateBankConfig(bankNum);
+  configJson = getConfig(testPaths.testUserConfigFile);
+
   const workflowPath = path.join(
     testPaths.workflowsDir,
     "bank-api-verifier-test-workflow.yaml"
@@ -187,6 +193,12 @@ test("eba-verifier-prep-only", async function run() {
   console.warn(
     "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test"
   );
+  await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
+  // await generateBankConfig(bankNum);
+  configJson = getConfig(testPaths.testUserConfigFile);
+
+  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb, refresh, bankNum);
+  testPaths.testBankReportZip = zipWithCopies;
 });
 
 test("eba-verifier-bank-test-workflow", async function run() {
@@ -197,18 +209,19 @@ test("eba-verifier-bank-test-workflow", async function run() {
     keriaHttpPort,
     keriaBootPort
   );
+
+  await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
+  // await generateBankConfig(bankNum);
+  configJson = getConfig(testPaths.testUserConfigFile);
+
   const workflowPath = path.join(
     testPaths.workflowsDir,
     "eba-verifier-test-workflow.yaml"
   );
   const workflow = loadWorkflow(workflowPath);
 
-  const pdfFilePath = path.format({
-    dir: path.dirname(testPaths.testBankReportZip),
-    name: path.basename(testPaths.testBankReportZip, ".zip"),
-    ext: ".pdf",
-  });
-  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb);
+  const zipWithCopies = createZipWithCopies(pdfFilePath, maxReportMb, refresh, bankNum);
+  testPaths.testBankReportZip = zipWithCopies;
   expect(zipWithCopies).toBe(testPaths.testBankReportZip);
 
   if (workflow && configJson) {
@@ -228,6 +241,10 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
     keriaHttpPort,
     keriaBootPort
   );
+
+  await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
+  // await generateBankConfig(bankNum);
+  configJson = getConfig(testPaths.testUserConfigFile);
 
   console.log(
     `Running vlei issuance and reports generation test for bank: ${bankName}`

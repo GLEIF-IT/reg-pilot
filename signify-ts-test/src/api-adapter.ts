@@ -117,6 +117,7 @@ export class ApiAdapter {
     }
     let formData = new FormData();
     let ctype = "application/zip";
+    console.log(`Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`);
     formData.append("file", zipBuffer, {
       filename: `${fileName}`,
       contentType: `${ctype}`,

@@ -15,27 +15,7 @@ export const UNFOLDERED_TYPE = "unfoldered";
 export const UNZIPPED_TYPE = "unzipped";
 export const FAIL_TYPE = "fail";
 
-let env: TestEnvironment;
-
 const tempDir = "temp_reports";
-const secretsJsonPath = "../src/config/";
-const tempExtManifestDir = "temp_manifest";
-
-// afterAll(async () => {
-//   deleteReportsDir(tempPath);
-// });
-
-// beforeAll(async () => {});
-
-// Function to create a report dir
-function createReportsDir(repDir: string): void {
-  if (!fs.existsSync(repDir)) {
-    fs.mkdirSync(repDir);
-    // console.log("Directory temp_reports created.");
-  } else {
-    // console.log("Directory temp_reports already exists.");
-  }
-}
 
 // Function to delete a report dir'
 function deleteReportsDir(repDir: string): void {
@@ -47,51 +27,6 @@ function deleteReportsDir(repDir: string): void {
     // console.log("Directory temp_reports does not exist.", dirPath);
   }
 }
-
-// This test assumes you have run a vlei-issuance test that sets up the glief, qvi, le, and
-// role identifiers and Credentials.
-// if (require.main === module) {
-//   test("report-generation-test", async function run() {
-//     env = resolveEnvironment();
-//     const configFilePath = env.configuration;
-//     const configJson = await getConfig(configFilePath, false);
-//     let users = await buildUserData(configJson);
-//     users = users.filter((user) => user.type === "ECR");
-//     for (const user of users) {
-//       const testData = getReportGenTestData();
-//       const clients = await getOrCreateClients(
-//         1,
-//         [user.identifiers[0].agent.secret],
-//         true,
-//       );
-//       const roleClient = clients[0];
-//       const ecrAid = await roleClient
-//         .identifiers()
-//         .get(user.identifiers[0].name);
-//       const keeper = roleClient.manager!.get(ecrAid);
-//       const failDirPrefixed = path.join(
-//         process.cwd(),
-//         "data",
-//         testData["failDir"],
-//         ecrAid.prefix,
-//       );
-//       const signedDirPrefixed = path.join(
-//         process.cwd(),
-//         "data",
-//         testData["signedDir"],
-//         ecrAid.prefix,
-//       );
-//       await generate_reports(
-//         ecrAid.prefix,
-//         keeper,
-//         signedDirPrefixed,
-//         failDirPrefixed,
-//         testData["unsignedReports"],
-//         testData["reportTypes"],
-//       );
-//     }
-//   }, 100000);
-// }
 
 export async function generate_reports(
   ecrAid: string,
@@ -117,7 +52,7 @@ export async function generate_reports(
     deleteReportsDir(failDirPrefixed);
 
     deleteReportsDir(tempPath);
-    createReportsDir(tempPath);
+    fs.mkdirSync(tempDir, { recursive: true });
     const signedReports = await createSignedReports(
       unsignedReport,
       reportTypes,
@@ -130,7 +65,7 @@ export async function generate_reports(
 
     if (reportTypes.includes(FAIL_TYPE)) {
       deleteReportsDir(tempPath);
-      createReportsDir(tempPath);
+      fs.mkdirSync(tempDir, { recursive: true });
       assert.equal(
         await createFailReports(failDirPrefixed, signedDirPrefixed),
         true
@@ -157,7 +92,12 @@ export async function generate_reports(
   assert(zipsProcessed > 0, "No reports zip files processed");
 }
 
-module.exports = { generate_reports, createSignedReports, SIMPLE_TYPE };
+module.exports = {
+  generate_reports,
+  createSignedReports,
+  getEbaSignedReport,
+  SIMPLE_TYPE,
+};
 
 export async function createSignedReports(
   filePath: string,
@@ -245,13 +185,6 @@ export async function createSignedReports(
     }
     if (reportTypes.includes(SIMPLE_TYPE)) {
       console.log(`Processing simple file signature: ${filePath}`);
-      // if (path.extname(filePath).toLowerCase() === ".zip") {
-      //   // If the file is a ZIP file, unzip it to fullTemp
-      //   const zip = new AdmZip(filePath);
-      //   zip.extractAllTo(fullTemp, true);
-      //   console.log(`Unzipped ${filePath} to ${fullTemp}`);
-      // } else {
-      // Handle other SIMPLE_TYPE cases
       // just copy the zip file here for a single digest/signature
       fsExtra.copySync(filePath, path.join(fullTemp, path.basename(filePath)));
       console.log(`Copied ${filePath} to ${fullTemp}`);
@@ -283,6 +216,22 @@ export async function createSignedReports(
     }
   }
   return signedReports;
+}
+
+export async function getEbaSignedReport(
+  filePath: string,
+  signedDirPath: string,
+  aid: string,
+  keeper: signify.Keeper
+): Promise<string> {
+  const signedZips = await createSignedReports(
+    filePath,
+    [SIMPLE_TYPE],
+    keeper,
+    aid,
+    path.join(signedDirPath, aid)
+  );
+  return signedZips[0];
 }
 
 async function buildManifest(

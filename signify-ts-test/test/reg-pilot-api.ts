@@ -7,8 +7,8 @@ import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
-import { createSignedReports, SIMPLE_TYPE } from "../src/utils/report";
 import { sleep } from "./utils/test-util";
+import { getEbaSignedReport } from "../src/utils/report";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -295,7 +295,7 @@ async function single_user_test(user: ApiUser, fast = false) {
 export async function single_user_eba_test(
   user: ApiUser,
   overrideEnv: TestEnvironment,
-  paths: TestPaths
+  signedReport: string
 ) {
   env = overrideEnv;
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
@@ -330,14 +330,6 @@ export async function single_user_eba_test(
         // Print the current working directory
         console.log("Current Directory:", currentDirectory);
 
-        // sanity check that the report verifies
-        const keeper = user.roleClient.manager!.get(user.ecrAid);
-        // upload signed report
-        const signedReport = await getEbaSignedReport(
-          paths.testBankReportZip,
-          user.ecrAid.prefix,
-          keeper
-        );
         const signedUpResp = await apiAdapter.ebaUploadReport(
           user.idAlias,
           path.basename(signedReport),
@@ -353,22 +345,6 @@ export async function single_user_eba_test(
       }
     }
   }
-}
-
-async function getEbaSignedReport(
-  filePath: string,
-  aid: string,
-  keeper: Keeper
-): Promise<string> {
-  const signedDirPrefixed = path.join(process.cwd(), "data", signedDir, aid);
-  const signedZips = await createSignedReports(
-    filePath,
-    [SIMPLE_TYPE],
-    keeper,
-    aid,
-    signedDirPrefixed
-  );
-  return signedZips[0];
 }
 
 async function multi_user_test(apiUsers: Array<ApiUser>) {

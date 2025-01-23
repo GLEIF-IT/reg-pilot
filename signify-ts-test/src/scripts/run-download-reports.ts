@@ -1,15 +1,20 @@
-import { downloadUnpackReports } from '../utils/bank-reports';
+import { downloadConfigWorkflowReports } from "../utils/bank-reports";
+import { TestPaths } from "../utils/resolve-env";
 
 async function main(bankNum: number) {
   if (isNaN(bankNum)) {
-    throw new Error('A valid bank number is required to run the download reports script.');
+    throw new Error(
+      "A valid bank number is required to run the download reports script."
+    );
   }
 
   try {
-    await downloadUnpackReports(bankNum);
-    console.log('Reports downloaded successfully.');
+    const bankName = `Bank_${bankNum}`;
+    const testPaths = TestPaths.getInstance(bankName);
+    await downloadConfigWorkflowReports(bankName);
+    console.log("Reports downloaded successfully.");
   } catch (error) {
-    console.error('Error downloading reports:', error);
+    console.error("Error downloading reports:", error);
     process.exit(1);
   }
 }

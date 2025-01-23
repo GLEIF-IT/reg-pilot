@@ -12,8 +12,8 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
   const response = await axios.get(url, {
     responseType: "stream",
   });
-  if (!fs.existsSync(testPaths.tmpReportUnpackDir)) {
-    fs.mkdirSync(testPaths.tmpReportUnpackDir, { recursive: true });
+  if (!fs.existsSync(testPaths.testUserDir)) {
+    fs.mkdirSync(testPaths.testUserDir, { recursive: true });
   }
   // Ensure the parent directory for destFilePath exists
   const parentDir = path.dirname(destFilePath);
@@ -37,48 +37,41 @@ export async function downloadFileFromUrl(url: string, destFilePath: string) {
   });
 }
 
-export async function downloadUnpackReports(
-  bankNum: number,
+export async function downloadConfigWorkflowReports(
+  bankName: string,
+  doReports = true,
   doAllSigned = false,
   doFailReps = false,
-  refresh = false
+  refresh = true
 ) {
-  const bankName = `Bank_${bankNum}`;
-  const testPaths = TestPaths.getInstance(bankName);
-  console.log(`Downloading reports for bank: ${bankName}`);
-  const curBankReportsUrl = `${bankReportsUrl}/${bankName}.zip`;
+  const testPaths = TestPaths.getInstance();
+  console.log(`Downloading workflow/config/reports for bank: ${bankName}`);
+  const curBankZipUrl = `${bankReportsUrl}/${bankName}.zip`;
   const zipFilePath = `${testPaths.tmpReportsDir}/${bankName}.zip`;
 
   if (refresh || !fs.existsSync(zipFilePath)) {
-    await downloadFileFromUrl(curBankReportsUrl, zipFilePath);
-    unpackZipFile(zipFilePath, bankName, doAllSigned, doFailReps);
+    await downloadFileFromUrl(curBankZipUrl, zipFilePath);
   } else {
     console.log(
       `Using existing ZIP file: ${zipFilePath} for bank: ${bankName}`
     );
-    // print the contents of the signedDir
-    const signedItems = fs.readdirSync(testPaths.testSignedReports);
-    console.log(
-      `Signed reports in ${testPaths.testSignedReports}: ${signedItems}`
-    );
-    // signedItems.forEach((item: any) => {
-    //   console.log(item);
-    // });
   }
+  unpackZipFile(zipFilePath, bankName, doReports, doAllSigned, doFailReps);
 }
 
 export function unpackZipFile(
   zipFilePath: string,
   bankName: string,
+  includeReports = true,
   includeAllSignedReports = false,
   includeFailReports = false
 ) {
   const testPaths = TestPaths.getInstance();
   const zip = new AdmZip(zipFilePath);
 
-  zip.extractAllTo(testPaths.tmpReportUnpackDir, false); // if true overwrites existing files
+  zip.extractAllTo(testPaths.testUserDir, true); // if true overwrites existing files
 
-  if (!includeAllSignedReports) {
+  if (includeReports && !includeAllSignedReports) {
     const specificRepType = "external_manifest";
     console.log(`Only moving reports with specific prefix: ${specificRepType}`);
     moveReports(
@@ -86,17 +79,13 @@ export function unpackZipFile(
       testPaths.testSignedReports,
       specificRepType
     );
-  } else {
+  } else if (includeReports) {
     console.log(`Moving all signed reports`);
     moveReports(testPaths.testTmpSignedReports, testPaths.testSignedReports);
   }
-  if (includeFailReports) {
+  if (includeReports && includeFailReports) {
     moveReports(testPaths.testTmpFailReports, testPaths.testFailReports);
   }
-  moveFiles(
-    path.join(testPaths.tmpReportUnpackDir, bankName),
-    testPaths.testUserDir
-  );
 }
 
 const moveReports = (
@@ -167,20 +156,39 @@ export function cleanupReports(bankNum: number) {
     removeFolderRecursive(path.join(testPaths.testTmpFailReports, item));
   });
   removeFolderRecursive(testPaths.tmpReportsDir);
-  removeFolderRecursive(testPaths.tmpReportUnpackDir);
 }
 
 export function createZipWithCopies(
   pdfPath: string,
   maxSizeMb: number,
-  replaceZip = "true"
+  replaceZip = true,
+  divisor = 1,
 ): string {
+  let zipFileName = path.basename(pdfPath, ".pdf");
+  // if (userNum) {
+  //    zipFileName += `_${userNum}`
+  // }
+  const outputZipPath = path.format({
+    dir: path.dirname(pdfPath),
+    name:zipFileName,
+    ext: ".zip",
+  });
+
+  // Remove the ZIP file if it already exists
+  if (fs.existsSync(outputZipPath) && !replaceZip) {
+    console.log(`ZIP file already exists at ${outputZipPath}`);
+    return outputZipPath;
+  } else if (fs.existsSync(outputZipPath) && replaceZip) {
+    fs.unlinkSync(outputZipPath);
+    console.log(`Removed existing ZIP file at ${outputZipPath}`);
+  } 
+
   const zip = new AdmZip();
   const pdfData = fs.readFileSync(pdfPath);
   const pdfSize = pdfData.length;
   let currentSize = 0;
   let copyIndex = 1;
-  const maxSizeBytes = maxSizeMb * 1024 * 1024; // Convert MB to bytes
+  const maxSizeBytes = (maxSizeMb * 1024 * 1024)/divisor; // Convert MB to bytes
   do {
     const pdfName = `${path.basename(pdfPath, ".pdf")}_${copyIndex}.pdf`;
     zip.addFile(pdfName, pdfData);
@@ -189,17 +197,6 @@ export function createZipWithCopies(
     copyIndex++;
     console.log(`Current ZIP size: ${currentSize} bytes`);
   } while (currentSize < maxSizeBytes);
-  const outputZipPath = path.format({
-    dir: path.dirname(pdfPath),
-    name: path.basename(pdfPath, ".pdf"),
-    ext: ".zip",
-  });
-
-  // Remove the ZIP file if it already exists
-  if (fs.existsSync(outputZipPath) && replaceZip) {
-    fs.unlinkSync(outputZipPath);
-    console.log(`Removed existing ZIP file at ${outputZipPath}`);
-  }
 
   zip.writeZip(outputZipPath);
   console.log(

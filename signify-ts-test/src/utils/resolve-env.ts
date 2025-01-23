@@ -427,7 +427,6 @@ export class TestPaths {
   testUserName: string;
   testFailReports: string;
   testSignedReports: string;
-  tmpReportUnpackDir: string;
   testTmpFailReports: string;
   testTmpSignedReports: string;
   testOrigReportsDir: string;
@@ -462,9 +461,6 @@ export class TestPaths {
     this.testUsersDir = process.env.TEST_USERS_DIR
       ? process.env.TEST_USERS_DIR
       : path.join(this.testDataDir, `600-banks-test-data`);
-    this.tmpReportUnpackDir = process.env.TEST_TEMP_REPORTS_UNPACK_DIR
-      ? process.env.TEST_TEMP_REPORTS_UNPACK_DIR
-      : path.join(this.testUsersDir, `tmp_reports_unpacked`);
     this.testUserName = process.env.TEST_USER_NAME
       ? process.env.TEST_USER_NAME
       : userName;
@@ -477,15 +473,13 @@ export class TestPaths {
     this.testTmpFailReports = process.env.TEST_TEMP_FAIL_REPORTS
       ? process.env.TEST_TEMP_FAIL_REPORTS
       : path.join(
-          this.tmpReportUnpackDir,
-          this.testUserName,
+          this.testUserDir,
           `/reports/signed_reports`
         );
     this.testTmpSignedReports = process.env.TEST_TEMP_SIGNED_REPORTS
       ? process.env.TEST_TEMP_SIGNED_REPORTS
       : path.join(
-          this.tmpReportUnpackDir,
-          this.testUserName,
+          this.testUserDir,
           `/reports/signed_reports`
         );
     this.testDataEbaDir = process.env.TEST_DATA_EBA_DIR
