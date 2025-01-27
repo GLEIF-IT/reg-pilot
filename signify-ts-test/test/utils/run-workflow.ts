@@ -19,6 +19,7 @@ import { run_vlei_verification_test } from "../vlei-verification";
 
 import fs from "fs";
 import yaml from "js-yaml";
+import { createZipWithCopies } from "../../src/utils/bank-reports";
 
 // Function to load and parse YAML file
 export function loadWorkflow(filePath: string) {
@@ -50,6 +51,7 @@ export async function runWorkflow(
     step: any,
     env: TestEnvironment
   ) {
+    const paths = TestPaths.getInstance();
     if (step.type == "issue_credential") {
       if (!vi) {
         vi = new VleiIssuance(configJson);
@@ -78,7 +80,7 @@ export async function runWorkflow(
         step.test_name
       );
       if (cred[1]) creds.set(stepName, cred[0]);
-    } else if (step.type == "generate_report") {
+    } else if (step.type == "generate_report_xml") {
       console.log(`Executing: ${step.description}`);
       const testData = getReportGenTestData();
       const aidData = await buildAidData(configJson);
@@ -96,6 +98,25 @@ export async function runWorkflow(
         testData["unsignedReports"],
         testData["reportTypes"],
         step.copy_folder
+      );
+    } else if (step.type == "generate_report") {
+      const zipWithCopies = createZipWithCopies(
+        paths.testReportUnsigned,
+        paths.testUserName,
+        paths.maxReportMb,
+        paths.refreshTestData,
+        paths.testUserNum
+      );
+      paths.testReportGeneratedUnsignedZip = zipWithCopies;
+    } else if (step.type == "sign_report") {
+      const apiUsers = await getApiTestData(configJson, env, [step.aid]);
+      const user = apiUsers[0];
+      const keeper = user.roleClient.manager!.get(user.ecrAid);
+      paths.testReportGeneratedSignedZip = await getEbaSignedReport(
+        paths.testReportGeneratedUnsignedZip,
+        paths.testSignedReports,
+        user.ecrAid.prefix,
+        keeper
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
@@ -148,15 +169,11 @@ export async function runWorkflow(
       } else {
         const apiUsers = await getApiTestData(configJson, env, step.aids);
         const apiUser = apiUsers[0];
-        const keeper = apiUser.roleClient.manager!.get(apiUser.ecrAid);
-        // upload signed report
-        const signedReport = await getEbaSignedReport(
-          paths.testBankReportZip,
-          paths.testSignedReports,
-          apiUser.ecrAid.prefix,
-          keeper
+        await single_user_eba_test(
+          apiUser,
+          env,
+          paths.testReportGeneratedSignedZip
         );
-        await single_user_eba_test(apiUser, env, signedReport);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);

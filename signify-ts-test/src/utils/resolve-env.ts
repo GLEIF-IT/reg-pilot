@@ -418,6 +418,8 @@ export class TestEnvironment {
 export class TestPaths {
   private static instance: TestPaths;
   dockerComposeFile: string;
+  maxReportMb: number;
+  refreshTestData: boolean;
   testDir: string;
   testDataDir: string;
   tmpReportsDir: string;
@@ -425,21 +427,28 @@ export class TestPaths {
   testUsersDir: string;
   testUserDir: string;
   testUserName: string;
+  testUserNum: number;
   testFailReports: string;
   testSignedReports: string;
   testTmpFailReports: string;
   testTmpSignedReports: string;
   testOrigReportsDir: string;
   testDataEbaDir: string;
-  testBankReportZip: string; //TODO we should generate all test data, but still allow a specific zip to be pointed to
+  testReportUnsigned: string; //TODO we should generate all test data, but still allow a specific zip to be pointed to
+  testReportGeneratedUnsignedZip: string;
+  testReportGeneratedSignedZip: string;
   workflowsDir: string;
   // origReportsDir: string;
   // configDir: string;
 
-  private constructor(userName: string) {
+  private constructor(userName: string, userNum: number = 1, maxReportMb = 0) {
     this.dockerComposeFile =
       process.env.DOCKER_COMPOSE_FILE ||
       path.join(process.cwd(), "docker-compose-banktest.yaml");
+    this.maxReportMb = process.env.MAX_REPORT_MB
+      ? parseInt(process.env.MAX_REPORT_MB)
+      : maxReportMb;
+    this.refreshTestData = process.env.REFRESH_TEST_DATA === "true";
     this.testDir = process.env.TEST_DIR
       ? process.env.TEST_DIR
       : path.join(process.cwd(), `test`);
@@ -464,6 +473,9 @@ export class TestPaths {
     this.testUserName = process.env.TEST_USER_NAME
       ? process.env.TEST_USER_NAME
       : userName;
+    this.testUserNum = process.env.TEST_USER_NUM
+      ? parseInt(process.env.TEST_USER_NUM)
+      : userNum;
     this.testUserDir = process.env.TEST_USER_DIR
       ? process.env.TEST_USER_DIR
       : path.join(this.testUsersDir, this.testUserName);
@@ -472,24 +484,33 @@ export class TestPaths {
       : path.join(this.testUserDir, `config.json`);
     this.testTmpFailReports = process.env.TEST_TEMP_FAIL_REPORTS
       ? process.env.TEST_TEMP_FAIL_REPORTS
-      : path.join(
-          this.testUserDir,
-          `/reports/signed_reports`
-        );
+      : path.join(this.testUserDir, `/reports/signed_reports`);
     this.testTmpSignedReports = process.env.TEST_TEMP_SIGNED_REPORTS
       ? process.env.TEST_TEMP_SIGNED_REPORTS
-      : path.join(
-          this.testUserDir,
-          `/reports/signed_reports`
-        );
+      : path.join(this.testUserDir, `/reports/signed_reports`);
     this.testDataEbaDir = process.env.TEST_DATA_EBA_DIR
       ? process.env.TEST_DATA_EBA_DIR
       : path.join(this.testDataDir, `eba_reports`);
-    this.testBankReportZip = process.env.TEST_BANK_REPORT_ZIP
-      ? process.env.TEST_BANK_REPORT_ZIP
+    this.testReportUnsigned = process.env.TEST_REPORT_UNSIGNED
+      ? process.env.TEST_REPORT_UNSIGNED
       : path.join(
           this.testDataEbaDir,
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf`
+        );
+    this.testReportGeneratedUnsignedZip = process.env
+      .TEST_REPORT_GENERATED_UNSIGNED
+      ? process.env.TEST_REPORT_GENERATED_UNSIGNED
+      : path.join(
+          this.testDataEbaDir,
+          this.testUserName,
           `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip`
+        );
+    this.testReportGeneratedSignedZip = process.env.TEST_REPORT_GENERATED_SIGNED
+      ? process.env.TEST_REPORT_GENERATED_SIGNED
+      : path.join(
+          this.testSignedReports,
+          this.testUserName,
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip`
         );
     this.workflowsDir = process.env.WORKFLOWS_DIR
       ? process.env.WORKFLOWS_DIR

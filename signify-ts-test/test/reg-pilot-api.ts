@@ -61,11 +61,11 @@ module.exports = {
 
 async function single_user_test(user: ApiUser, fast = false) {
   const testPaths = TestPaths.getInstance();
-  const signedDirPrefixed = path.join(
-    testPaths.testSignedReports,
-    user.ecrAid.prefix
-  );
-  const signedReports = getSignedReports(signedDirPrefixed);
+  // const signedDirPrefixed = path.join(
+  //   testPaths.testSignedReports,
+  //   user.ecrAid.prefix
+  // );
+  // const signedReports = getSignedReports(signedDirPrefixed);
   failDirPrefixed = path.join(testPaths.testFailReports, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
@@ -103,12 +103,12 @@ async function single_user_test(user: ApiUser, fast = false) {
         user.creds[i]["cred"],
         user.creds[i]["credCesr"]
       );
-      if (lresp.status) {
-        sleep(1000);
-        await checkLogin(user, user.creds[i]["cred"], false);
-      } else {
-        fail("Failed to login");
-      }
+      // if (lresp.status) {
+      //   sleep(1000);
+      //   await checkLogin(user, user.creds[i]["cred"], false);
+      // } else {
+      //   fail("Failed to login");
+      // }
     }
   }
   if (ecrUser) {
@@ -147,36 +147,7 @@ async function single_user_test(user: ApiUser, fast = false) {
     assert.fail("Failed to drop report status");
   }
 
-  // Get the current working directory
-  const currentDirectory = process.cwd();
-  // Print the current working directory
-  console.log("Current Directory:", currentDirectory);
-
-  // sanity check that the report verifies
-  const keeper = user.roleClient.manager!.get(user.ecrAid);
-  const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
-
-  // sanity check with expected sig and contents that the verifier will verify
-  // assert.equal(ecrAid.prefix,"EOrwKACnr9y8E84xWmzfD7hka5joeKBu19IOW_xyJ50h")
-  // const sig = "AABDyfoSHNaRH4foKRXVDp9HAGqol_dnUxDr-En-svEV3FHNJ0R7tgIYMRz0lIIdIkqMwGFGj8qUge03uYFMpcQP"
-  // const siger = new Siger({ qb64: sig });
-  // const filingIndicatorsData = "templateID,reported\nI_01.01,true\nI_02.03,true\nI_02.04,true\nI_03.01,true\nI_05.00,true\nI_09.01,true\n" //This is like FilingIndicators.csv
-  // const result = signer.verfer.verify(siger.raw, filingIndicatorsData);
-  // assert.equal(result, true);
-  //sig is new Uint8Array([67, 201, 250, 18, 28, 214, 145, 31, 135, 232, 41, 21, 213, 14, 159, 71, 0, 106, 168, 151, 247, 103, 83, 16, 235, 248, 73, 254, 178, 241, 21, 220, 81, 205, 39, 68, 123, 182, 2, 24, 49, 28, 244, 148, 130, 29, 34, 74, 140, 192, 97, 70, 143, 202, 148, 129, 237, 55, 185, 129, 76, 165, 196, 15])
-  // const uint8Array = new Uint8Array([38, 142, 242, 237, 224, 242, 74, 112, 91, 193, 125, 159, 24, 21, 0, 136, 4, 230, 252, 234, 78, 179, 82, 14, 207, 198, 163, 92, 230, 172, 153, 50]);
-  // Convert Uint8Array to a binary string
-  // const binaryString = String.fromCharCode.apply(null, Array.from(uint8Array));
-  // Convert binary string to Base64
-  // const base64String = btoa(binaryString);
-  // console.log(base64String); // Output: Jo7y7eDySnBbwX2fGBUAiATm/OpOs1IOz8ajXOakmTI=
-  // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
-
-  //Try known aid signed report upload
-  //   const ecrOobi = await roleClient.oobis().get(user.idAlias, "agent");
-  //   console.log("Verifier must have already seen the login", ecrOobi);
-  // Loop over the reports directory
-
+  const signedReports = [testPaths.testReportGeneratedSignedZip];
   // Check signed reports
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {

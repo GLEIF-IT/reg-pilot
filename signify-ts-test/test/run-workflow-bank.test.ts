@@ -49,7 +49,7 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
     [ARG_CLEAN]: "c",
   },
   default: {
-    [ARG_MAX_REPORT_SIZE]: 1, // Default to 1 MB
+    [ARG_MAX_REPORT_SIZE]: 0, // Default to 1 MB
     [ARG_BANK_NUM]: 1,
     [ARG_KERIA_ADMIN_PORT]: 20001,
     [ARG_KERIA_HTTP_PORT]: 20002,
@@ -90,14 +90,20 @@ const keriaHttpPort =
   parseInt(args[ARG_KERIA_HTTP_PORT], 10) + offset || 20002 + offset;
 const keriaBootPort =
   parseInt(args[ARG_KERIA_BOOT_PORT], 10) + offset || 20003 + offset;
-const refresh = args[ARG_REFRESH] === "true";
+const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
 testPaths = TestPaths.getInstance(bankName);
-const pdfFilePath = path.format({
-  dir: path.dirname(testPaths.testBankReportZip),
-  name: path.basename(testPaths.testBankReportZip, ".zip"),
-  ext: ".pdf",
-});
+// set test data for workflow
+testPaths.testUserName = bankName;
+testPaths.testUserNum = bankNum;
+testPaths.maxReportMb = maxReportMb;
+testPaths.refreshTestData = refresh;
+
+// const pdfFilePath = path.format({
+//   dir: path.dirname(testPaths.testBankReportUnsigned),
+//   name: path.basename(testPaths.testBankReportUnsigned, ".zip"),
+//   ext: ".pdf",
+// });
 
 console.log(
   "bankNum:",
@@ -204,15 +210,6 @@ test("eba-verifier-prep-only", async function run() {
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
   configJson = getConfig(testPaths.testUserConfigFile);
-
-  const zipWithCopies = createZipWithCopies(
-    pdfFilePath,
-    bankName,
-    maxReportMb,
-    refresh,
-    bankNum
-  );
-  testPaths.testBankReportZip = zipWithCopies;
 });
 
 test("eba-verifier-bank-test-workflow", async function run() {
@@ -233,16 +230,6 @@ test("eba-verifier-bank-test-workflow", async function run() {
     "eba-verifier-test-workflow.yaml"
   );
   const workflow = loadWorkflow(workflowPath);
-
-  const zipWithCopies = createZipWithCopies(
-    pdfFilePath,
-    bankName,
-    maxReportMb,
-    refresh,
-    bankNum
-  );
-  testPaths.testBankReportZip = zipWithCopies;
-  expect(zipWithCopies).toBe(testPaths.testBankReportZip);
 
   if (workflow && configJson) {
     await runWorkflow(workflow, configJson, env, testPaths);
