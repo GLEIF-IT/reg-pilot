@@ -156,7 +156,7 @@ async function single_user_test(user: ApiUser, fast = false) {
         user.ecrAid.prefix,
         user.roleClient
       );
-      console.log(`Processing file: ${signedReport}`);
+      console.log(`Uploading signed report file: ${signedReport}`);
       const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await apiAdapter.uploadReport(
@@ -190,7 +190,7 @@ async function single_user_test(user: ApiUser, fast = false) {
           user.ecrAid.prefix,
           user.roleClient
         );
-        console.log(`Processing file: ${filePath}`);
+        console.log(`Uploading fail report file: ${filePath}`);
         const failZipBuf = fs.readFileSync(`${filePath}`);
         const failZipDig = generateFileDigest(failZipBuf);
         const failUpResp = await apiAdapter.uploadReport(
@@ -221,7 +221,7 @@ async function single_user_test(user: ApiUser, fast = false) {
         user.ecrAid.prefix,
         user.roleClient
       );
-      console.log(`Processing file: ${signedReport}`);
+      console.log(`Uploading signed report w/ bad digest: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await apiAdapter.uploadReport(
@@ -248,6 +248,7 @@ async function single_user_test(user: ApiUser, fast = false) {
       console.log(`Processing file: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
+      console.log(`Testing a bad digest on the file: ${signedReport}`);
       const badDigestUpResp = await apiAdapter.uploadReport(
         user.idAlias,
         user.ecrAid.prefix,

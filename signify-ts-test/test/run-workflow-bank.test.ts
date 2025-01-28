@@ -8,7 +8,6 @@ import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
 
 import {
-  createZipWithCopies,
   downloadConfigWorkflowReports,
 } from "../src/utils/bank-reports";
 import {

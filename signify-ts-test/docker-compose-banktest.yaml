@@ -102,6 +102,8 @@ services:
       - witness-demo
     ports:
       - 7676:7676
+    environment:
+      - KERI_BASER_MAP_SIZE=150000000
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
       interval: 2s

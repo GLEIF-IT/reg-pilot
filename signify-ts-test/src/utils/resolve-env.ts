@@ -460,7 +460,7 @@ export class TestPaths {
       : path.join(this.testDataDir, `orig_reports`);
     this.tmpReportsDir = process.env.TEST_TEMP_REPORTS_DIR
       ? process.env.TEST_TEMP_REPORTS_DIR
-      : path.join(this.testDataDir, `tmp_reports`);
+      : path.join(this.testDataDir, `tmp_reports`, userName);
     this.testFailReports = process.env.TEST_FAIL_REPORTS
       ? process.env.TEST_FAIL_REPORTS
       : path.join(this.testDataDir, `fail_reports`);
