@@ -61,7 +61,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --data-report-verify-proxy)
-            npx jest ./run-workflow.test.ts --runInBand --detectOpenHandles --forceExit
+            npm run ./run-workflow.ts --runInBand --detectOpenHandles --forceExit
             shift # past argument
             ;;        
         *)

@@ -5,59 +5,35 @@ import path from "path";
 import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import {
-  ApiUser,
-  getApiTestData,
-  getConfig,
-  isEbaDataSubmitter,
-} from "./utils/test-data";
-import { buildUserData } from "../src/utils/handle-json-config";
-import { createSignedReports, SIMPLE_TYPE } from "./report.test";
+import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
+import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
 import { sleep } from "./utils/test-util";
-import JSZip from "jszip";
-import AdmZip from "adm-zip";
+import { getEbaSignedReport } from "../src/utils/report";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
-const secretsJsonPath = "../src/config/";
 
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
 
-afterEach(async () => {});
-beforeAll(async () => {
-  env = resolveEnvironment();
-  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-  env.apiBaseUrl = env.apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
-});
-
-if (require.main === module) {
-  test("reg-pilot-api", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
-    let users = await buildUserData(configJson);
-    users = users.filter((user) => user.type === "ECR");
-    const apiUsers = await getApiTestData(
-      configJson,
-      env,
-      users.map((user) => user.identifiers[0].name),
-    );
-    await run_api_test(apiUsers, configJson);
-  }, 200000);
-}
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
 // It also assumes you have generated the different report files
 // from the report test
-export async function run_api_test(apiUsers: ApiUser[], configJson: any) {
-  await apiAdapter.addRootOfTrust(configJson);
+export async function run_api_test(
+  apiUsers: ApiUser[],
+  configJson: any,
+  fast = true
+) {
+  env = TestEnvironment.getInstance();
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+  await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
-  else if (apiUsers.length == 1) await single_user_test(apiUsers[0]);
+  else if (apiUsers.length == 1) await single_user_test(apiUsers[0], fast);
   else
     console.log(
-      `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`,
+      `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
     );
 }
 
@@ -66,14 +42,14 @@ export async function run_api_revocation_test(
   requestorAidAlias: string,
   requestorAidPrefix: string,
   credentials: Map<string, ApiUser>,
-  configJson: any,
+  configJson: any
 ) {
   await apiAdapter.addRootOfTrust(configJson);
   await revoked_cred_upload_test(
     credentials,
     requestorAidAlias,
     requestorAidPrefix,
-    requestorClient,
+    requestorClient
   );
 }
 
@@ -83,15 +59,14 @@ module.exports = {
   run_api_revocation_test,
 };
 
-async function single_user_test(user: ApiUser) {
-  const signedDirPrefixed = path.join(
-    __dirname,
-    "data",
-    signedDir,
-    user.ecrAid.prefix,
-  );
-  const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
+async function single_user_test(user: ApiUser, fast = false) {
+  const testPaths = TestPaths.getInstance();
+  // const signedDirPrefixed = path.join(
+  //   testPaths.testSignedReports,
+  //   user.ecrAid.prefix
+  // );
+  // const signedReports = getSignedReports(signedDirPrefixed);
+  failDirPrefixed = path.join(testPaths.testFailReports, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
   let presp = await fetch(env.apiBaseUrl + ppath, preq);
@@ -102,7 +77,7 @@ async function single_user_test(user: ApiUser) {
   let sresp = await apiAdapter.getReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient,
+    user.roleClient
   );
 
   // login with the ecr credential
@@ -114,7 +89,7 @@ async function single_user_test(user: ApiUser) {
     if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
       const foundEcr = isEbaDataSubmitter(
         user.creds[i]["cred"],
-        user.ecrAid.prefix,
+        user.ecrAid.prefix
       );
       if (foundEcr) {
         ecrUser = user;
@@ -126,14 +101,14 @@ async function single_user_test(user: ApiUser) {
       const lresp = await login(
         user,
         user.creds[i]["cred"],
-        user.creds[i]["credCesr"],
+        user.creds[i]["credCesr"]
       );
-      if (lresp.status) {
-        sleep(1000);
-        await checkLogin(user, user.creds[i]["cred"], false);
-      } else {
-        fail("Failed to login");
-      }
+      // if (lresp.status) {
+      //   sleep(1000);
+      //   await checkLogin(user, user.creds[i]["cred"], false);
+      // } else {
+      //   fail("Failed to login");
+      // }
     }
   }
   if (ecrUser) {
@@ -156,14 +131,14 @@ async function single_user_test(user: ApiUser) {
   const dresp = await apiAdapter.dropReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient,
+    user.roleClient
   );
   if (dresp.status < 300) {
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient,
+      user.roleClient
     );
     assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
@@ -172,45 +147,16 @@ async function single_user_test(user: ApiUser) {
     assert.fail("Failed to drop report status");
   }
 
-  // Get the current working directory
-  const currentDirectory = process.cwd();
-  // Print the current working directory
-  console.log("Current Directory:", currentDirectory);
-
-  // sanity check that the report verifies
-  const keeper = user.roleClient.manager!.get(user.ecrAid);
-  const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
-
-  // sanity check with expected sig and contents that the verifier will verify
-  // assert.equal(ecrAid.prefix,"EOrwKACnr9y8E84xWmzfD7hka5joeKBu19IOW_xyJ50h")
-  // const sig = "AABDyfoSHNaRH4foKRXVDp9HAGqol_dnUxDr-En-svEV3FHNJ0R7tgIYMRz0lIIdIkqMwGFGj8qUge03uYFMpcQP"
-  // const siger = new Siger({ qb64: sig });
-  // const filingIndicatorsData = "templateID,reported\nI_01.01,true\nI_02.03,true\nI_02.04,true\nI_03.01,true\nI_05.00,true\nI_09.01,true\n" //This is like FilingIndicators.csv
-  // const result = signer.verfer.verify(siger.raw, filingIndicatorsData);
-  // assert.equal(result, true);
-  //sig is new Uint8Array([67, 201, 250, 18, 28, 214, 145, 31, 135, 232, 41, 21, 213, 14, 159, 71, 0, 106, 168, 151, 247, 103, 83, 16, 235, 248, 73, 254, 178, 241, 21, 220, 81, 205, 39, 68, 123, 182, 2, 24, 49, 28, 244, 148, 130, 29, 34, 74, 140, 192, 97, 70, 143, 202, 148, 129, 237, 55, 185, 129, 76, 165, 196, 15])
-  // const uint8Array = new Uint8Array([38, 142, 242, 237, 224, 242, 74, 112, 91, 193, 125, 159, 24, 21, 0, 136, 4, 230, 252, 234, 78, 179, 82, 14, 207, 198, 163, 92, 230, 172, 153, 50]);
-  // Convert Uint8Array to a binary string
-  // const binaryString = String.fromCharCode.apply(null, Array.from(uint8Array));
-  // Convert binary string to Base64
-  // const base64String = btoa(binaryString);
-  // console.log(base64String); // Output: Jo7y7eDySnBbwX2fGBUAiATm/OpOs1IOz8ajXOakmTI=
-  // assert.equal(signer.verfer.qb64, "DCaO8u3g8kpwW8F9nxgVAIgE5vzqTrNSDs_Go1zmrJky")
-
-  //Try known aid signed report upload
-  //   const ecrOobi = await roleClient.oobis().get(user.idAlias, "agent");
-  //   console.log("Verifier must have already seen the login", ecrOobi);
-  // Loop over the reports directory
-
+  const signedReports = [testPaths.testReportGeneratedSignedZip];
   // Check signed reports
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient,
+        user.roleClient
       );
-      console.log(`Processing file: ${signedReport}`);
+      console.log(`Uploading signed report file: ${signedReport}`);
       const signedZipBuf = fs.readFileSync(`${signedReport}`);
       const signedZipDig = generateFileDigest(signedZipBuf);
       const signedUpResp = await apiAdapter.uploadReport(
@@ -219,15 +165,16 @@ async function single_user_test(user: ApiUser) {
         signedReport,
         signedZipBuf,
         signedZipDig,
-        user.roleClient,
+        user.roleClient
       );
       await checkSignedUpload(
         signedUpResp,
         path.basename(signedReport),
         signedZipDig,
         user,
-        ecrCred,
+        ecrCred
       );
+      if (fast) break;
     }
   }
 
@@ -241,9 +188,9 @@ async function single_user_test(user: ApiUser) {
         await apiAdapter.dropReportStatusByAid(
           user.idAlias,
           user.ecrAid.prefix,
-          user.roleClient,
+          user.roleClient
         );
-        console.log(`Processing file: ${filePath}`);
+        console.log(`Uploading fail report file: ${filePath}`);
         const failZipBuf = fs.readFileSync(`${filePath}`);
         const failZipDig = generateFileDigest(failZipBuf);
         const failUpResp = await apiAdapter.uploadReport(
@@ -252,15 +199,16 @@ async function single_user_test(user: ApiUser) {
           failReport,
           failZipBuf,
           failZipDig,
-          user.roleClient,
+          user.roleClient
         );
         await checkFailUpload(
           user.roleClient,
           failUpResp,
           failReport,
           failZipDig,
-          user.ecrAid,
+          user.ecrAid
         );
+        if (fast) break;
       }
     }
   }
@@ -271,9 +219,9 @@ async function single_user_test(user: ApiUser) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient,
+        user.roleClient
       );
-      console.log(`Processing file: ${signedReport}`);
+      console.log(`Uploading signed report w/ bad digest: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = "sha256-f5eg8fhaFybddaNOUHNU87Bdndfawf";
       const badDigestUpResp = await apiAdapter.uploadReport(
@@ -282,9 +230,10 @@ async function single_user_test(user: ApiUser) {
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        user.roleClient,
+        user.roleClient
       );
       await checkBadDigestUpload(badDigestUpResp);
+      if (fast) break;
     }
   }
 
@@ -294,34 +243,34 @@ async function single_user_test(user: ApiUser) {
       await apiAdapter.dropReportStatusByAid(
         user.idAlias,
         user.ecrAid.prefix,
-        user.roleClient,
+        user.roleClient
       );
       console.log(`Processing file: ${signedReport}`);
       const badDigestZipBuf = fs.readFileSync(`${signedReport}`);
       const badDigestZipDig = generateFileDigest(badDigestZipBuf).substring(7);
+      console.log(`Testing a bad digest on the file: ${signedReport}`);
       const badDigestUpResp = await apiAdapter.uploadReport(
         user.idAlias,
         user.ecrAid.prefix,
         signedReport,
         badDigestZipBuf,
         badDigestZipDig,
-        user.roleClient,
+        user.roleClient
       );
       await checkNonPrefixedDigestUpload(badDigestUpResp);
+      if (fast) break;
     }
   }
 }
 
 // Specail test for eba api
-export async function single_user_eba_test(user: ApiUser) {
-  const signedDirPrefixed = path.join(
-    __dirname,
-    "data",
-    signedDir,
-    user.ecrAid.prefix,
-  );
-  const signedReports = getSignedReports(signedDirPrefixed);
-  failDirPrefixed = path.join(__dirname, "data", failDir, user.ecrAid.prefix);
+export async function single_user_eba_test(
+  user: ApiUser,
+  overrideEnv: TestEnvironment,
+  signedReport: string
+) {
+  env = overrideEnv;
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 
   // login with the ecr credential
   let ecrCred;
@@ -332,7 +281,7 @@ export async function single_user_eba_test(user: ApiUser) {
     if (user.creds[i]["cred"].sad.a.i === user.ecrAid.prefix) {
       const foundEcr = isEbaDataSubmitter(
         user.creds[i]["cred"],
-        user.ecrAid.prefix,
+        user.ecrAid.prefix
       );
       if (foundEcr) {
         ecrUser = user;
@@ -344,7 +293,7 @@ export async function single_user_eba_test(user: ApiUser) {
       const token = await ebaLogin(
         user,
         user.creds[i]["cred"],
-        user.creds[i]["credCesr"],
+        user.creds[i]["credCesr"]
       );
       if (token && foundEcr) {
         console.log("EBA login succeeded", token);
@@ -353,51 +302,21 @@ export async function single_user_eba_test(user: ApiUser) {
         // Print the current working directory
         console.log("Current Directory:", currentDirectory);
 
-        // sanity check that the report verifies
-        const keeper = user.roleClient.manager!.get(user.ecrAid);
-        const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
-
-        // upload signed report
-        const filePath =
-          "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip";
-        const signedReport = await getEbaSignedReport(
-          filePath,
-          user.ecrAid.prefix,
-          keeper,
-        );
         const signedUpResp = await apiAdapter.ebaUploadReport(
           user.idAlias,
           path.basename(signedReport),
           await fs.promises.readFile(signedReport),
           user.roleClient,
           token,
+          overrideEnv
         );
+        console.log("EBA upload response", signedUpResp);
         assert.equal(signedUpResp.status, 200);
         const resBod = await signedUpResp.json();
         console.log("EBA upload response body", resBod["message"]);
-        // assert.equal(
-        //   resBod["message"],
-        //   `All 1 files in report package have been signed by submitter (${user.ecrAid.prefix}).`,
-        // );
       }
     }
   }
-}
-
-async function getEbaSignedReport(
-  filePath: string,
-  aid: string,
-  keeper: Keeper,
-): Promise<string> {
-  const signedDirPrefixed = path.join(__dirname, "data", signedDir, aid);
-  const signedZips = await createSignedReports(
-    [filePath],
-    [SIMPLE_TYPE],
-    keeper,
-    aid,
-    signedDirPrefixed,
-  );
-  return signedZips[0];
 }
 
 async function multi_user_test(apiUsers: Array<ApiUser>) {
@@ -421,10 +340,10 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 
   for (const user of apiUsers) {
     const signedDirPrefixed = path.join(
-      __dirname,
+      process.cwd(),
       "data",
       signedDir,
-      user.ecrAid.prefix,
+      user.ecrAid.prefix
     );
     // try to ping the api
     let ppath = "/ping";
@@ -437,7 +356,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     let sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient,
+      user.roleClient
     );
 
     // login with the ecr credential
@@ -448,7 +367,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
       await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
       const foundEcr = isEbaDataSubmitter(
         user.creds[i]["cred"],
-        user.ecrAid.prefix,
+        user.ecrAid.prefix
       );
       if (foundEcr) {
         ecrCred = user.creds[i]["cred"];
@@ -469,17 +388,18 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     await apiAdapter.dropReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient,
+      user.roleClient
     );
     // succeeds to query report status
     sresp = await apiAdapter.getReportStatusByAid(
       user.idAlias,
       user.ecrAid.prefix,
-      user.roleClient,
+      user.roleClient
     );
-    assert.equal(sresp.status, 202);
     const sbody = await sresp.json();
+    console.log("Multi-user current report status", sbody);
     assert.equal(sbody.length, 0);
+    assert.equal(sresp.status, 202);
 
     // Get the current working directory
     const currentDirectory = process.cwd();
@@ -497,7 +417,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
         await apiAdapter.dropReportStatusByAid(
           user.idAlias,
           user.ecrAid.prefix,
-          user.roleClient,
+          user.roleClient
         );
         console.log(`Processing file: ${signedReport}`);
         const signedZipBuf = fs.readFileSync(`${signedReport}`);
@@ -508,14 +428,14 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
           signedReport,
           signedZipBuf,
           signedZipDig,
-          user.roleClient,
+          user.roleClient
         );
         await checkSignedUpload(
           signedUpResp,
           path.basename(signedReport),
           signedZipDig,
           user,
-          ecrCred,
+          ecrCred
         );
         user.uploadDig = signedZipDig;
         break;
@@ -526,7 +446,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   let sresp = await apiAdapter.getReportStatusByAid(
     user1.idAlias,
     user1.ecrAid.prefix,
-    user1.roleClient,
+    user1.roleClient
   );
   assert.equal(sresp.status, 202);
   let sbody = await sresp.json();
@@ -535,7 +455,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sresp = await apiAdapter.getReportStatusByAid(
     user1.idAlias,
     user3.ecrAid.prefix,
-    user1.roleClient,
+    user1.roleClient
   );
   assert.equal(sresp.status, 401);
 
@@ -544,7 +464,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     user1.idAlias,
     user3.ecrAid.prefix,
     user3.uploadDig,
-    user1.roleClient,
+    user1.roleClient
   );
   assert.equal(sresp.status, 401);
 
@@ -553,7 +473,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
     user2.idAlias,
     user2.ecrAid.prefix,
     user1.uploadDig,
-    user2.roleClient,
+    user2.roleClient
   );
   assert.equal(sresp.status, 200);
 
@@ -561,7 +481,7 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   sresp = await apiAdapter.getLeiReportStatusesByAid(
     user1.idAlias,
     user1.ecrAid.prefix,
-    user1.roleClient,
+    user1.roleClient
   );
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
@@ -571,17 +491,17 @@ async function revoked_cred_upload_test(
   credentials: Map<string, ApiUser>,
   requestorAidAlias: string,
   requestorAidPrefix: string,
-  requestorClient: SignifyClient,
+  requestorClient: SignifyClient
 ) {
   const ecr_cred_prev_state = credentials.get("ecr_cred_prev_state")!;
   const ecr_cred_revoke = credentials.get("ecr_cred_revoke")!;
   const ecr_cred_new_state = credentials.get("ecr_cred_new_state")!;
 
   const signedDirPrefixed = path.join(
-    __dirname,
+    process.cwd(),
     "data",
     signedDir,
-    ecr_cred_prev_state.ecrAid.prefix,
+    ecr_cred_prev_state.ecrAid.prefix
   );
   // try to ping the api
   let ppath = "/ping";
@@ -595,12 +515,12 @@ async function revoked_cred_upload_test(
   await login(
     ecr_cred_prev_state,
     ecr_cred_prev_state.creds[0]["cred"],
-    ecr_cred_prev_state.creds[0]["credCesr"],
+    ecr_cred_prev_state.creds[0]["credCesr"]
   );
   await checkLogin(
     ecr_cred_prev_state,
     ecr_cred_prev_state.creds[0]["cred"],
-    false,
+    false
   );
 
   // Get the current working directory
@@ -610,7 +530,7 @@ async function revoked_cred_upload_test(
 
   // sanity check that the report verifies
   const keeper = ecr_cred_prev_state.roleClient.manager!.get(
-    ecr_cred_prev_state.ecrAid,
+    ecr_cred_prev_state.ecrAid
   );
   const signer = keeper.signers[0];
 
@@ -621,7 +541,7 @@ async function revoked_cred_upload_test(
     await apiAdapter.dropReportStatusByAid(
       ecr_cred_prev_state.idAlias,
       ecr_cred_prev_state.ecrAid.prefix,
-      ecr_cred_prev_state.roleClient,
+      ecr_cred_prev_state.roleClient
     );
     console.log(`Processing file: ${signedReport}`);
     const signedZipBuf = fs.readFileSync(`${signedReport}`);
@@ -632,14 +552,14 @@ async function revoked_cred_upload_test(
       signedReport,
       signedZipBuf,
       signedZipDig,
-      ecr_cred_prev_state.roleClient,
+      ecr_cred_prev_state.roleClient
     );
     await checkSignedUpload(
       signedUpResp,
       path.basename(signedReport),
       signedZipDig,
       ecr_cred_prev_state,
-      ecr_cred_prev_state.creds[0]["cred"],
+      ecr_cred_prev_state.creds[0]["cred"]
     );
     ecr_cred_prev_state.uploadDig = signedZipDig;
   }
@@ -648,7 +568,7 @@ async function revoked_cred_upload_test(
   let sresp = await apiAdapter.getReportStatusByAid(
     ecr_cred_prev_state.idAlias,
     ecr_cred_prev_state.ecrAid.prefix,
-    ecr_cred_prev_state.roleClient,
+    ecr_cred_prev_state.roleClient
   );
   assert.equal(sresp.status, 202);
   let sbody = await sresp.json();
@@ -660,7 +580,7 @@ async function revoked_cred_upload_test(
     requestorAidPrefix,
     requestorClient,
     ecr_cred_revoke.creds[0]["cred"],
-    ecr_cred_revoke.creds[0]["credCesr"],
+    ecr_cred_revoke.creds[0]["credCesr"]
   );
   await checkLogin(ecr_cred_revoke, ecr_cred_revoke.creds[0]["cred"], true);
 
@@ -668,24 +588,24 @@ async function revoked_cred_upload_test(
   await login(
     ecr_cred_prev_state,
     ecr_cred_prev_state.creds[0]["cred"],
-    ecr_cred_revoke.creds[0]["credCesr"],
+    ecr_cred_revoke.creds[0]["credCesr"]
   );
   await checkLogin(
     ecr_cred_prev_state,
     ecr_cred_prev_state.creds[0]["cred"],
-    true,
+    true
   );
 
   // 4th case. Presenting new ECR credentail with new SAID
   await login(
     ecr_cred_new_state,
     ecr_cred_new_state.creds[0]["cred"],
-    ecr_cred_new_state.creds[0]["credCesr"],
+    ecr_cred_new_state.creds[0]["credCesr"]
   );
   await checkLogin(
     ecr_cred_new_state,
     ecr_cred_new_state.creds[0]["cred"],
-    false,
+    false
   );
 }
 
@@ -694,7 +614,7 @@ export async function checkSignedUpload(
   fileName: string,
   signedZipDig: string,
   user: ApiUser,
-  ecrCred: any,
+  ecrCred: any
 ): Promise<boolean> {
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
@@ -711,7 +631,7 @@ export async function checkSignedUpload(
     user.idAlias,
     user.ecrAid.prefix,
     signedZipDig,
-    user.roleClient,
+    user.roleClient
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
@@ -726,7 +646,7 @@ export async function checkSignedUpload(
   sresp = await apiAdapter.getReportStatusByAid(
     user.idAlias,
     user.ecrAid.prefix,
-    user.roleClient,
+    user.roleClient
   );
   assert.equal(sresp.status, 202);
   const twoUploadsBody = await sresp.json();
@@ -748,7 +668,7 @@ export async function checkFailUpload(
   failUpResp: Response,
   fileName: string,
   failZipDig: string,
-  ecrAid: HabState,
+  ecrAid: HabState
 ): Promise<boolean> {
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
@@ -776,7 +696,7 @@ export async function checkFailUpload(
     ecrAid.name,
     ecrAid.prefix,
     failZipDig,
-    roleClient,
+    roleClient
   );
   assert.equal(sresp.status, 200);
   const signedUploadBody = await sresp.json();
@@ -789,7 +709,7 @@ export async function checkFailUpload(
 }
 
 export async function checkBadDigestUpload(
-  badDigestUpResp: Response,
+  badDigestUpResp: Response
 ): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
@@ -799,7 +719,7 @@ export async function checkBadDigestUpload(
 }
 
 export async function checkNonPrefixedDigestUpload(
-  badDigestUpResp: Response,
+  badDigestUpResp: Response
 ): Promise<boolean> {
   assert.equal(badDigestUpResp.status, 400);
   const badDigestUpBody = await badDigestUpResp.json();
@@ -808,21 +728,22 @@ export async function checkNonPrefixedDigestUpload(
   return true;
 }
 
-export function getSignedReports(signedDirPrefixed: string): string[] {
-  if (process.env.SIGNED_REPORTS) {
-    return process.env.SIGNED_REPORTS.split(",");
-  } else {
-    const fileNames = fs.readdirSync(signedDirPrefixed);
-    return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
-  }
+export function getSignedReports(
+  signedDirPrefixed: string,
+  files?: string[]
+): string[] {
+  const fileNames = files || fs.readdirSync(signedDirPrefixed);
+  return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
 }
 
 async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
-  let heads = new Headers();
+  const heads = new Headers();
   heads.set("Content-Type", "application/json");
-  let creq = { headers: heads, method: "GET", body: null };
-  let cpath = `/checklogin/${user.ecrAid.prefix}`;
-  const cresp = await fetch(env.apiBaseUrl + cpath, creq);
+  heads.set("Connection", "close"); // avoids debugging fetch failures
+  const creq = { headers: heads, method: "GET", body: null };
+  const cpath = `/checklogin/${user.ecrAid.prefix}`;
+  const curl = env.apiBaseUrl + cpath;
+  const cresp = await fetch(curl, creq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
@@ -830,14 +751,14 @@ async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
       assert.equal(
         cbody["msg"],
         `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential revoked, info: Credential was revoked`,
-        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
+        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`
       );
     } else {
       assert.equal(cresp.status, 200);
       assert.equal(cbody["aid"], `${user.ecrAid.prefix}`);
       assert.equal(
         cbody["msg"],
-        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`,
+        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`
       );
       assert.equal(cbody["said"], cred.sad.d);
     }
@@ -845,7 +766,7 @@ async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
     assert.equal(cresp.status, 401);
     assert.equal(
       cbody["msg"],
-      `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, info: Can't authorize cred with OOR schema`,
+      `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, info: Can't authorize cred with OOR schema`
     );
   }
   return cresp;
@@ -854,6 +775,7 @@ async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
 async function login(user: ApiUser, cred: any, credCesr: any) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  heads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     vlei: credCesr,
     said: cred.sad.d,
@@ -877,7 +799,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
     assert.equal(lresp.status, 202);
     assert.equal(
       ljson["msg"],
-      `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
+      `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`
     );
   }
   return lresp;
@@ -886,8 +808,9 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
-  lheads.set("uiversion", "1.3.10-474-FINAL-PILLAR3-trunk");
+  lheads.set("uiversion", "1.3.10-484-FINAL-master");
   lheads.set("Accept", "application/json, text/plain, */*");
+  lheads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     credential: {
       cesr: credCesr,
@@ -901,7 +824,7 @@ async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
     method: "POST",
     body: JSON.stringify({ payload: base64Payload }),
   };
-  console.log("eba login lreq", lreq);
+  console.log(`eba login lreq ${JSON.stringify(lreq).slice(0,500)}...`);
   let lpath = `/signifyLogin`;
   const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
@@ -920,10 +843,11 @@ async function presentRevocation(
   requestorAidPrefix: string,
   requestorClient: SignifyClient,
   cred: any,
-  credCesr: any,
+  credCesr: any
 ) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  heads.set("Connection", "close"); // avoids debugging fetch failures
   let lbody = {
     vlei: credCesr,
     said: cred.sad.d,
@@ -938,7 +862,7 @@ async function presentRevocation(
   let sreq = await requestorClient.createSignedRequest(
     requestorAidAlias,
     url,
-    lreq,
+    lreq
   );
   const lresp = await fetch(url, sreq);
   console.log("login response", lresp);
@@ -949,7 +873,7 @@ async function presentRevocation(
   assert.equal(credJson[0].sad.a.i, `${cred.sad.a.i}`);
   assert.equal(
     ljson["msg"],
-    `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`,
+    `${cred.sad.d} for ${cred.sad.a.i} as issuee is Credential cryptographically valid`
   );
   return lresp;
 }

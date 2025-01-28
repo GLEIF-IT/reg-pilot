@@ -1,7 +1,5 @@
 import { Saider } from "signify-ts";
-import { resolveEnvironment } from "../test/utils/resolve-env";
-
-export const { vleiServerUrl, witnessIds } = resolveEnvironment();
+import { TestEnvironment } from "./utils/resolve-env";
 
 export const QVI_SCHEMA_SAID = "EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao";
 export const LE_SCHEMA_SAID = "ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY";
@@ -11,14 +9,6 @@ export const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 export const OOR_AUTH_SCHEMA_SAID =
   "EKA57bKBKxr_kN7iN5i7lMUxpMG-s19dRcmov1iDxz-E";
 export const OOR_SCHEMA_SAID = "EBNaNu-M9P5cgrnfl2Fvymy4E_jvxxyjb70PRtiANlJy";
-
-export const vLEIServerHostUrl = `${vleiServerUrl}/oobi`;
-export const QVI_SCHEMA_URL = `${vLEIServerHostUrl}/${QVI_SCHEMA_SAID}`;
-export const LE_SCHEMA_URL = `${vLEIServerHostUrl}/${LE_SCHEMA_SAID}`;
-export const ECR_AUTH_SCHEMA_URL = `${vLEIServerHostUrl}/${ECR_AUTH_SCHEMA_SAID}`;
-export const ECR_SCHEMA_URL = `${vLEIServerHostUrl}/${ECR_SCHEMA_SAID}`;
-export const OOR_AUTH_SCHEMA_URL = `${vLEIServerHostUrl}/${OOR_AUTH_SCHEMA_SAID}`;
-export const OOR_SCHEMA_URL = `${vLEIServerHostUrl}/${OOR_SCHEMA_SAID}`;
 
 export const LE_RULES = Saider.saidify({
   d: "",
