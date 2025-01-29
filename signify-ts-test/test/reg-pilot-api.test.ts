@@ -894,11 +894,7 @@ async function checkLogin(
   let creq = { headers: heads, method: "GET", body: null };
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
   const url = env.apiBaseUrl + cpath;
-  let sreq = await client.createSignedRequest(
-    user.idAlias,
-    url,
-    creq,
-  );
+  let sreq = await client.createSignedRequest(user.idAlias, url, creq);
   const cresp = await fetch(url, sreq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
