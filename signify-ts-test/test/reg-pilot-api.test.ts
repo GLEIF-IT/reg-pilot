@@ -890,9 +890,16 @@ async function checkLogin(
 ) {
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  const client: SignifyClient = user.roleClient;
   let creq = { headers: heads, method: "GET", body: null };
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
-  const cresp = await fetch(env.apiBaseUrl + cpath, creq);
+  const url = env.apiBaseUrl + cpath;
+  let sreq = await client.createSignedRequest(
+    user.idAlias,
+    url,
+    creq,
+  );
+  const cresp = await fetch(url, sreq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
