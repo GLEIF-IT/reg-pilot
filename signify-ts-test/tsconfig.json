@@ -1,8 +1,12 @@
 {
-  "include": ["src", "types", "test"],
+  "include": ["src/**/*", "types", "test/**/*"],
   "extends": "./tsconfig.node.json",
   "compilerOptions": {
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"]
+    }
   }
 }

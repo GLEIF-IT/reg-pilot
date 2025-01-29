@@ -143,7 +143,7 @@ validate_inputs() {
         usage
     fi
 
-    if [[ "$MODE" != "local" && "$MODE" != "remote" && "$MODE" != "local_mac" ]]; then
+    if [[ "$MODE" != "local" && "$MODE" != "remote" ]]; then
         echo "ERROR: Please enter valid mode"
         usage
     fi
@@ -466,7 +466,7 @@ run_api_test() {
             export TEST_ENVIRONMENT=$TEST_ENVIRONMENT
             # export BANK_NUM=$BANK_NUM
             # export BANK_NAME=$BANK_NAME
-            # export REG_PILOT_API=$REG_PILOT_API
+            export REG_PILOT_API=$REG_PILOT_API
             # export REG_PILOT_FILER=$REG_PILOT_FILER
             echo "Running npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num $BANK_NUM --max-report-size $MAX_REPORT_SIZE 2>&1 | tee $LOG_FILE"
 

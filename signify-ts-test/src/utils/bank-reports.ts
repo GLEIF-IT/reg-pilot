@@ -193,11 +193,16 @@ export function createZipWithCopies(
   do {
     const pdfName = `${path.basename(pdfPath, ".pdf")}_${copyIndex}.pdf`;
     zip.addFile(pdfName, pdfData);
-    console.log(`Added ${pdfName} to ZIP file`);
     currentSize += pdfSize;
     copyIndex++;
-    console.log(`Current ZIP size: ${currentSize} bytes`);
+    if (copyIndex % 100 === 0) {
+      console.log(`Added ${pdfName} to ZIP file`);
+      console.log(`Current ZIP size: ${currentSize} bytes`);
+    }
   } while (currentSize < maxSizeBytes);
+
+  console.log(`Added ${copyIndex-1} pdfs to ZIP file`);
+  console.log(`ZIP size: ${currentSize} bytes`);
 
   // make the parent path for the output ZIP file
   const parentDir = path.dirname(outputZipPath);

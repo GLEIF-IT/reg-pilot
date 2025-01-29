@@ -94,7 +94,7 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: gleif/vlei-verifier:dev
+    image: gleif/vlei-verifier:latest
     container_name: vlei-verifier
     hostname: vlei-verifier
     depends_on:
@@ -103,7 +103,8 @@ services:
     ports:
       - 7676:7676
     environment:
-      - KERI_BASER_MAP_SIZE=150000000
+      - KERI_BASER_MAP_SIZE=1500000000
+      - FILER_CHUNK_SIZE=5000000
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
       interval: 2s

@@ -8,7 +8,7 @@ import { generateFileDigest } from "./utils/generate-digest";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
 import { sleep } from "./utils/test-util";
-import { getEbaSignedReport } from "../src/utils/report";
+import jwt from 'jsonwebtoken';
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -296,6 +296,14 @@ export async function single_user_eba_test(
         user.creds[i]["credCesr"]
       );
       if (token && foundEcr) {
+        const decodedToken = jwt.decode(token);
+        if (decodedToken && typeof decodedToken === 'object') {
+          assert.equal(decodedToken['data']['signifyResource'], user.ecrAid.prefix);
+          console.log("EBA login succeeded with expected AID", decodedToken);
+        } else {
+          console.error("Failed to decode JWT token");
+        }
+
         console.log("EBA login succeeded", token);
         // Get the current working directory
         const currentDirectory = process.cwd();
