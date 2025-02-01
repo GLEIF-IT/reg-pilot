@@ -1,6 +1,6 @@
 {
     "deepscan.enable": true,
     "jest.jestCommandLine": "npm test --",
-    "jestrunner.configPath": "./signify-ts-test/jest.config.js",
-    "jest.rootPath": "./signify-ts-test"
+    "jestrunner.configPath": "./jest.config.ts",
+    "jest.rootPath": "./"
 }

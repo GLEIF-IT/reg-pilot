@@ -8,7 +8,7 @@ import { generateFileDigest } from "./utils/generate-digest";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
 import { sleep } from "./utils/test-util";
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
@@ -23,18 +23,27 @@ let apiAdapter: ApiAdapter;
 // from the report test
 export async function run_api_test(
   apiUsers: ApiUser[],
-  configJson: any,
   fast = true
 ) {
-  env = TestEnvironment.getInstance();
-  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-  await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
   if (apiUsers.length == 3) await multi_user_test(apiUsers);
   else if (apiUsers.length == 1) await single_user_test(apiUsers[0], fast);
   else
     console.log(
-      `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}}`
+      `Invalid ecr AID count. Expected 1 or 3, got ${apiUsers.length}`
     );
+}
+
+export async function run_api_test_no_delegation(
+  apiUsers: ApiUser[]
+) {
+  await api_test_no_delegation(apiUsers);
+}
+
+export async function run_api_admin_test(
+  apiUsers: ApiUser[],
+  adminUser: ApiUser
+) {
+  await admin_test(apiUsers, adminUser);
 }
 
 export async function run_api_revocation_test(
@@ -42,9 +51,7 @@ export async function run_api_revocation_test(
   requestorAidAlias: string,
   requestorAidPrefix: string,
   credentials: Map<string, ApiUser>,
-  configJson: any
 ) {
-  await apiAdapter.addRootOfTrust(configJson);
   await revoked_cred_upload_test(
     credentials,
     requestorAidAlias,
@@ -55,8 +62,10 @@ export async function run_api_revocation_test(
 
 module.exports = {
   run_api_test,
-  single_user_eba_test,
+  run_api_admin_test,
   run_api_revocation_test,
+  run_api_test_no_delegation,
+  single_user_eba_test,
 };
 
 async function single_user_test(user: ApiUser, fast = false) {
@@ -74,11 +83,12 @@ async function single_user_test(user: ApiUser, fast = false) {
   assert.equal(presp.status, 200);
 
   // fails to query report status because not logged in with ecr yet
-  let sresp = await apiAdapter.getReportStatusByAid(
-    user.idAlias,
-    user.ecrAid.prefix,
-    user.roleClient
-  );
+  // let sresp = await apiAdapter.getReportStatusByAid(
+  //   user.idAlias,
+  //   user.ecrAid.prefix,
+  //   user.roleClient,
+  // );
+  let sresp = null;
 
   // login with the ecr credential
   let ecrCred;
@@ -148,7 +158,7 @@ async function single_user_test(user: ApiUser, fast = false) {
   }
 
   const signedReports = [testPaths.testReportGeneratedSignedZip];
-  // Check signed reports
+
   for (const signedReport of signedReports) {
     if (fs.lstatSync(signedReport).isFile()) {
       await apiAdapter.dropReportStatusByAid(
@@ -297,8 +307,11 @@ export async function single_user_eba_test(
       );
       if (token && foundEcr) {
         const decodedToken = jwt.decode(token);
-        if (decodedToken && typeof decodedToken === 'object') {
-          assert.equal(decodedToken['data']['signifyResource'], user.ecrAid.prefix);
+        if (decodedToken && typeof decodedToken === "object") {
+          assert.equal(
+            decodedToken["data"]["signifyResource"],
+            user.ecrAid.prefix
+          );
           console.log("EBA login succeeded with expected AID", decodedToken);
         } else {
           console.error("Failed to decode JWT token");
@@ -493,6 +506,141 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   );
   assert.equal(sresp.status, 202);
   sbody = await sresp.json();
+}
+
+async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
+  for (const user of apiUsers) {
+    const signedDirPrefixed = path.join(
+      __dirname,
+      "data",
+      signedDir,
+      user.ecrAid.prefix
+    );
+    // try to ping the api
+    let ppath = "/ping";
+    let preq = { method: "GET", body: null };
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
+    console.log("ping response", presp);
+    assert.equal(presp.status, 200);
+
+    // fails to query report status because not logged in with ecr yet
+    let sresp = await apiAdapter.getReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient
+    );
+
+    // login with the ecr credential
+    let ecrCred;
+    let ecrLei;
+    let ecrCredCesr;
+    for (let i = 0; i < user.creds.length; i++) {
+      await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
+      const foundEcr = isEbaDataSubmitter(
+        user.creds[i]["cred"],
+        user.ecrAid.prefix
+      );
+      if (foundEcr) {
+        ecrCred = user.creds[i]["cred"];
+        ecrLei = ecrCred.sad.a.LEI;
+        ecrCredCesr = user.creds[i]["credCesr"];
+      }
+
+      await checkLogin(user, user.creds[i]["cred"], false);
+    }
+
+    // try to get status without signed headers provided
+    const heads = new Headers();
+    let sreq = { headers: heads, method: "GET", body: null };
+    let spath = `/status/${user.ecrAid.prefix}`;
+    sresp = await fetch(env.apiBaseUrl + spath, sreq);
+    assert.equal(sresp.status, 422); // no signed headers provided
+
+    await apiAdapter.dropReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient
+    );
+    // succeeds to query report status
+    sresp = await apiAdapter.getReportStatusByAid(
+      user.idAlias,
+      user.ecrAid.prefix,
+      user.roleClient
+    );
+    assert.equal(sresp.status, 202);
+    const sbody = await sresp.json();
+    assert.equal(sbody.length, 0);
+
+    // Get the current working directory
+    const currentDirectory = process.cwd();
+    // Print the current working directory
+    console.log("Current Directory:", currentDirectory);
+
+    // sanity check that the report verifies
+    const keeper = user.roleClient.manager!.get(user.ecrAid);
+    const signer = keeper.signers[0]; //TODO - how do we support mulitple signers? Should be a for loop to add signatures
+
+    const signedReports = getSignedReports(signedDirPrefixed);
+    // Check signed reports
+    for (const signedReport of signedReports) {
+      if (fs.lstatSync(signedReport).isFile()) {
+        await apiAdapter.dropReportStatusByAid(
+          user.idAlias,
+          user.ecrAid.prefix,
+          user.roleClient
+        );
+        console.log(`Processing file: ${signedReport}`);
+        const signedZipBuf = fs.readFileSync(`${signedReport}`);
+        const signedZipDig = generateFileDigest(signedZipBuf);
+        const signedUpResp = await apiAdapter.uploadReport(
+          user.idAlias,
+          user.ecrAid.prefix,
+          signedReport,
+          signedZipBuf,
+          signedZipDig,
+          user.roleClient
+        );
+        await checkSignedUpload(
+          signedUpResp,
+          path.basename(signedReport),
+          signedZipDig,
+          user,
+          ecrCred
+        );
+        user.uploadDig = signedZipDig;
+        break;
+      }
+    }
+  }
+  await login(
+    adminUser,
+    adminUser.creds[0]["cred"],
+    adminUser.creds[0]["credCesr"]
+  );
+  let sresp = await apiAdapter.getReportsStatusAdmin(
+    adminUser.idAlias,
+    adminUser.ecrAid.prefix,
+    adminUser.roleClient
+  );
+  assert.equal(sresp.status, 200);
+  let sbody = await sresp.json();
+}
+
+async function api_test_no_delegation(apiUsers: Array<ApiUser>) {
+  for (const user of apiUsers) {
+    // try to ping the api
+    let ppath = "/ping";
+    let preq = { method: "GET", body: null };
+    let presp = await fetch(env.apiBaseUrl + ppath, preq);
+    console.log("ping response", presp);
+    assert.equal(presp.status, 200);
+
+    // login with the ecr credential
+    for (let i = 0; i < user.creds.length; i++) {
+      await login(user, user.creds[i]["cred"], user.creds[i]["credCesr"]);
+      await checkLogin(user, user.creds[i]["cred"], false, true);
+    }
+  }
 }
 
 async function revoked_cred_upload_test(
@@ -744,22 +892,34 @@ export function getSignedReports(
   return fileNames.map((fileName) => path.join(signedDirPrefixed, fileName));
 }
 
-async function checkLogin(user: ApiUser, cred: any, credRevoked: boolean) {
-  const heads = new Headers();
+async function checkLogin(
+  user: ApiUser,
+  cred: any,
+  credRevoked: boolean = false,
+  noDelegation: boolean = false
+) {
+  let heads = new Headers();
   heads.set("Content-Type", "application/json");
+  const client: SignifyClient = user.roleClient;
   heads.set("Connection", "close"); // avoids debugging fetch failures
-  const creq = { headers: heads, method: "GET", body: null };
-  const cpath = `/checklogin/${user.ecrAid.prefix}`;
-  const curl = env.apiBaseUrl + cpath;
-  const cresp = await fetch(curl, creq);
+  let creq = { headers: heads, method: "GET", body: null };
+  let cpath = `/checklogin/${user.ecrAid.prefix}`;
+  const url = env.apiBaseUrl + cpath;
+  let sreq = await client.createSignedRequest(user.idAlias, url, creq);
+  const cresp = await fetch(url, sreq);
   let cbody = await cresp.json();
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
       assert.equal(cresp.status, 401);
       assert.equal(
         cbody["msg"],
-        `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential revoked, info: Credential was revoked`,
-        `AID ${user.ecrAid.prefix} w/ lei ${cred.sad.a.LEI} has valid login account`
+        `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential revoked, info: Credential was revoked`
+      );
+    } else if (noDelegation) {
+      assert.equal(cresp.status, 401);
+      assert.equal(
+        cbody["msg"],
+        `identifier ${user.ecrAid.prefix} presented credentials ${cred.sad.d}, w/ status Credential unauthorized, info: ECR chain validation failed, LE chain validation failed, The QVI AID must be delegated`
       );
     } else {
       assert.equal(cresp.status, 200);
@@ -832,7 +992,7 @@ async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
     method: "POST",
     body: JSON.stringify({ payload: base64Payload }),
   };
-  console.log(`eba login lreq ${JSON.stringify(lreq).slice(0,500)}...`);
+  console.log(`eba login lreq ${JSON.stringify(lreq).slice(0, 500)}...`);
   let lpath = `/signifyLogin`;
   const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);

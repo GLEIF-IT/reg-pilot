@@ -1,3 +1,4 @@
+import minimist from "minimist";
 import path from "path";
 
 export type TestEnvironmentPreset =
@@ -15,12 +16,102 @@ const WAN = "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha";
 const WIL = "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM";
 const WES = "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX";
 
+const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
+const ARG_KERIA_HTTP_PORT = "keria-http-port";
+const ARG_KERIA_BOOT_PORT = "keria-boot-port";
+
+export class TestKeria {
+  private static instance: TestKeria;
+  public keriaAdminPort: number;
+  public keriaHttpPort: number;
+  public keriaBootPort: number;
+
+  private constructor(
+    kAdminPort: number,
+    kHttpPort: number,
+    kBootPort: number
+  ) {
+    this.keriaAdminPort = kAdminPort;
+    this.keriaHttpPort = kHttpPort;
+    this.keriaBootPort = kBootPort;
+  }
+  public static getInstance(
+    baseAdminPort?: number,
+    baseHttpPort?: number,
+    baseBootPort?: number,
+    offset?: number
+  ): TestKeria {
+    if (!TestKeria.instance) {
+      if (
+        baseAdminPort === undefined ||
+        baseHttpPort === undefined ||
+        baseBootPort === undefined
+      ) {
+        throw new Error(
+          "TestKeria.getInstance() called without port arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
+        );
+      }
+    } else if (
+      baseAdminPort !== undefined ||
+      baseHttpPort !== undefined ||
+      baseBootPort !== undefined
+    ) {
+      console.warn(
+        "TestEnvironment.getInstance() called with ports, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects."
+      );
+    }
+    const args = TestKeria.processKeriaArgs(
+      baseAdminPort!,
+      baseHttpPort!,
+      baseBootPort!,
+      offset
+    );
+    TestKeria.instance = new TestKeria(
+      parseInt(args[ARG_KERIA_ADMIN_PORT], 10),
+      parseInt(args[ARG_KERIA_HTTP_PORT], 10),
+      parseInt(args[ARG_KERIA_BOOT_PORT], 10)
+    );
+    return TestKeria.instance;
+  }
+
+  public static processKeriaArgs(
+    baseAdminPort: number,
+    baseHttpPort: number,
+    baseBootPort: number,
+    offset = 0
+  ): minimist.ParsedArgs {
+    // Parse command-line arguments using minimist
+    const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
+      alias: {
+        [ARG_KERIA_ADMIN_PORT]: "kap",
+        [ARG_KERIA_HTTP_PORT]: "khp",
+        [ARG_KERIA_BOOT_PORT]: "kbp",
+      },
+      default: {
+        [ARG_KERIA_ADMIN_PORT]: process.env.KERIA_ADMIN_PORT
+          ? parseInt(process.env.KERIA_ADMIN_PORT)
+          : baseAdminPort + offset,
+        [ARG_KERIA_HTTP_PORT]: process.env.KERIA_HTTP_PORT
+          ? parseInt(process.env.KERIA_HTTP_PORT)
+          : baseHttpPort + offset,
+        [ARG_KERIA_BOOT_PORT]: process.env.KERIA_BOOT_PORT
+          ? parseInt(process.env.KERIA_BOOT_PORT)
+          : baseBootPort + offset,
+      },
+      "--": true,
+      unknown: (arg) => {
+        console.warn(`Unknown keria argument, skipping: ${arg}`);
+        return false;
+      },
+    });
+
+    return args;
+  }
+}
+
 export class TestEnvironment {
   private static instance: TestEnvironment;
   preset: TestEnvironmentPreset;
-  keriaAdminPort: number;
-  keriaHttpPort: number;
-  keriaBootPort: number;
   keriaAdminUrl: string;
   keriaBootUrl: string;
   keriaHttpUrl: string;
@@ -37,28 +128,20 @@ export class TestEnvironment {
   private constructor(
     preset: TestEnvironmentPreset = (process.env
       .TEST_ENVIRONMENT as TestEnvironmentPreset) ?? "docker",
-    keriaAdminPort = process.env.KERIA_ADMIN_PORT
-      ? parseInt(process.env.KERIA_ADMIN_PORT)
-      : 3901,
-    keriaHttpPort = process.env.KERIA_HTTP_PORT
-      ? parseInt(process.env.KERIA_HTTP_PORT)
-      : 3902,
-    keriaBootPort = process.env.KERIA_BOOT_PORT
-      ? parseInt(process.env.KERIA_BOOT_PORT)
-      : 3903
+    testKeria: TestKeria
   ) {
     this.preset = preset;
-    this.keriaAdminPort = keriaAdminPort;
-    this.keriaHttpPort = keriaHttpPort;
-    this.keriaBootPort = keriaBootPort;
     switch (this.preset) {
       case "docker":
         (this.keriaAdminUrl =
-          process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
+          process.env.KERIA_ADMIN_URL ||
+          `http://localhost:${testKeria.keriaAdminPort}`),
           (this.keriaBootUrl =
-            process.env.KERIA_BOOT_URL || `http://localhost:${keriaBootPort}`),
+            process.env.KERIA_BOOT_URL ||
+            `http://localhost:${testKeria.keriaBootPort}`),
           (this.keriaHttpUrl =
-            process.env.KERIA_HTTP_URL || `http://localhost:${keriaHttpPort}`),
+            process.env.KERIA_HTTP_URL ||
+            `http://localhost:${testKeria.keriaHttpPort}`),
           (this.witnessUrls =
             process.env.WITNESS_URLS === ""
               ? []
@@ -82,18 +165,21 @@ export class TestEnvironment {
           (this.verifierBaseUrl =
             process.env.VLEI_VERIFIER || "http://localhost:7676"),
           (this.workflow =
-            process.env.WORKFLOW || "singlesig-single-user.yaml"),
+            process.env.WORKFLOW || "singlesig-single-user-light.yaml"),
           (this.configuration =
             process.env.CONFIGURATION ||
-            "configuration-singlesig-single-user.json");
+            "configuration-singlesig-single-user-light.json");
         break;
       case "local":
         (this.keriaAdminUrl =
-          process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
+          process.env.KERIA_ADMIN_URL ||
+          `http://localhost:${testKeria.keriaAdminPort}`),
           (this.keriaBootUrl =
-            process.env.KERIA_BOOT_URL || `http://localhost:${keriaBootPort}`),
+            process.env.KERIA_BOOT_URL ||
+            `http://localhost:${testKeria.keriaBootPort}`),
           (this.keriaHttpUrl =
-            process.env.KERIA_HTTP_URL || `http://localhost:${keriaHttpPort}`),
+            process.env.KERIA_HTTP_URL ||
+            `http://localhost:${testKeria.keriaHttpPort}`),
           (this.vleiServerUrl =
             process.env.VLEI_SERVER || "http://localhost:7723"),
           (this.witnessUrls =
@@ -165,7 +251,7 @@ export class TestEnvironment {
             process.env.KERIA_BOOT_URL || "https://keria-test.rootsid.cloud"),
           (this.keriaHttpUrl =
             process.env.KERIA_HTTP_URL ||
-            `https://keria-test.rootsid.cloud:${keriaHttpPort}`),
+            `https://keria-test.rootsid.cloud:${testKeria.keriaHttpPort}`),
           (this.witnessUrls =
             process.env.WITNESS_URLS === ""
               ? []
@@ -199,11 +285,14 @@ export class TestEnvironment {
         break;
       case "bank_test":
         (this.keriaAdminUrl =
-          process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
+          process.env.KERIA_ADMIN_URL ||
+          `http://localhost:${testKeria.keriaAdminPort}`),
           (this.keriaBootUrl =
-            process.env.KERIA_BOOT_URL || `http://localhost:${keriaBootPort}`),
+            process.env.KERIA_BOOT_URL ||
+            `http://localhost:${testKeria.keriaBootPort}`),
           (this.keriaHttpUrl =
-            process.env.KERIA_HTTP_URL || `http://localhost:${keriaHttpPort}`),
+            process.env.KERIA_HTTP_URL ||
+            `http://localhost:${testKeria.keriaHttpPort}`),
           (this.witnessUrls = process.env.WITNESS_URLS?.split(",") || [""]),
           (this.witnessIds = process.env.WITNESS_IDS?.split(",") || []),
           (this.vleiServerUrl =
@@ -221,11 +310,14 @@ export class TestEnvironment {
         break;
       case "eba_bank_test":
         (this.keriaAdminUrl =
-          process.env.KERIA_ADMIN_URL || `http://localhost:${keriaAdminPort}`),
+          process.env.KERIA_ADMIN_URL ||
+          `http://localhost:${testKeria.keriaAdminPort}`),
           (this.keriaBootUrl =
-            process.env.KERIA_BOOT_URL || `http://localhost:${keriaBootPort}`),
+            process.env.KERIA_BOOT_URL ||
+            `http://localhost:${testKeria.keriaBootPort}`),
           (this.keriaHttpUrl =
-            process.env.KERIA_HTTP_URL || `http://localhost:${keriaHttpPort}`),
+            process.env.KERIA_HTTP_URL ||
+            `http://localhost:${testKeria.keriaHttpPort}`),
           (this.witnessUrls = process.env.WITNESS_URLS?.split(",") || [""]),
           (this.witnessIds = process.env.WITNESS_IDS?.split(",") || []),
           (this.vleiServerUrl =
@@ -248,7 +340,7 @@ export class TestEnvironment {
           process.env.KERIA_ADMIN_URL || "https://demo.wallet.vlei.tech"),
           (this.keriaBootUrl =
             process.env.KERIA_BOOT_URL ||
-            `https://demo.wallet.vlei.tech:${keriaBootPort}`), // must request access
+            `https://demo.wallet.vlei.tech:${testKeria.keriaBootPort}`), // must request access
           (this.keriaHttpUrl =
             process.env.KERIA_HTTP_URL || "https://demo.wallet.vlei.tech"),
           (this.witnessUrls =
@@ -291,7 +383,7 @@ export class TestEnvironment {
           process.env.KERIA_ADMIN_URL || "https://errp.wallet.vlei.io"),
           (this.keriaHttpUrl =
             process.env.KERIA_HTTP_URL ||
-            `https://errp.wallet.vlei.io:${keriaBootPort}`),
+            `https://errp.wallet.vlei.io:${testKeria.keriaBootPort}`),
           (this.keriaBootUrl =
             process.env.KERIA_BOOT_URL || "https://errp.wallet.vlei.io/boot"),
           (this.witnessUrls =
@@ -374,42 +466,20 @@ export class TestEnvironment {
 
   public static getInstance(
     preset?: TestEnvironmentPreset,
-    kAdminPort?: number,
-    kHttpPort?: number,
-    kBootPort?: number
+    testKeria?: TestKeria
   ): TestEnvironment {
     if (!TestEnvironment.instance) {
-      if (
-        preset === undefined ||
-        kAdminPort === undefined ||
-        kHttpPort === undefined ||
-        kBootPort === undefined
-      ) {
+      if (preset === undefined || testKeria === undefined) {
         throw new Error(
           "TestEnvironment.getInstance() called without preset or port config means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
         );
       }
-      TestEnvironment.instance = new TestEnvironment(
-        preset,
-        kAdminPort,
-        kHttpPort,
-        kBootPort
-      );
-    } else if (
-      preset !== undefined &&
-      kAdminPort !== undefined &&
-      kHttpPort !== undefined &&
-      kBootPort !== undefined
-    ) {
+      TestEnvironment.instance = new TestEnvironment(preset, testKeria);
+    } else if (preset !== undefined && testKeria !== undefined) {
       console.warn(
         "TestEnvironment.getInstance() called with preset and port config, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects."
       );
-      TestEnvironment.instance = new TestEnvironment(
-        preset,
-        kAdminPort,
-        kHttpPort,
-        kBootPort
-      );
+      TestEnvironment.instance = new TestEnvironment(preset, testKeria);
     }
     return TestEnvironment.instance;
   }

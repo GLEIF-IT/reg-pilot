@@ -130,6 +130,7 @@ export class VleiIssuance {
       OOR_SCHEMA_URL,
     ]);
     await this.createMultisigAids();
+    // await this.createMultisigDelegatedAids();
   }
 
   // Create clients dynamically for each user
@@ -160,8 +161,7 @@ export class VleiIssuance {
         let aid: any;
         if (!identifier.identifiers) {
           this.aidsInfo.set(identifier.name, identifier);
-          const client = this.clients.get(identifier.agent.name)![0];
-          aid = await getOrCreateAID(client, identifier.name, this.kargsAID);
+          aid = await this.createAidSinglesig(identifier);
           if (this.aids.has(identifier.name)) {
             this.aids.get(identifier.name)?.push(aid);
           } else {
@@ -190,18 +190,48 @@ export class VleiIssuance {
     }
   }
 
+  protected async createMultisigDelegatedAids() {
+    console.log("Creating Delegated Multisig AIDs");
+    for (const user of this.users) {
+      for (const identifier of user.identifiers) {
+        let aid: any;
+        if (identifier.identifiers && identifier.delegator) {
+          this.aidsInfo.set(identifier.name, identifier);
+          aid = await this.createDelegatedAidMultisig(identifier);
+          if (this.aids.has(identifier.name)) {
+            this.aids.get(identifier.name)?.push(aid);
+          } else {
+            this.aids.set(identifier.name, [aid]);
+          }
+        }
+      }
+    }
+  }
+
   // Fetch OOBIs for each client
   protected async fetchOobis() {
     console.log("Fetching OOBIs");
     for (const user of this.users) {
       for (const identifier of user.identifiers) {
-        if (!identifier.agent) continue;
-        const client = this.clients.get(identifier.agent.name)![0];
-        const oobi = await client.oobis().get(identifier.name, "agent");
-        if (this.oobis.has(identifier.name)) {
-          this.oobis.get(identifier.name)?.push(oobi);
+        let client: any;
+        let oobi: any;
+        if (identifier.agent) {
+          client = this.clients.get(identifier.agent.name)![0];
+          oobi = await client.oobis().get(identifier.name, "agent");
         } else {
-          this.oobis.set(identifier.name, [oobi]);
+          client = this.clients.get(
+            this.aidsInfo.get(identifier.identifiers[0]).agent.name,
+          )![0];
+          oobi = await client
+            .oobis()
+            .get(this.aidsInfo.get(identifier.identifiers[0]).name, "agent");
+        }
+        if (oobi) {
+          if (this.oobis.has(identifier.name)) {
+            this.oobis.get(identifier.name)?.push(oobi);
+          } else {
+            this.oobis.set(identifier.name, [oobi]);
+          }
         }
       }
     }
@@ -215,15 +245,28 @@ export class VleiIssuance {
       for (const identifierA of userA.identifiers) {
         for (const userB of this.users) {
           for (const identifierB of userB.identifiers) {
-            if (!identifierA.agent || !identifierB.agent) continue;
             if (identifierA.name !== identifierB.name) {
-              contactPromises.push(
-                getOrCreateContact(
-                  this.clients.get(identifierA.agent.name)![0],
-                  identifierB.name,
-                  this.oobis.get(identifierB.name)?.[0].oobis[0]
-                )
-              );
+              let client;
+              let oobi;
+              if (!identifierA.agent) {
+                client = this.clients.get(
+                  this.aidsInfo.get(identifierA.identifiers[0]).agent.name,
+                )![0];
+              } else {
+                client = this.clients.get(identifierA.agent.name)![0];
+              }
+              if (!identifierB.agent) {
+                oobi = this.oobis.get(
+                  this.aidsInfo.get(identifierB.identifiers[0]).name,
+                )?.[0].oobis[0];
+              } else {
+                oobi = this.oobis.get(identifierB.name)?.[0].oobis[0];
+              }
+              if (client && oobi) {
+                contactPromises.push(
+                  getOrCreateContact(client, identifierB.name, oobi),
+                );
+              }
             }
           }
         }
@@ -277,6 +320,75 @@ export class VleiIssuance {
     return await getOrCreateRegistry(client, aid, registryName);
   }
 
+  public async createAidSinglesig(aidInfo: any) {
+    const delegator = aidInfo.delegator;
+    let kargsSinglesigAID: CreateIdentiferArgs = {
+      toad: this.kargsAID.toad,
+      wits: this.kargsAID.wits,
+    };
+    const client = this.clients.get(aidInfo.agent.name)![0];
+
+    if (delegator != null) {
+      kargsSinglesigAID.delpre = this.aids.get(delegator)![0].prefix;
+      const delegatorClient = this.clients.get(
+        this.aidsInfo.get(delegator).agent.name,
+      )![0];
+
+      const delegatorAid = this.aids.get(delegator)![0];
+      // Resolve delegator's oobi
+      const oobi1 = await delegatorClient.oobis().get(delegator, "agent");
+      await resolveOobi(client, oobi1.oobis[0], delegator);
+
+      // Delegate client creates delegate AID
+      const icpResult2 = await client
+        .identifiers()
+        .create(aidInfo.name, { delpre: delegatorAid.prefix });
+      const op2 = await icpResult2.op();
+      const delegateAidPrefix = op2.name.split(".")[1];
+
+      console.log("Delegate's prefix:", delegateAidPrefix);
+
+      // Client 1 approves delegation
+      const anchor = {
+        i: delegateAidPrefix,
+        s: "0",
+        d: delegateAidPrefix,
+      };
+
+      const result = await retry(async () => {
+        const apprDelRes = await delegatorClient
+          .delegations()
+          .approve(delegator, anchor);
+        await waitOperation(delegatorClient, await apprDelRes.op());
+        console.log("Delegator approve delegation submitted");
+        return apprDelRes;
+      });
+      assert.equal(
+        JSON.stringify(result.serder.ked.a[0]),
+        JSON.stringify(anchor),
+      );
+
+      const op3 = await client.keyStates().query(delegatorAid.prefix, "1");
+      await waitOperation(client, op3);
+
+      // Delegate client checks approval
+      await waitOperation(client, op2);
+      const aid2 = await client.identifiers().get(aidInfo.name);
+      assert.equal(aid2.prefix, delegateAidPrefix);
+      console.log("Delegation approved for aid:", aid2.prefix);
+
+      await assertOperations(delegatorClient, client);
+      const rpyResult2 = await client
+        .identifiers()
+        .addEndRole(aidInfo.name, "agent", client!.agent!.pre);
+      await waitOperation(client, await rpyResult2.op());
+      return aid2;
+    } else {
+      const aid = await getOrCreateAID(client, aidInfo.name, kargsSinglesigAID);
+      return aid;
+    }
+  }
+
   public async createAidMultisig(aidInfo: any) {
     let multisigAids: HabState[] = [];
     const aidIdentifierNames: Array<string> = aidInfo.identifiers;
@@ -312,9 +424,9 @@ export class VleiIssuance {
         states: states,
         rstates: rstates,
       };
-      // if (aidInfo.delpre != null){
-      //   kargsMultisigAID.delpre = this.aids.get(aidInfo.delpre)![0].prefix;
-      // }
+      if (aidInfo.delegator != null) {
+        kargsMultisigAID.delpre = this.aids.get(aidInfo.delegator)![0].prefix;
+      }
       let multisigOps: any[] = [];
       for (let index = 0; index < issuerAids.length; index++) {
         const aid = issuerAids[index];
@@ -333,14 +445,82 @@ export class VleiIssuance {
           index === 0 // Set true for the first operation
         );
 
-        multisigOps.push(op);
+        multisigOps.push([client, op]);
       }
+      if (aidInfo.delegator) {
+        // Approve delegation
+        const delegatorAidInfo = this.aidsInfo.get(aidInfo.delegator);
+        const delegatorAidIdentifierNames: Array<string> =
+          delegatorAidInfo.identifiers;
+        let delegatorAids =
+          delegatorAidIdentifierNames.map(
+            (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+          ) || [];
+        const teepre = multisigOps[0][1].name.split(".")[1];
+        const anchor = {
+          i: teepre,
+          s: "0",
+          d: teepre,
+        };
+        let delegatorClientInitiator;
+        const delegatorMultisigAid = this.aids.get(delegatorAidInfo.name)![0];
+        let delegateOps = [];
+        for (
+          let index = 0;
+          index < delegatorAidInfo.identifiers.length;
+          index++
+        ) {
+          const curAidName = delegatorAidInfo.identifiers[index];
+          const curAidInfo = this.aidsInfo.get(curAidName);
+          const aid = this.aids.get(curAidName)![0];
+          const otherAids = delegatorAids.filter(
+            (aidTmp: any) => aid.prefix !== aidTmp.prefix,
+          );
+          const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
+
+          const delApprOp = await delegateMultisig(
+            delegatorClient,
+            aid,
+            otherAids,
+            delegatorMultisigAid,
+            anchor,
+            index === 0,
+          );
+          delegateOps.push([delegatorClient, delApprOp]);
+          if (index === 0) {
+            delegatorClientInitiator = delegatorClient;
+          } else {
+            await waitAndMarkNotification(
+              delegatorClientInitiator!,
+              "/multisig/ixn",
+            );
+          }
+        }
+        for (const [client, op] of delegateOps) {
+          await waitOperation(client, op);
+        }
+        for (const identifier of delegatorAidInfo.identifiers) {
+          const curAidInfo = this.aidsInfo.get(identifier);
+          const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
+          const queryOp1 = await delegatorClient
+            .keyStates()
+            .query(delegatorMultisigAid.prefix, "1");
+          const kstor1 = await waitOperation(delegatorClient, queryOp1);
+        }
+
+        for (const identifier of aidInfo.identifiers) {
+          const curAidInfo = this.aidsInfo.get(identifier);
+          const delegateeClient = this.clients.get(curAidInfo.agent.name)![0];
+          const ksteetor1 = await delegateeClient
+            .keyStates()
+            .query(delegatorMultisigAid.prefix, "1");
+          const teeTor1 = await waitOperation(delegateeClient, ksteetor1);
+        }
+      }
+
       // Wait for all multisig operations to complete
-      for (let index = 0; index < multisigOps.length; index++) {
-        const client = this.clients.get(
-          this.aidsInfo.get(issuerAids[index].name).agent.name
-        )![0];
-        await waitOperation(client, multisigOps[index]);
+      for (const [client, op] of multisigOps) {
+        await waitOperation(client, op);
       }
 
       // Wait for multisig inception notifications for all clients
@@ -442,6 +622,232 @@ export class VleiIssuance {
         )
       );
       console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
+      return multisigAid;
+    }
+  }
+
+  // Not used. Delegated AID creation is handled in createAidMultisig
+  public async createDelegatedAidMultisig(aidInfo: any) {
+    let multisigAids: HabState[] = [];
+    const delegatorAidInfo = this.aidsInfo.get(aidInfo.delegator);
+    const aidIdentifierNames: Array<string> = aidInfo.identifiers;
+    const delegatorAidIdentifierNames: Array<string> =
+      delegatorAidInfo.identifiers;
+
+    let issuerAids =
+      aidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
+
+    let delegatorAids =
+      delegatorAidIdentifierNames.map(
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+      ) || [];
+
+    try {
+      for (const aidIdentifierName of aidIdentifierNames) {
+        const client = this.clients.get(
+          this.aidsInfo.get(aidIdentifierName).agent.name,
+        )![0];
+        multisigAids.push(await client.identifiers().get(aidInfo.name));
+      }
+      const multisigAid = multisigAids[0];
+      console.log(`${aidInfo.name} AID: ${multisigAid.prefix}`);
+      await this.fetchOobis();
+      await this.createContacts();
+      return multisigAid;
+    } catch {
+      multisigAids = [];
+    }
+    if (multisigAids.length == 0) {
+      const rstates = issuerAids.map((aid) => aid.state);
+      const states = rstates;
+
+      let kargsMultisigAID: CreateIdentiferArgs = {
+        algo: signify.Algos.group,
+        isith: aidInfo.isith,
+        nsith: aidInfo.nsith,
+        toad: this.kargsAID.toad,
+        wits: this.kargsAID.wits,
+        states: states,
+        rstates: rstates,
+      };
+      if (aidInfo.delegator != null) {
+        kargsMultisigAID.delpre = this.aids.get(aidInfo.delegator)![0].prefix;
+      }
+      let multisigOps: any[] = [];
+      for (let index = 0; index < issuerAids.length; index++) {
+        const aid = issuerAids[index];
+        const kargsMultisigAIDClone = { ...kargsMultisigAID, mhab: aid };
+        const otherAids = issuerAids.filter((aidTmp) => aid !== aidTmp);
+        const client = this.clients.get(
+          this.aidsInfo.get(aid.name).agent.name,
+        )![0];
+
+        const op = await createAIDMultisig(
+          client,
+          aid,
+          otherAids,
+          aidInfo.name,
+          kargsMultisigAIDClone,
+          index === 0, // Set true for the first operation
+        );
+
+        multisigOps.push([client, op]);
+      }
+
+      // Wait for multisig inception notifications for all clients
+      await waitAndMarkNotification(
+        this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
+        "/multisig/icp",
+      );
+
+      // Approve delegation
+      const teepre = multisigOps[0][1].name.split(".")[1];
+      const anchor = {
+        i: teepre,
+        s: "0",
+        d: teepre,
+      };
+      let delegatorClientInitiator;
+      const delegatorMultisigAid = this.aids.get(delegatorAidInfo.name)![0];
+      let delegateOps = [];
+      for (
+        let index = 0;
+        index < delegatorAidInfo.identifiers.length;
+        index++
+      ) {
+        const curAidName = delegatorAidInfo.identifiers[index];
+        const curAidInfo = this.aidsInfo.get(curAidName);
+        const aid = this.aids.get(curAidName)![0];
+        const otherAids = delegatorAids.filter(
+          (aidTmp: any) => aid.prefix !== aidTmp.prefix,
+        );
+        const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
+
+        const delApprOp = await delegateMultisig(
+          delegatorClient,
+          aid,
+          otherAids,
+          delegatorMultisigAid,
+          anchor,
+          index === 0,
+        );
+        delegateOps.push([delegatorClient, delApprOp]);
+        if (index === 0) {
+          delegatorClientInitiator = delegatorClient;
+        } else {
+          await waitAndMarkNotification(
+            delegatorClientInitiator!,
+            "/multisig/ixn",
+          );
+        }
+      }
+      for (const [client, op] of delegateOps) {
+        await waitOperation(client, op);
+      }
+
+      for (const identifier of delegatorAidInfo.identifiers) {
+        const curAidInfo = this.aidsInfo.get(identifier);
+        const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
+        const queryOp1 = await delegatorClient
+          .keyStates()
+          .query(delegatorMultisigAid.prefix, "1");
+        const kstor1 = await waitOperation(delegatorClient, queryOp1);
+      }
+
+      for (const identifier of aidInfo.identifiers) {
+        const curAidInfo = this.aidsInfo.get(identifier);
+        const delegateeClient = this.clients.get(curAidInfo.agent.name)![0];
+        const ksteetor1 = await delegateeClient
+          .keyStates()
+          .query(delegatorMultisigAid.prefix, "1");
+        const teeTor1 = await waitOperation(delegateeClient, ksteetor1);
+      }
+
+      for (const [client, op] of multisigOps) {
+        await waitOperation(client, op);
+      }
+      const curAidInfo = this.aidsInfo.get(aidInfo.identifiers[0]);
+      const delegateeClient = this.clients.get(curAidInfo.agent.name)![0];
+      const multisigAid = await delegateeClient.identifiers().get(aidInfo.name);
+      console.log("Delegated multisig created!");
+
+      let oobis: Array<any> = await Promise.all(
+        issuerAids.map(async (aid) => {
+          const client = this.clients.get(
+            this.aidsInfo.get(aid.name).agent.name,
+          )![0];
+          return await client.oobis().get(multisigAid.name, "agent");
+        }),
+      );
+
+      if (oobis.some((oobi) => oobi.oobis.length == 0)) {
+        const timestamp = createTimestamp();
+
+        // Add endpoint role for all clients
+        const roleOps = await Promise.all(
+          issuerAids.map(async (aid, index) => {
+            const otherAids = issuerAids.filter((_, i) => i !== index);
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return await addEndRoleMultisig(
+              client,
+              multisigAid.name,
+              aid,
+              otherAids,
+              multisigAid,
+              timestamp,
+              index === 0,
+            );
+          }),
+        );
+
+        // Wait for all role operations to complete for each client
+        for (let i = 0; i < roleOps.length; i++) {
+          for (let j = 0; j < roleOps[i].length; j++) {
+            const client = this.clients.get(
+              this.aidsInfo.get(issuerAids[i].name).agent.name,
+            )![0];
+            await waitOperation(client, roleOps[i][j]);
+          }
+        }
+
+        // Wait for role resolution notifications for all clients
+        // await waitAndMarkNotification(this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0], "/multisig/rpy");
+        await Promise.all(
+          issuerAids.map((aid) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return waitAndMarkNotification(client, "/multisig/rpy");
+          }),
+        );
+
+        // Retrieve the OOBI again after the operation for all clients
+        oobis = await Promise.all(
+          issuerAids.map(async (aid) => {
+            const client = this.clients.get(
+              this.aidsInfo.get(aid.name).agent.name,
+            )![0];
+            return await client.oobis().get(multisigAid.name, "agent");
+          }),
+        );
+      }
+      // Ensure that all OOBIs are consistent across all clients
+      assert(oobis.every((oobi) => oobi.role === oobis[0].role));
+      assert(oobis.every((oobi) => oobi.oobis[0] === oobis[0].oobis[0]));
+
+      const oobi = oobis[0].oobis[0].split("/agent/")[0];
+      const clients = Array.from(this.clients.values()).flat();
+
+      await Promise.all(
+        clients.map(
+          async (client) =>
+            await getOrCreateContact(client, multisigAid.name, oobi),
+        ),
+      );
       return multisigAid;
     }
   }

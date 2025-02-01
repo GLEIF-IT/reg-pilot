@@ -1,7 +1,7 @@
 import minimist from "minimist";
 import path from "path";
 import Docker from "dockerode";
-import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
+import { TestEnvironment, TestKeria, TestPaths } from "../src/utils/resolve-env";
 
 import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
 
@@ -30,9 +30,6 @@ console.log(`run-workflow-bank process.argv array: ${process.argv}`);
 // Access named arguments
 const ARG_MAX_REPORT_SIZE = "max-report-size";
 const ARG_BANK_NUM = "bank-num";
-const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
-const ARG_KERIA_HTTP_PORT = "keria-http-port";
-const ARG_KERIA_BOOT_PORT = "keria-boot-port";
 const ARG_REFRESH = "refresh";
 const ARG_CLEAN = "clean";
 
@@ -41,18 +38,12 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
   alias: {
     [ARG_MAX_REPORT_SIZE]: "m",
     [ARG_BANK_NUM]: "b",
-    [ARG_KERIA_ADMIN_PORT]: "kap",
-    [ARG_KERIA_HTTP_PORT]: "khp",
-    [ARG_KERIA_BOOT_PORT]: "kbp",
     [ARG_REFRESH]: "r",
     [ARG_CLEAN]: "c",
   },
   default: {
     [ARG_MAX_REPORT_SIZE]: 0, // Default to 1 MB
     [ARG_BANK_NUM]: 1,
-    [ARG_KERIA_ADMIN_PORT]: 20001,
-    [ARG_KERIA_HTTP_PORT]: 20002,
-    [ARG_KERIA_BOOT_PORT]: 20003,
     [ARG_REFRESH]: false,
     [ARG_CLEAN]: true,
   },
@@ -69,9 +60,6 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
 console.log("Parsed arguments:", {
   [ARG_MAX_REPORT_SIZE]: args[ARG_MAX_REPORT_SIZE],
   [ARG_BANK_NUM]: args[ARG_BANK_NUM],
-  [ARG_KERIA_ADMIN_PORT]: args[ARG_KERIA_ADMIN_PORT],
-  [ARG_KERIA_HTTP_PORT]: args[ARG_KERIA_HTTP_PORT],
-  [ARG_KERIA_BOOT_PORT]: args[ARG_KERIA_BOOT_PORT],
   [ARG_REFRESH]: args[ARG_REFRESH],
   [ARG_CLEAN]: args[ARG_CLEAN],
 });
@@ -83,26 +71,15 @@ const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const bankContainer = `${bankName}_keria`.toLowerCase();
 const offset = 10 * (bankNum - 1);
-const keriaAdminPort =
-  parseInt(args[ARG_KERIA_ADMIN_PORT], 10) + offset || 20001 + offset;
-const keriaHttpPort =
-  parseInt(args[ARG_KERIA_HTTP_PORT], 10) + offset || 20002 + offset;
-const keriaBootPort =
-  parseInt(args[ARG_KERIA_BOOT_PORT], 10) + offset || 20003 + offset;
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
+const testKeria = TestKeria.getInstance(20001, 20002, 20003, offset);
 testPaths = TestPaths.getInstance(bankName);
 // set test data for workflow
 testPaths.testUserName = bankName;
 testPaths.testUserNum = bankNum;
 testPaths.maxReportMb = maxReportMb;
 testPaths.refreshTestData = refresh;
-
-// const pdfFilePath = path.format({
-//   dir: path.dirname(testPaths.testBankReportUnsigned),
-//   name: path.basename(testPaths.testBankReportUnsigned, ".zip"),
-//   ext: ".pdf",
-// });
 
 console.log(
   "bankNum:",
@@ -116,11 +93,11 @@ console.log(
   "offset:",
   offset,
   "keriaAdminPort:",
-  keriaAdminPort,
+  testKeria.keriaAdminPort,
   "keriaHttpPort:",
-  keriaHttpPort,
+  testKeria.keriaHttpPort,
   "keriaBootPort:",
-  keriaBootPort,
+  testKeria.keriaBootPort,
   "maxReportMb:",
   maxReportMb,
   "refresh:",
@@ -157,9 +134,9 @@ beforeAll(async () => {
     const keriaContainer = await launchTestKeria(
       bankContainer,
       bankImage,
-      keriaAdminPort,
-      keriaHttpPort,
-      keriaBootPort
+      testKeriaSetup.keriaAdminPort,
+      testKeriaSetup.keriaHttpPort,
+      testKeriaSetup.keriaBootPort
     );
     containers.set(bankName, keriaContainer);
   }
@@ -182,9 +159,9 @@ test("api-verifier-bank-test-workflow", async function run() {
   console.log(`Running api-verifier-bank-test-workflow for bank: ${bankName}`);
   env = TestEnvironment.getInstance(
     "docker",
-    keriaAdminPort,
-    keriaHttpPort,
-    keriaBootPort
+    testKeriaSetup.keriaAdminPort,
+    testKeriaSetup.keriaHttpPort,
+    testKeriaSetup.keriaBootPort
   );
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
@@ -215,9 +192,9 @@ test("eba-verifier-bank-test-workflow", async function run() {
   console.log(`Running eba-verifier-bank-test-workflow for bank: ${bankName}`);
   env = TestEnvironment.getInstance(
     "eba_bank_test",
-    keriaAdminPort,
-    keriaHttpPort,
-    keriaBootPort
+    testKeriaSetup.keriaAdminPort,
+    testKeriaSetup.keriaHttpPort,
+    testKeriaSetup.keriaBootPort
   );
 
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
@@ -243,9 +220,9 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
 
   env = TestEnvironment.getInstance(
     "docker",
-    keriaAdminPort,
-    keriaHttpPort,
-    keriaBootPort
+    testKeriaSetup.keriaAdminPort,
+    testKeriaSetup.keriaHttpPort,
+    testKeriaSetup.keriaBootPort
   );
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);

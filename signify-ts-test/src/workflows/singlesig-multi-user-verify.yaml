@@ -3,6 +3,7 @@ workflow:
     api_test_ecr1:
       id: "api_test_ecr1"
       type: "api_test"
+      test_case: "api_test"
       aids: ["ecr-aid-1", "ecr-aid-2", "ecr-aid-3"]
       description: "Running API test for [ecr-aid-1, ecr-aid-2, ecr-aid-2] users"
     vlei_verification_test_1:

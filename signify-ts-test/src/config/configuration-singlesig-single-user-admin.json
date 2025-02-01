@@ -1,12 +1,12 @@
 {
   "secrets": {
-    "gleif1": "D_PbQb01zuzQgK-kDWj23",
-    "qvi1": "BTaqgh1eeOjXO5iQJp623",
-    "le1": "Akv4TFoiYeHNqzj3N8g25",
-    "le2": "Akv4TFoiYeHNqzj3N8g26",
-    "ecr1": "CbII3tno87wn3uGBP1277",
-    "ecr2": "CbII3tno87wn3uGBP1228",
-    "ecr3": "CbII3tno87wn3uGBP1229"
+    "gleif1": "D_PbQb01zuzQgK-kDWjq5",
+    "qvi1": "BTaqgh1eeOjXO5iQJp6m5",
+    "le1": "Akv4TFoiYeHNqzj3N8gE5",
+    "ecr1": "nf98hUHUy8Vt5tvdyaYV5",
+    "ecr2": "nf98hUHUy8Vt5tvdyaYV6",
+    "ecr3": "nf98hUHUy8Vt5tvdyaYV7",
+    "ecr-admin1": "nf98hUHUy8Vt5tvdyaYV8"
   },
   "credentials": {
     "gleif_to_qvi_vlei_cred": {
@@ -37,7 +37,7 @@
         "engagementContextRole": "EBA Data Submitter"
       }
     },
-    "le_to_ecr_vlei_cred_invalid_role": {
+    "le_to_ecr_admin_vlei_cred": {
       "credSource": {
         "type": "le"
       },
@@ -46,32 +46,7 @@
       "rules": "ECR_RULES",
       "privacy": true,
       "attributes": {
-        "engagementContextRole": "Incorrect Role"
-      }
-    },
-    "le_to_qvi_oor_auth_cred": {
-      "credSource": {
-        "type": "le"
-      },
-      "type": "direct",
-      "schema": "OOR_AUTH_SCHEMA_SAID",
-      "rules": "OOR_AUTH_RULES",
-      "privacy": false,
-      "attributes": {
-        "officialRole": "HR Manager"
-      }
-    },
-    "qvi_to_ecr_vlei_oor_cred_incorrect_schema": {
-      "credSource": {
-        "type": "auth",
-        "o": "I2I"
-      },
-      "type": "direct",
-      "schema": "OOR_SCHEMA_SAID",
-      "rules": "OOR_RULES",
-      "privacy": false,
-      "attributes": {
-        "officialRole": "HR Manager"
+        "engagementContextRole": "EBA Data Admin"
       }
     }
   },
@@ -85,9 +60,6 @@
     "le-agent-1": {
       "secret": "le1"
     },
-    "le-agent-2": {
-      "secret": "le2"
-    },
     "ecr-agent-1": {
       "secret": "ecr1"
     },
@@ -96,6 +68,9 @@
     },
     "ecr-agent-3": {
       "secret": "ecr3"
+    },
+    "ecr-admin-agent-1": {
+      "secret": "ecr-admin1"
     }
   },
   "identifiers": {
@@ -112,10 +87,6 @@
       "agent": "le-agent-1",
       "name": "le-aid-1"
     },
-    "le-aid-2": {
-      "agent": "le-agent-2",
-      "name": "le-aid-2"
-    },
     "ecr-aid-1": {
       "agent": "ecr-agent-1",
       "name": "ecr-aid-1"
@@ -127,6 +98,10 @@
     "ecr-aid-3": {
       "agent": "ecr-agent-3",
       "name": "ecr-aid-3"
+    },
+    "ecr-admin-aid-1": {
+      "agent": "ecr-admin-agent-1",
+      "name": "ecr-admin-aid-1"
     }
   },
   "users": [
@@ -146,11 +121,6 @@
       "identifiers": ["le-aid-1"]
     },
     {
-      "type": "LE",
-      "alias": "le-user-2",
-      "identifiers": ["le-aid-2"]
-    },
-    {
       "type": "ECR",
       "alias": "ecr-user-1",
       "identifiers": ["ecr-aid-1"]
@@ -164,6 +134,11 @@
       "type": "ECR",
       "alias": "ecr-user-3",
       "identifiers": ["ecr-aid-3"]
+    },
+    {
+      "type": "ECR",
+      "alias": "ecr-admin-user-1",
+      "identifiers": ["ecr-admin-aid-1"]
     }
   ]
 }

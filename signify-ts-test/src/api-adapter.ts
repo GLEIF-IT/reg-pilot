@@ -3,6 +3,7 @@ import FormData from "form-data";
 import { getOrCreateClients } from "../test/utils/test-util";
 import path from "path";
 import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
+import { string } from "mathjs";
 
 export class ApiAdapter {
   apiBaseUrl: string;
@@ -41,6 +42,19 @@ export class ApiAdapter {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
     const surl = `${this.apiBaseUrl}/status/${aidPrefix}`;
+    let shreq = await client.createSignedRequest(aidName, surl, sreq);
+    const sresp = await fetch(surl, shreq);
+    return sresp;
+  }
+
+  public async getReportsStatusAdmin(
+    aidName: string,
+    aidPrefix: string,
+    client: SignifyClient,
+  ): Promise<Response> {
+    const heads = new Headers();
+    const sreq = { headers: heads, method: "GET", body: null };
+    const surl = `${this.apiBaseUrl}/admin/upload_statuses/${aidPrefix}`;
     let shreq = await client.createSignedRequest(aidName, surl, sreq);
     const sresp = await fetch(surl, shreq);
     return sresp;
@@ -101,6 +115,14 @@ export class ApiAdapter {
     let sreq = await client.createSignedRequest(aidName, url, req);
     const resp = await fetch(url, sreq);
     return resp;
+  }
+
+  public hasGLEIFWithMultisig(data: any): boolean {
+    return data.users.some(
+      (user: any) =>
+        (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
+        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
+    );
   }
 
   public async ebaUploadReport(
@@ -170,14 +192,6 @@ export class ApiAdapter {
     return resp;
   }
 
-  public hasGLEIFWithMultisig(data: any): boolean {
-    return data.users.some(
-      (user: any) =>
-        (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
-        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers)
-    );
-  }
-
   public async addRootOfTrust(
     configJson: any,
     keriaHttpPort?: number
@@ -192,18 +206,18 @@ export class ApiAdapter {
   public async addRootOfTrustMultisig(configJson: any): Promise<Response> {
     const rootOfTrustMultisigIdentifierName = configJson.users
       .filter(
-        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL"
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
       )[0]
       .identifiers.filter((identifier: string) =>
-        identifier.includes("multisig")
+        identifier.includes("multisig"),
       )![0];
 
     const rootOfTrustIdentifierName = configJson.users
       .filter(
-        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL"
+        (usr: any) => usr.type == "GLEIF" || usr.type == "GLEIF_EXTERNAL",
       )[0]
       .identifiers.filter(
-        (identifier: string) => !identifier.includes("multisig")
+        (identifier: string) => !identifier.includes("multisig"),
       )![0];
 
     const rootOfTrustIdentifierAgent =
@@ -215,7 +229,7 @@ export class ApiAdapter {
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
-      true
+      true,
     );
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
@@ -234,7 +248,6 @@ export class ApiAdapter {
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
     heads.set("Content-Type", "application/json");
-    heads.set("Connection", "close"); // avoids debugging fetch failures
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
@@ -250,10 +263,7 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(
-    configJson: any,
-    keriaHttpPort?: number
-  ): Promise<Response> {
+  public async addRootOfTrustSinglesig(configJson: any, keriaHttpPort?: number): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
       (usr: any) => usr.type == "GLEIF"
     )[0].identifiers[0];

@@ -1,4 +1,4 @@
-name: Run Multisig Multi User Tests
+name: Run Singlesig Single User Admin Tests
 on:
   push:
     branches:
@@ -7,9 +7,9 @@ on:
     branches:
       - "main"
   workflow_dispatch:
-jobs: 
-  test-multiple-aids-multisig:
-    name: Run multisig multi user integration test using keria:${{ matrix.keria-version }}
+jobs:
+  test-single-aid-singlesig-admin:
+    name: Run singlesig single user admin integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -33,8 +33,8 @@ jobs:
         run: |
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
-          npm ci    
-
+          npm ci     
+        
       - name: Run docker
         run: ./test-workflow.sh --docker=verify 
       
@@ -42,6 +42,6 @@ jobs:
         run: ./test-workflow.sh --build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: WORKFLOW=multisig-multi-user.yaml CONFIGURATION=configuration-multisig-multi-user.json ./test-workflow.sh --data-report-verify-proxy
+        run: WORKFLOW=singlesig-single-user-admin.yaml CONFIGURATION=configuration-singlesig-single-user-admin.json ./test-workflow.sh --data-report-verify-proxy
 
-  
+

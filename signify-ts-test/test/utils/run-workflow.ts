@@ -11,8 +11,10 @@ import {
   getReportGenTestData,
 } from "./test-data";
 import {
+  run_api_admin_test,
   run_api_revocation_test,
   run_api_test,
+  run_api_test_no_delegation,
   single_user_eba_test,
 } from "../reg-pilot-api";
 import { run_vlei_verification_test } from "../vlei-verification";
@@ -20,6 +22,7 @@ import { run_vlei_verification_test } from "../vlei-verification";
 import fs from "fs";
 import yaml from "js-yaml";
 import { createZipWithCopies } from "../../src/utils/bank-reports";
+import { ApiAdapter } from "../../src/api-adapter";
 
 // Function to load and parse YAML file
 export function loadWorkflow(filePath: string) {
@@ -120,8 +123,11 @@ export async function runWorkflow(
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
-      if (step.test_case == "revoked_cred_upload_test") {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
+      const apiUsers = await getApiTestData(configJson, env, step.aids);
+      env = TestEnvironment.getInstance();
+      const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+      await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
+      if (step.test_case == "api_test_revocation") {
         const aidData = await buildAidData(configJson);
         const clients = await getOrCreateClients(
           1,
@@ -138,47 +144,55 @@ export async function runWorkflow(
           step.requestor_aid,
           requestorAidPrefix,
           creds,
-          configJson
         );
+      } else if (step.test_case == "api_test_admin") {
+        const adminUser = await getApiTestData(configJson, env, [
+          step.admin_aid,
+        ]);
+        await run_api_admin_test(apiUsers, adminUser[0]);
+      } else if (step.test_case == "api_test_no_delegation") {
+        await run_api_test_no_delegation(apiUsers);
+      } else if (step.test_case == "api_test") {
+        await run_api_test(apiUsers);
+      } else if (step.test_case == "eba_api_test") {
+        console.log(`Executing: ${step.description}`);
+        if (step.test_case == "revoked_cred_upload_test") {
+          const apiUsers = await getApiTestData(configJson, env, step.aids);
+          const aidData = await buildAidData(configJson);
+          const clients = await getOrCreateClients(
+            1,
+            [aidData[step.requestor_aid].agent.secret],
+            true
+          );
+          const roleClient = clients[clients.length - 1];
+          const requestorAid = await roleClient
+            .identifiers()
+            .get(step.requestor_aid);
+          const requestorAidPrefix = requestorAid.prefix;
+          await run_api_revocation_test(
+            roleClient,
+            step.requestor_aid,
+            requestorAidPrefix,
+            creds,
+          );
+        } else {
+          const apiUsers = await getApiTestData(configJson, env, step.aids);
+          const apiUser = apiUsers[0];
+          await single_user_eba_test(
+            apiUser,
+            env, 
+            paths.testReportGeneratedSignedZip
+          );
+        } 
       } else {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
-        await run_api_test(apiUsers, configJson);
-      }
-    } else if (step.type == "eba_api_test") {
-      console.log(`Executing: ${step.description}`);
-      if (step.test_case == "revoked_cred_upload_test") {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
-        const aidData = await buildAidData(configJson);
-        const clients = await getOrCreateClients(
-          1,
-          [aidData[step.requestor_aid].agent.secret],
-          true
-        );
-        const roleClient = clients[clients.length - 1];
-        const requestorAid = await roleClient
-          .identifiers()
-          .get(step.requestor_aid);
-        const requestorAidPrefix = requestorAid.prefix;
-        await run_api_revocation_test(
-          roleClient,
-          step.requestor_aid,
-          requestorAidPrefix,
-          creds,
-          configJson
-        );
-      } else {
-        const apiUsers = await getApiTestData(configJson, env, step.aids);
-        const apiUser = apiUsers[0];
-        await single_user_eba_test(
-          apiUser,
-          env,
-          paths.testReportGeneratedSignedZip
-        );
+        console.log(`invalid workflow API test case: ${step.test_case}`);
       }
     } else if (step.type == "vlei_verification_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       await run_vlei_verification_test(apiUsers, configJson);
+    } else {
+      console.log(`invalid workflow step type: ${step.type}`);
     }
     executedSteps.add(step.id);
   }

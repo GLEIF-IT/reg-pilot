@@ -12,6 +12,7 @@ workflow:
       description: "Signing reports for ecr-aid-1 user"
     eba_api_test_ecr1:
       id: "eba_api_test_ecr1"
-      type: "eba_api_test"
+      type: "api_test"
+      test_case: "eba_api_test"
       aids: ["ecr-aid-1"]
       description: "Running eba API test for ecr-aid-1 user"
