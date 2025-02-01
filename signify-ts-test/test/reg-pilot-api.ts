@@ -7,7 +7,7 @@ import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
 import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
-import { sleep } from "./utils/test-util";
+import { sleep } from "../src/utils/test-util";
 import jwt from "jsonwebtoken";
 
 const failDir = "fail_reports";

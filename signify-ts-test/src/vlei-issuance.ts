@@ -31,7 +31,7 @@ import {
   Aid,
   sleep,
   revokeCredential,
-} from "../test/utils/test-util";
+} from "./utils/test-util";
 import {
   addEndRoleMultisig,
   admitMultisig,

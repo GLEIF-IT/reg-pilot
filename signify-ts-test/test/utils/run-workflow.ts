@@ -1,6 +1,6 @@
 import { VleiIssuance } from "../../src/vlei-issuance";
 import path from "path";
-import { getOrCreateClients } from "./test-util";
+import { getOrCreateClients } from "../../src/utils/test-util";
 import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
 import { buildAidData } from "../../src/utils/handle-json-config";
 import { generate_reports, getEbaSignedReport } from "../../src/utils/report";
@@ -126,7 +126,7 @@ export async function runWorkflow(
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       env = TestEnvironment.getInstance();
       const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-      await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
+      await apiAdapter.addRootOfTrust(configJson, env.testKeria.keriaHttpPort);
       if (step.test_case == "api_test_revocation") {
         const aidData = await buildAidData(configJson);
         const clients = await getOrCreateClients(

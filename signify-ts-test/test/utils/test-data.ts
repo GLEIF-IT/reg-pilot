@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { buildAidData } from "../../src/utils/handle-json-config";
 import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
-import { getOrCreateClients } from "./test-util";
+import { getOrCreateClients } from "../../src/utils/test-util";
 import { ECR_SCHEMA_SAID } from "../../src/constants";
 import { SignifyClient } from "signify-ts";
 

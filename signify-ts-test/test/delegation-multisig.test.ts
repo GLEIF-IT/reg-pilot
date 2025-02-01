@@ -12,7 +12,7 @@ import {
   waitAndMarkNotification,
   waitForNotifications,
   waitOperation,
-} from "./utils/test-util";
+} from "../src/utils/test-util";
 import {
   acceptMultisigIncept,
   addEndRoleMultisig,
@@ -20,7 +20,7 @@ import {
   startMultisigIncept,
 } from "./utils/multisig-utils";
 import { step } from "./utils/test-step";
-import { TestKeria } from "../src/utils/resolve-env";
+import { TestEnvironment, TestKeria } from "../src/utils/resolve-env";
 
 const delegatorGroupName = "delegator_group";
 const delegateeGroupName = "delegatee_group";
@@ -31,7 +31,8 @@ const delegatee2Name = "delegatee2";
 
 beforeAll(async () => {
   await signify.ready();
-  TestKeria.getInstance(3901, 3902, 3903, 0);
+  const testKeria = TestKeria.getInstance(3901, 3902, 3903, 0);
+  const testEnv = TestEnvironment.getInstance("docker", testKeria);
 });
 
 test("delegation-multisig", async function run() {

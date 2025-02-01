@@ -10,14 +10,16 @@ import signify, {
   SignifyClient,
   Tier,
 } from "signify-ts";
-import { RetryOptions, retry } from "./retry";
+import { RetryOptions, retry } from "../../test/utils/retry";
 import assert from "assert";
-import { TestEnvironment } from "../../src/utils/resolve-env";
+import {
+  TestEnvironment,
+  TestKeria,
+  TestPaths,
+} from "./resolve-env";
 import Docker from "dockerode";
 import axios from "axios";
 import { exec } from "child_process";
-
-const docker = new Docker();
 
 export interface Aid {
   name: string;
@@ -639,107 +641,27 @@ export async function sendAdmitMessage(
   await markAndRemoveNotification(senderClient, grantNotification);
 }
 
-export async function dockerLogin(username: string, password: string): Promise<void> {
+export async function dockerLogin(
+  username: string,
+  password: string
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    exec(`docker login -u ${username} -p ${password}`, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error logging into Docker: ${stderr}`);
-        return reject(error);
+    exec(
+      `docker login -u ${username} -p ${password}`,
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error logging into Docker: ${stderr}`);
+          return reject(error);
+        }
+        console.log(`Docker login successful: ${stdout}`);
+        resolve();
       }
-      console.log(`Docker login successful: ${stdout}`);
-      resolve();
-    });
-  });
-}
-
-export async function launchTestKeria(
-  kontainerName: string,
-  kimageName: string,
-  keriaAdminPort: number = 3901,
-  keriaHttpPort: number = 3902,
-  keriaBootPort: number = 3903,
-  pullImage: boolean = false
-): Promise<Docker.Container> {
-  // Check if the container is already running
-  const containers = await docker.listContainers({ all: true });
-  let container: Docker.Container | undefined;
-
-  const existingContainer = containers.find((c) =>
-    c.Names.includes(`/${kontainerName}`)
-  );
-  // Check if any container is using the specified ports
-  const portInUse = containers.find((c) => {
-    const ports = c.Ports.map((p) => p.PublicPort);
-    return (
-      ports.includes(keriaAdminPort) ||
-      ports.includes(keriaHttpPort) ||
-      ports.includes(keriaBootPort)
     );
   });
-  if (portInUse && !existingContainer) {
-    const pContainer = docker.getContainer(portInUse.Id);
-    console.warn(
-      `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use. Stopping that one\n` +
-        `Container ID: ${portInUse.Id}\n` +
-        `Container Names: ${portInUse.Names.join(", ")}\n` +
-        `Container Image: ${portInUse.Image}\n` +
-        `Container State: ${portInUse.State}\n` +
-        `Container Status: ${portInUse.Status}`
-    );
-    await pContainer.stop();
-  }
-  if (existingContainer && existingContainer.State === "running") {
-    console.warn(
-      `Warning: Container with name ${kontainerName} is already running.\n` +
-        `Container ID: ${existingContainer.Id}\n` +
-        `Container Names: ${existingContainer.Names.join(", ")}\n` +
-        `Container Image: ${existingContainer.Image}\n` +
-        `Container State: ${existingContainer.State}\n` +
-        `Container Status: ${existingContainer.Status}`
-    );
-    container = docker.getContainer(existingContainer.Id);
-  } else {
-    if (existingContainer) {
-      console.warn(
-        `Warning: Older container with name ${kontainerName} exists but is not running.\n` +
-          `Container ID: ${existingContainer.Id}\n` +
-          `Container Names: ${existingContainer.Names.join(", ")}\n` +
-          `Container Image: ${existingContainer.Image}\n` +
-          `Container State: ${existingContainer.State}\n` +
-          `Container Status: ${existingContainer.Status}`
-      );
-      if (pullImage) {
-        console.warn(
-          `Warning: Pulling new image for existing/runner container.\n`
-        );
-        await docker.getContainer(existingContainer.Id).remove();
-      } else {
-        console.warn(`Warning: Running existing/runner container.\n`);
-        container = docker.getContainer(existingContainer.Id);
-        await container.start();
-      }
-    }
-  }
-
-  if (!container || pullImage) {
-    console.warn(
-      `Warning: Either existing container doesn't exist or refreshing it.\n`
-    );
-    container = await pullContainer(
-      kontainerName,
-      kimageName,
-      keriaAdminPort,
-      keriaHttpPort,
-      keriaBootPort
-    );
-    await container.start();
-  }
-
-  await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
-  return container;
 }
 
 export async function pullContainer(
+  docker: Docker,
   kontainerName: string,
   kimageName: string,
   keriaAdminPort: number,
@@ -785,7 +707,7 @@ export async function pullContainer(
 }
 
 // Function to perform health check
-async function performHealthCheck(
+export async function performHealthCheck(
   url: string,
   timeout: number = 12000,
   interval: number = 1000

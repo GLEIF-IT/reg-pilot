@@ -1,5 +1,13 @@
+import Docker from "dockerode";
 import minimist from "minimist";
 import path from "path";
+import {
+  dockerLogin,
+  performHealthCheck,
+  pullContainer,
+  runDockerCompose,
+  stopDockerCompose,
+} from "./test-util";
 
 export type TestEnvironmentPreset =
   | "local"
@@ -25,7 +33,10 @@ export class TestKeria {
   public keriaAdminPort: number;
   public keriaHttpPort: number;
   public keriaBootPort: number;
-
+  public containers: Map<string, Docker.Container> = new Map<
+    string,
+    Docker.Container
+  >();
   private constructor(
     kAdminPort: number,
     kHttpPort: number,
@@ -107,11 +118,158 @@ export class TestKeria {
 
     return args;
   }
+
+  static async beforeAll(
+    testPaths: TestPaths,
+    containerName: string,
+    imageName: string,
+    testKeria: TestKeria
+  ) {
+    process.env.DOCKER_HOST = process.env.DOCKER_HOST
+      ? process.env.DOCKER_HOST
+      : "localhost";
+    if (
+      process.env.START_TEST_KERIA === undefined ||
+      process.env.START_TEST_KERIA === "true"
+    ) {
+      console.log(
+        `Starting local services using ${testPaths.dockerComposeFile} up -d verify`
+      );
+      if (process.env.DOCKER_USER && process.env.DOCKER_PASSWORD) {
+        await dockerLogin(process.env.DOCKER_USER, process.env.DOCKER_PASSWORD);
+      } else {
+        console.warn(
+          "Docker login credentials not provided, skipping docker login"
+        );
+      }
+      await runDockerCompose(testPaths.dockerComposeFile, "up -d", "verify");
+      const docker = new Docker();
+      const keriaContainer = await TestKeria.launchTestKeria(
+        docker,
+        containerName,
+        imageName,
+        testKeria.keriaAdminPort,
+        testKeria.keriaHttpPort,
+        testKeria.keriaBootPort
+      );
+      testKeria.containers.set(containerName, keriaContainer);
+    }
+  }
+
+  static async afterAll(
+    testPaths: TestPaths,
+    testKeria: TestKeria,
+    clean = true
+  ) {
+    if (clean) {
+      console.log("Cleaning up test data");
+      for (const container of testKeria.containers) {
+        await container[1].stop();
+        await container[1].remove();
+        // await container.remove();
+        // await testKeria.containers.delete();
+      }
+      console.log(
+        `Stopping local services using ${testPaths.dockerComposeFile}`
+      );
+      await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
+    }
+  }
+
+  static async launchTestKeria(
+    docker: Docker,
+    kontainerName: string,
+    kimageName: string,
+    keriaAdminPort: number = 3901,
+    keriaHttpPort: number = 3902,
+    keriaBootPort: number = 3903,
+    pullImage: boolean = false
+  ): Promise<Docker.Container> {
+    // Check if the container is already running
+    const containers = await docker.listContainers({ all: true });
+    let container: Docker.Container | undefined;
+
+    const existingContainer = containers.find((c) =>
+      c.Names.includes(`/${kontainerName}`)
+    );
+    // Check if any container is using the specified ports
+    const portInUse = containers.find((c) => {
+      const ports = c.Ports.map((p) => p.PublicPort);
+      return (
+        ports.includes(keriaAdminPort) ||
+        ports.includes(keriaHttpPort) ||
+        ports.includes(keriaBootPort)
+      );
+    });
+    if (portInUse && !existingContainer) {
+      const pContainer = docker.getContainer(portInUse.Id);
+      console.warn(
+        `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use. Stopping that one\n` +
+          `Container ID: ${portInUse.Id}\n` +
+          `Container Names: ${portInUse.Names.join(", ")}\n` +
+          `Container Image: ${portInUse.Image}\n` +
+          `Container State: ${portInUse.State}\n` +
+          `Container Status: ${portInUse.Status}`
+      );
+      await pContainer.stop();
+    }
+    if (existingContainer && existingContainer.State === "running") {
+      console.warn(
+        `Warning: Container with name ${kontainerName} is already running.\n` +
+          `Container ID: ${existingContainer.Id}\n` +
+          `Container Names: ${existingContainer.Names.join(", ")}\n` +
+          `Container Image: ${existingContainer.Image}\n` +
+          `Container State: ${existingContainer.State}\n` +
+          `Container Status: ${existingContainer.Status}`
+      );
+      container = docker.getContainer(existingContainer.Id);
+    } else {
+      if (existingContainer) {
+        console.warn(
+          `Warning: Older container with name ${kontainerName} exists but is not running.\n` +
+            `Container ID: ${existingContainer.Id}\n` +
+            `Container Names: ${existingContainer.Names.join(", ")}\n` +
+            `Container Image: ${existingContainer.Image}\n` +
+            `Container State: ${existingContainer.State}\n` +
+            `Container Status: ${existingContainer.Status}`
+        );
+        if (pullImage) {
+          console.warn(
+            `Warning: Pulling new image for existing/runner container.\n`
+          );
+          await docker.getContainer(existingContainer.Id).remove();
+        } else {
+          console.warn(`Warning: Running existing/runner container.\n`);
+          container = docker.getContainer(existingContainer.Id);
+          await container.start();
+        }
+      }
+    }
+
+    if (!container || pullImage) {
+      console.warn(
+        `Warning: Either existing container doesn't exist or refreshing it.\n`
+      );
+      container = await pullContainer(
+        docker,
+        kontainerName,
+        kimageName,
+        keriaAdminPort,
+        keriaHttpPort,
+        keriaBootPort
+      );
+      await container.start();
+    }
+
+    await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
+    return container;
+  }
 }
 
 export class TestEnvironment {
   private static instance: TestEnvironment;
   preset: TestEnvironmentPreset;
+  testKeria: TestKeria;
   keriaAdminUrl: string;
   keriaBootUrl: string;
   keriaHttpUrl: string;
@@ -131,6 +289,7 @@ export class TestEnvironment {
     testKeria: TestKeria
   ) {
     this.preset = preset;
+    this.testKeria = testKeria;
     switch (this.preset) {
       case "docker":
         (this.keriaAdminUrl =
