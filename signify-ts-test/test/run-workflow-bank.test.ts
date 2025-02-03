@@ -6,9 +6,9 @@ import {
   TestPaths,
 } from "../src/utils/resolve-env";
 
-import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
+import { getConfig, SIMPLE_TYPE } from "../src/utils/test-data";
 
-import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
+import { loadWorkflow, runWorkflow } from "../src/utils/run-workflow";
 
 import { downloadConfigWorkflowReports } from "../src/utils/bank-reports";
 
@@ -40,8 +40,8 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
   },
   "--": true,
   unknown: (arg) => {
-    console.warn(
-      `Unknown argument, likely you aren't running from a test script: ${arg}`
+    console.info(
+      `Unknown run-workflow-bank argument, Skipping: ${arg}`
     );
     // throw new Error(`Unknown argument: ${arg}`);
     return false;
@@ -64,8 +64,9 @@ const bankContainer = `${bankName}_keria`.toLowerCase();
 const offset = 10 * (bankNum - 1);
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
-const testKeria = TestKeria.getInstance(20001, 20002, 20003, offset);
 testPaths = TestPaths.getInstance(bankName);
+const testKeria = TestKeria.getInstance(testPaths, 20001, 20002, 20003, offset);
+
 // set test data for workflow
 testPaths.testUserName = bankName;
 testPaths.testUserNum = bankNum;
@@ -99,12 +100,12 @@ console.log(
 
 beforeAll(async () => {
   process.env.SPEED = "fast";
-  TestKeria.beforeAll(testPaths, bankImage, bankContainer, testKeria);
+  await testKeria.beforeAll(bankImage, bankContainer);
 
 });
 
 afterAll(async () => {
-  TestKeria.afterAll(testPaths, testKeria, clean);
+  await testKeria.afterAll(clean);
 });
 
 test("api-verifier-bank-test-workflow", async function run() {

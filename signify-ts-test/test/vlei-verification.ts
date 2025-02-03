@@ -8,7 +8,7 @@ import {
   getApiTestData,
   getConfig,
   isEbaDataSubmitter,
-} from "./utils/test-data";
+} from "../src/utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ApiAdapter } from "../src/api-adapter";
 

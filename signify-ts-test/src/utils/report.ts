@@ -3,7 +3,7 @@ import fs from "fs";
 import * as path from "path";
 import AdmZip from "adm-zip";
 import * as fsExtra from "fs-extra";
-import { generateFileDigest } from "../../test/utils/generate-digest";
+import { generateFileDigest } from "./generate-digest";
 import signify, { Signer } from "signify-ts";
 import { TestEnvironment, TestPaths } from "./resolve-env";
 

@@ -41,9 +41,9 @@ import {
   grantMultisig,
   issueCredentialMultisig,
   multisigRevoke,
-} from "../test/utils/multisig-utils";
+} from "./utils/multisig-utils";
 import { boolean, sec } from "mathjs";
-import { retry } from "../test/utils/retry";
+import { retry } from "./utils/retry";
 import {
   CRED_RETRY_DEFAULTS,
   SCHEMAS,
@@ -65,7 +65,7 @@ import {
 import fs from "fs";
 import path from "path";
 import { buildTestData, EcrTestData } from "./utils/generate-test-data";
-import { ApiUser } from "../test/utils/test-data";
+import { ApiUser } from "./utils/test-data";
 import { TestEnvironment } from "./utils/resolve-env";
 
 export class VleiIssuance {

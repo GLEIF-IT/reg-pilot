@@ -18,9 +18,9 @@ import {
   addEndRoleMultisig,
   delegateMultisig,
   startMultisigIncept,
-} from "./utils/multisig-utils";
-import { step } from "./utils/test-step";
-import { TestEnvironment, TestKeria } from "../src/utils/resolve-env";
+} from "../src/utils/multisig-utils";
+import { step } from "../src/utils/test-step";
+import { TestEnvironment, TestKeria, TestPaths } from "../src/utils/resolve-env";
 
 const delegatorGroupName = "delegator_group";
 const delegateeGroupName = "delegatee_group";
@@ -31,7 +31,9 @@ const delegatee2Name = "delegatee2";
 
 beforeAll(async () => {
   await signify.ready();
-  const testKeria = TestKeria.getInstance(3901, 3902, 3903, 0);
+  const testPaths = TestPaths.getInstance("delegation-multisig");
+  const testKeria = TestKeria.getInstance(testPaths, 3901, 3902, 3903, 0);
+  await testKeria.beforeAll("weboftrust/keria:0.2.0-rc2", "delegation-multisig-test");
   const testEnv = TestEnvironment.getInstance("docker", testKeria);
 });
 

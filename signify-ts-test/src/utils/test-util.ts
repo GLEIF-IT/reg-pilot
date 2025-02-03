@@ -10,7 +10,7 @@ import signify, {
   SignifyClient,
   Tier,
 } from "signify-ts";
-import { RetryOptions, retry } from "../../test/utils/retry";
+import { RetryOptions, retry } from "./retry";
 import assert from "assert";
 import {
   TestEnvironment,
@@ -784,7 +784,7 @@ export async function stopDockerCompose(
     });
   } else {
     console.log(
-      `Docker compose is already running: ${file} ${command} ${service}`
+      `Docker compose is already stopped: ${file} ${command} ${service}`
     );
     return running;
   }

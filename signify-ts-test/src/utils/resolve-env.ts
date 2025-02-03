@@ -28,8 +28,11 @@ const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
 const ARG_KERIA_HTTP_PORT = "keria-http-port";
 const ARG_KERIA_BOOT_PORT = "keria-boot-port";
 
+const docker = new Docker();
+
 export class TestKeria {
   private static instance: TestKeria;
+  public testPaths: TestPaths;
   public keriaAdminPort: number;
   public keriaHttpPort: number;
   public keriaBootPort: number;
@@ -38,15 +41,18 @@ export class TestKeria {
     Docker.Container
   >();
   private constructor(
+    testPaths: TestPaths,
     kAdminPort: number,
     kHttpPort: number,
     kBootPort: number
   ) {
+    this.testPaths = testPaths;
     this.keriaAdminPort = kAdminPort;
     this.keriaHttpPort = kHttpPort;
     this.keriaBootPort = kBootPort;
   }
   public static getInstance(
+    testPaths: TestPaths,
     baseAdminPort?: number,
     baseHttpPort?: number,
     baseBootPort?: number,
@@ -54,6 +60,7 @@ export class TestKeria {
   ): TestKeria {
     if (!TestKeria.instance) {
       if (
+        testPaths === undefined ||
         baseAdminPort === undefined ||
         baseHttpPort === undefined ||
         baseBootPort === undefined
@@ -63,6 +70,7 @@ export class TestKeria {
         );
       }
     } else if (
+      testPaths !== undefined ||
       baseAdminPort !== undefined ||
       baseHttpPort !== undefined ||
       baseBootPort !== undefined
@@ -78,6 +86,7 @@ export class TestKeria {
       offset
     );
     TestKeria.instance = new TestKeria(
+      testPaths,
       parseInt(args[ARG_KERIA_ADMIN_PORT], 10),
       parseInt(args[ARG_KERIA_HTTP_PORT], 10),
       parseInt(args[ARG_KERIA_BOOT_PORT], 10)
@@ -111,7 +120,7 @@ export class TestKeria {
       },
       "--": true,
       unknown: (arg) => {
-        console.warn(`Unknown keria argument, skipping: ${arg}`);
+        console.info(`Unknown keria argument, skipping: ${arg}`);
         return false;
       },
     });
@@ -119,11 +128,9 @@ export class TestKeria {
     return args;
   }
 
-  static async beforeAll(
-    testPaths: TestPaths,
-    containerName: string,
+  async beforeAll(
     imageName: string,
-    testKeria: TestKeria
+    containerName: string,
   ) {
     process.env.DOCKER_HOST = process.env.DOCKER_HOST
       ? process.env.DOCKER_HOST
@@ -133,51 +140,47 @@ export class TestKeria {
       process.env.START_TEST_KERIA === "true"
     ) {
       console.log(
-        `Starting local services using ${testPaths.dockerComposeFile} up -d verify`
+        `Starting local services using ${this.testPaths.dockerComposeFile} up -d verify`
       );
       if (process.env.DOCKER_USER && process.env.DOCKER_PASSWORD) {
         await dockerLogin(process.env.DOCKER_USER, process.env.DOCKER_PASSWORD);
       } else {
-        console.warn(
+        console.info(
           "Docker login credentials not provided, skipping docker login"
         );
       }
-      await runDockerCompose(testPaths.dockerComposeFile, "up -d", "verify");
-      const docker = new Docker();
+      await runDockerCompose(this.testPaths.dockerComposeFile, "up -d", "verify");
+
       const keriaContainer = await TestKeria.launchTestKeria(
-        docker,
         containerName,
         imageName,
-        testKeria.keriaAdminPort,
-        testKeria.keriaHttpPort,
-        testKeria.keriaBootPort
+        this.keriaAdminPort,
+        this.keriaHttpPort,
+        this.keriaBootPort
       );
-      testKeria.containers.set(containerName, keriaContainer);
+      this.containers.set(containerName, keriaContainer);
     }
   }
 
-  static async afterAll(
-    testPaths: TestPaths,
-    testKeria: TestKeria,
+  async afterAll(
     clean = true
   ) {
     if (clean) {
       console.log("Cleaning up test data");
-      for (const container of testKeria.containers) {
+      for (const container of this.containers) {
         await container[1].stop();
         await container[1].remove();
         // await container.remove();
         // await testKeria.containers.delete();
       }
       console.log(
-        `Stopping local services using ${testPaths.dockerComposeFile}`
+        `Stopping local services using ${this.testPaths.dockerComposeFile}`
       );
-      await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
+      await stopDockerCompose(this.testPaths.dockerComposeFile, "down -v", "verify");
     }
   }
 
   static async launchTestKeria(
-    docker: Docker,
     kontainerName: string,
     kimageName: string,
     keriaAdminPort: number = 3901,
@@ -225,8 +228,8 @@ export class TestKeria {
       container = docker.getContainer(existingContainer.Id);
     } else {
       if (existingContainer) {
-        console.warn(
-          `Warning: Older container with name ${kontainerName} exists but is not running.\n` +
+        console.info(
+          `TestKeria: Older container with name ${kontainerName} exists but is not running.\n` +
             `Container ID: ${existingContainer.Id}\n` +
             `Container Names: ${existingContainer.Names.join(", ")}\n` +
             `Container Image: ${existingContainer.Image}\n` +
@@ -234,12 +237,12 @@ export class TestKeria {
             `Container Status: ${existingContainer.Status}`
         );
         if (pullImage) {
-          console.warn(
-            `Warning: Pulling new image for existing/runner container.\n`
+          console.info(
+            `TestKeria: Pulling new image for existing/runner container.\n`
           );
           await docker.getContainer(existingContainer.Id).remove();
         } else {
-          console.warn(`Warning: Running existing/runner container.\n`);
+          console.info(`TestKeria: Running existing/runner container.\n`);
           container = docker.getContainer(existingContainer.Id);
           await container.start();
         }
@@ -247,8 +250,8 @@ export class TestKeria {
     }
 
     if (!container || pullImage) {
-      console.warn(
-        `Warning: Either existing container doesn't exist or refreshing it.\n`
+      console.info(
+        `Docker pull: Either existing container doesn't exist or refreshing it.\n`
       );
       container = await pullContainer(
         docker,

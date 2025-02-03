@@ -4,18 +4,15 @@ import * as process from "process";
 import path from "path";
 import { HabState, Keeper, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
-import { generateFileDigest } from "./utils/generate-digest";
+import { generateFileDigest } from "../src/utils/generate-digest";
 import { TestEnvironment, TestPaths } from "../src/utils/resolve-env";
-import { ApiUser, isEbaDataSubmitter } from "./utils/test-data";
+import { ApiUser, isEbaDataSubmitter } from "../src/utils/test-data";
 import { sleep } from "../src/utils/test-util";
 import jwt from "jsonwebtoken";
 
 const failDir = "fail_reports";
 let failDirPrefixed: string;
 const signedDir = "signed_reports";
-
-let env: TestEnvironment;
-let apiAdapter: ApiAdapter;
 
 // This test assumes you have run a vlei test that sets up the
 // role identifiers and Credentials.
@@ -70,11 +67,9 @@ module.exports = {
 
 async function single_user_test(user: ApiUser, fast = false) {
   const testPaths = TestPaths.getInstance();
-  // const signedDirPrefixed = path.join(
-  //   testPaths.testSignedReports,
-  //   user.ecrAid.prefix
-  // );
-  // const signedReports = getSignedReports(signedDirPrefixed);
+  const env = TestEnvironment.getInstance();
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+  
   failDirPrefixed = path.join(testPaths.testFailReports, user.ecrAid.prefix);
   let ppath = "/ping";
   let preq = { method: "GET", body: null };
@@ -181,8 +176,7 @@ async function single_user_test(user: ApiUser, fast = false) {
         signedUpResp,
         path.basename(signedReport),
         signedZipDig,
-        user,
-        ecrCred
+        user
       );
       if (fast) break;
     }
@@ -279,8 +273,8 @@ export async function single_user_eba_test(
   overrideEnv: TestEnvironment,
   signedReport: string
 ) {
-  env = overrideEnv;
-  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+  const env = overrideEnv;
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 
   // login with the ecr credential
   let ecrCred;
@@ -344,6 +338,10 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
   let user1: ApiUser;
   let user2: ApiUser;
   let user3: ApiUser;
+
+  const env = TestEnvironment.getInstance();  
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
   assert.equal(apiUsers.length, 3);
   if (apiUsers[0].lei == apiUsers[1].lei) {
     user1 = apiUsers[0];
@@ -456,7 +454,6 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
           path.basename(signedReport),
           signedZipDig,
           user,
-          ecrCred
         );
         user.uploadDig = signedZipDig;
         break;
@@ -509,6 +506,9 @@ async function multi_user_test(apiUsers: Array<ApiUser>) {
 }
 
 async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
+  const env = TestEnvironment.getInstance();
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
   for (const user of apiUsers) {
     const signedDirPrefixed = path.join(
       __dirname,
@@ -604,8 +604,7 @@ async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
           signedUpResp,
           path.basename(signedReport),
           signedZipDig,
-          user,
-          ecrCred
+          user
         );
         user.uploadDig = signedZipDig;
         break;
@@ -627,6 +626,7 @@ async function admin_test(apiUsers: Array<ApiUser>, adminUser: ApiUser) {
 }
 
 async function api_test_no_delegation(apiUsers: Array<ApiUser>) {
+  const env = TestEnvironment.getInstance();
   for (const user of apiUsers) {
     // try to ping the api
     let ppath = "/ping";
@@ -649,6 +649,9 @@ async function revoked_cred_upload_test(
   requestorAidPrefix: string,
   requestorClient: SignifyClient
 ) {
+  const env = TestEnvironment.getInstance();
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
   const ecr_cred_prev_state = credentials.get("ecr_cred_prev_state")!;
   const ecr_cred_revoke = credentials.get("ecr_cred_revoke")!;
   const ecr_cred_new_state = credentials.get("ecr_cred_new_state")!;
@@ -714,8 +717,7 @@ async function revoked_cred_upload_test(
       signedUpResp,
       path.basename(signedReport),
       signedZipDig,
-      ecr_cred_prev_state,
-      ecr_cred_prev_state.creds[0]["cred"]
+      ecr_cred_prev_state
     );
     ecr_cred_prev_state.uploadDig = signedZipDig;
   }
@@ -770,8 +772,10 @@ export async function checkSignedUpload(
   fileName: string,
   signedZipDig: string,
   user: ApiUser,
-  ecrCred: any
 ): Promise<boolean> {
+  const env = TestEnvironment.getInstance();
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
   assert.equal(signedUpResp.status, 200);
   const signedUpBody = await signedUpResp.json();
   assert.equal(signedUpBody["status"], "verified");
@@ -826,6 +830,9 @@ export async function checkFailUpload(
   failZipDig: string,
   ecrAid: HabState
 ): Promise<boolean> {
+  const env = TestEnvironment.getInstance();
+  const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
   let failMessage = "";
   if (fileName.includes("genMissingSignature")) {
     failMessage = "files from report package missing valid signature";
@@ -898,6 +905,7 @@ async function checkLogin(
   credRevoked: boolean = false,
   noDelegation: boolean = false
 ) {
+  const env = TestEnvironment.getInstance();
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   const client: SignifyClient = user.roleClient;
@@ -941,6 +949,7 @@ async function checkLogin(
 }
 
 async function login(user: ApiUser, cred: any, credCesr: any) {
+  const env = TestEnvironment.getInstance();
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   heads.set("Connection", "close"); // avoids debugging fetch failures
@@ -974,6 +983,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
 }
 
 async function ebaLogin(user: ApiUser, cred: any, credCesr: any) {
+  const env = TestEnvironment.getInstance();
   let lheads = new Headers();
   lheads.set("Content-Type", "application/json");
   lheads.set("uiversion", "1.3.10-484-FINAL-master");
@@ -1013,6 +1023,7 @@ async function presentRevocation(
   cred: any,
   credCesr: any
 ) {
+  const env = TestEnvironment.getInstance();
   let heads = new Headers();
   heads.set("Content-Type", "application/json");
   heads.set("Connection", "close"); // avoids debugging fetch failures

@@ -20,4 +20,4 @@ async function main(bankNum: number) {
 const args = process.argv.slice(2);
 const bankNum = parseInt(args[0], 10);
 console.log(`Running cleanup reports for bank number: ${bankNum}`);
-main(bankNum);
+await main(bankNum);
