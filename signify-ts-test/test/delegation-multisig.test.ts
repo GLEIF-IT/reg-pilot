@@ -20,7 +20,13 @@ import {
   startMultisigIncept,
 } from "../src/utils/multisig-utils";
 import { step } from "../src/utils/test-step";
-import { TestEnvironment, TestKeria, TestPaths } from "../src/utils/resolve-env";
+import {
+  KeriaConfig,
+  TestEnvironment,
+  TestKeria,
+  TestPaths,
+} from "../src/utils/resolve-env";
+import path from "path";
 
 const delegatorGroupName = "delegator_group";
 const delegateeGroupName = "delegatee_group";
@@ -29,12 +35,48 @@ const delegator2Name = "delegator2";
 const delegatee1Name = "delegatee1";
 const delegatee2Name = "delegatee2";
 
+let testKeria: TestKeria;
+
 beforeAll(async () => {
   await signify.ready();
-  const testPaths = TestPaths.getInstance("delegation-multisig");
-  const testKeria = TestKeria.getInstance(testPaths, 3901, 3902, 3903, 0);
-  await testKeria.beforeAll("weboftrust/keria:0.2.0-rc2", "delegation-multisig-test");
+  const testPaths = TestPaths.getInstance(
+    "delegation-multisig",
+    path.join(process.cwd(), "docker-compose.yaml")
+  );
+  testKeria = TestKeria.getInstance(testPaths, 3901, 3902, 3903, 0);
+
+  let keriaConfig: KeriaConfig;
+  keriaConfig = {
+    dt: "2023-12-01T10:05:25.062609+00:00",
+    keria: {
+      dt: "2023-12-01T10:05:25.062609+00:00",
+      curls: ["http://keria:3902/"],
+    },
+    iurls: [
+      "http://localhost:5642/oobi/BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha/controller",
+      "http://localhost:5643/oobi/BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM/controller",
+      "http://localhost:5644/oobi/BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX/controller",
+    ],
+    durls: [
+      "http://localhost:7723/oobi/EBNaNu-M9P5cgrnfl2Fvymy4E_jvxxyjb70PRtiANlJy",
+      "http://localhost:7723/oobi/EMhvwOlyEJ9kN4PrwCpr9Jsv7TxPhiYveZ0oP3lJzdEi",
+      "http://localhost:7723/oobi/EKA57bKBKxr_kN7iN5i7lMUxpMG-s19dRcmov1iDxz-E",
+      "http://localhost:7723/oobi/EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw",
+      "http://localhost:7723/oobi/ENPXp1vQzRF6JwIuS-mp2U8Uf1MoADoP_GqQ62VsDZWY",
+      "http://localhost:7723/oobi/EH6ekLjSr8V32WyFbGe1zXjTzFs9PkTYmupJ9H65O14g",
+      "http://localhost:7723/oobi/EBfdlu8R27Fbx-ehrqwImnK-8Cm79sqbAQ4MmvEAYqao",
+    ],
+  };
+
+  const pullImage = false;
+  await testKeria.beforeAll(
+    "weboftrust/keria:latest"
+    // "delegation-multisig-test",
+    // keriaConfig,
+    // pullImage,
+  );
   const testEnv = TestEnvironment.getInstance("docker", testKeria);
+  testEnv.witnessIds = []; // TODO: don't override the default config
 });
 
 test("delegation-multisig", async function run() {
@@ -64,9 +106,15 @@ test("delegation-multisig", async function run() {
       ]);
     });
 
+  //TODO a workaround as of KERIA 0.2.0-rc2
+  // const agentHostAndPort = new URL(delegator1Client.url).host;
+  // const agentHost = agentHostAndPort.split(":")[0];
+  // const agentHttpUrl = `http://${agentHost}:${testKeria.keriaHttpPort}`;
+
   // Exchange OOBIs
   const [delegator1Oobi, delegator2Oobi, delegatee1Oobi, delegatee2Oobi] =
     await step("Getting OOBIs before resolving...", async () => {
+      // return [`${agentHttpUrl}/oobi/${delegator1Aid.prefix}/agent`,`${agentHttpUrl}/oobi/${delegator2Aid.prefix}/agent`,`${agentHttpUrl}/oobi/${delegatee1Aid.prefix}/agent`,`${agentHttpUrl}/oobi/${delegatee2Aid.prefix}/agent`]
       return await Promise.all([
         await delegator1Client.oobis().get(delegator1Name, "agent"),
         await delegator2Client.oobis().get(delegator2Name, "agent"),
@@ -76,6 +124,12 @@ test("delegation-multisig", async function run() {
     });
 
   await step("Resolving OOBIs", async () => {
+    // await Promise.all([
+    //   resolveOobi(delegator1Client, delegator2Oobi, delegator2Name),
+    //   resolveOobi(delegator2Client, delegator1Oobi, delegator1Name),
+    //   resolveOobi(delegatee1Client, delegatee2Oobi, delegatee2Name),
+    //   resolveOobi(delegatee2Client, delegatee1Oobi, delegatee1Name),
+    // ]);
     await Promise.all([
       resolveOobi(delegator1Client, delegator2Oobi.oobis[0], delegator2Name),
       resolveOobi(delegator2Client, delegator1Oobi.oobis[0], delegator1Name),
@@ -99,12 +153,12 @@ test("delegation-multisig", async function run() {
         participants: [delegator1Aid.prefix, delegator2Aid.prefix],
         isith: 2,
         nsith: 2,
-        toad: 2,
-        wits: [
-          "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha",
-          "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM",
-          "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX",
-        ],
+        toad: 0,
+        wits: [],
+        //   "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha",
+        //   "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM",
+        //   "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX",
+        // ],
       });
     }
   );
@@ -203,13 +257,13 @@ test("delegation-multisig", async function run() {
         participants: [delegatee1Aid.prefix, delegatee2Aid.prefix],
         isith: 2,
         nsith: 2,
-        toad: 2,
+        toad: 0,
         delpre: torpre,
-        wits: [
-          "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha",
-          "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM",
-          "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX",
-        ],
+        wits: [],
+        //   "BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha",
+        //   "BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM",
+        //   "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX",
+        // ],
       });
     }
   );

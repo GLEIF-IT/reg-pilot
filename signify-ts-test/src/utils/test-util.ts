@@ -13,6 +13,7 @@ import signify, {
 import { RetryOptions, retry } from "./retry";
 import assert from "assert";
 import {
+  KeriaConfig,
   TestEnvironment,
   TestKeria,
   TestPaths,
@@ -318,6 +319,9 @@ export async function getOrCreateIdentifier(
 
   const oobi = await client.oobis().get(name, "agent");
   const result: [string, string] = [id, oobi.oobis[0]];
+
+  assert(oobi.oobis.length > 0);
+  assert(oobi.oobis[0] !== undefined)
   console.log(name, result);
   return result;
 }
@@ -662,12 +666,8 @@ export async function dockerLogin(
 
 export async function pullContainer(
   docker: Docker,
-  kontainerName: string,
   kimageName: string,
-  keriaAdminPort: number,
-  keriaHttpPort: number,
-  keriaBootPort: number
-): Promise<Docker.Container> {
+): Promise<void> {
   // Pull Docker image
   await new Promise<void>((resolve, reject) => {
     docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
@@ -684,26 +684,6 @@ export async function pullContainer(
       }
     });
   });
-
-  // Create and start the container
-  const container = await docker.createContainer({
-    name: kontainerName,
-    Image: kimageName,
-    ExposedPorts: {
-      "3901/tcp": {},
-      "3902/tcp": {},
-      "3903/tcp": {},
-    },
-    HostConfig: {
-      PortBindings: {
-        "3901/tcp": [{ HostPort: `${keriaAdminPort}` }],
-        "3902/tcp": [{ HostPort: `${keriaHttpPort}` }],
-        "3903/tcp": [{ HostPort: `${keriaBootPort}` }],
-      },
-    },
-  });
-
-  return container;
 }
 
 // Function to perform health check

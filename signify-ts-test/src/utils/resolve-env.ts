@@ -1,6 +1,8 @@
-import Docker from "dockerode";
-import minimist from "minimist";
+import fs from "fs";
 import path from "path";
+import os from "os";
+import Docker, { ContainerCreateOptions, DockerOptions } from "dockerode";
+import minimist from "minimist";
 import {
   dockerLogin,
   performHealthCheck,
@@ -30,6 +32,15 @@ const ARG_KERIA_BOOT_PORT = "keria-boot-port";
 
 const docker = new Docker();
 
+export interface KeriaConfig {
+  dt: string;
+  keria: {
+    dt: string;
+    curls: string[];
+  };
+  iurls: string[];
+  durls: string[];
+}
 export class TestKeria {
   private static instance: TestKeria;
   public testPaths: TestPaths;
@@ -130,7 +141,9 @@ export class TestKeria {
 
   async beforeAll(
     imageName: string,
-    containerName: string,
+    containerName: string = "keria",
+    keriaConfig?: KeriaConfig,
+    pullImage: boolean = false
   ) {
     process.env.DOCKER_HOST = process.env.DOCKER_HOST
       ? process.env.DOCKER_HOST
@@ -149,22 +162,23 @@ export class TestKeria {
           "Docker login credentials not provided, skipping docker login"
         );
       }
-      await runDockerCompose(this.testPaths.dockerComposeFile, "up -d", "verify");
+      await runDockerCompose(
+        this.testPaths.dockerComposeFile,
+        "up -d",
+        "verify"
+      );
 
-      const keriaContainer = await TestKeria.launchTestKeria(
-        containerName,
+      const keriaContainer = await this.launchTestKeria(
         imageName,
-        this.keriaAdminPort,
-        this.keriaHttpPort,
-        this.keriaBootPort
+        containerName,
+        keriaConfig,
+        pullImage
       );
       this.containers.set(containerName, keriaContainer);
     }
   }
 
-  async afterAll(
-    clean = true
-  ) {
+  async afterAll(clean = true) {
     if (clean) {
       console.log("Cleaning up test data");
       for (const container of this.containers) {
@@ -176,38 +190,106 @@ export class TestKeria {
       console.log(
         `Stopping local services using ${this.testPaths.dockerComposeFile}`
       );
-      await stopDockerCompose(this.testPaths.dockerComposeFile, "down -v", "verify");
+      await stopDockerCompose(
+        this.testPaths.dockerComposeFile,
+        "down -v",
+        "verify"
+      );
     }
   }
 
-  static async launchTestKeria(
-    kontainerName: string,
+  async createTempKeriaConfigFile(kConfig: KeriaConfig): Promise<string> {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "keria-config-"));
+    const tempFilePath = path.join(tempDir, "keria.json");
+    const configStr = JSON.stringify(kConfig);
+    fs.writeFileSync(tempFilePath, configStr);
+    return tempFilePath;
+  }
+
+  async startContainerWithConfig(
+    imageName: string,
+    containerName: string,
+    keriaConfig?: KeriaConfig
+  ): Promise<Docker.Container> {
+    let containerOptions: ContainerCreateOptions;
+    containerOptions = {
+      name: containerName,
+      Image: imageName,
+      ExposedPorts: {
+        "3901/tcp": {},
+        "3902/tcp": {},
+        "3903/tcp": {},
+      },
+      HostConfig: {
+        PortBindings: {
+          "3901/tcp": [{ HostPort: `${this.keriaAdminPort}` }],
+          "3902/tcp": [{ HostPort: `${this.keriaHttpPort}` }],
+          "3903/tcp": [{ HostPort: `${this.keriaBootPort}` }],
+        },
+      },
+    };
+
+    if (keriaConfig) {
+      const tempConfigPath = await this.createTempKeriaConfigFile(keriaConfig);
+      containerOptions["HostConfig"]!["Binds"] = [
+        `${tempConfigPath}:/usr/local/var/keri/cf/keria.json`,
+      ];
+      containerOptions["Entrypoint"] = [
+        "keria",
+        "start",
+        "--config-dir",
+        "/usr/local/var/keri/cf",
+        "--config-file",
+        "keria",
+        "--name",
+        "agent",
+        "--loglevel",
+        "DEBUG",
+      ];
+      console.log(
+        `Container started with configuration: ${JSON.stringify(keriaConfig)} at ${tempConfigPath}}`
+      );
+    }
+
+    // Create and start the container
+    const container = await docker.createContainer(containerOptions);
+
+    await container.start();
+    console.log(
+      `Container started with name: ${containerName}, image: ${imageName}`
+    );
+
+    return container;
+  }
+
+  public async launchTestKeria(
     kimageName: string,
-    keriaAdminPort: number = 3901,
-    keriaHttpPort: number = 3902,
-    keriaBootPort: number = 3903,
+    kontainerName: string,
+    keriaConfig?: KeriaConfig,
     pullImage: boolean = false
   ): Promise<Docker.Container> {
     // Check if the container is already running
     const containers = await docker.listContainers({ all: true });
     let container: Docker.Container | undefined;
 
-    const existingContainer = containers.find((c) =>
-      c.Names.includes(`/${kontainerName}`)
-    );
+    const existingContainer = containers.find((c) => {
+      return (
+        c.Names.includes(`/${kontainerName}`)
+      );
+    });
     // Check if any container is using the specified ports
     const portInUse = containers.find((c) => {
       const ports = c.Ports.map((p) => p.PublicPort);
       return (
-        ports.includes(keriaAdminPort) ||
-        ports.includes(keriaHttpPort) ||
-        ports.includes(keriaBootPort)
+        ports.includes(this.keriaAdminPort) ||
+        ports.includes(this.keriaHttpPort) ||
+        ports.includes(this.keriaBootPort)
       );
     });
     if (portInUse && !existingContainer) {
       const pContainer = docker.getContainer(portInUse.Id);
       console.warn(
-        `Warning: One of the specified ports (${keriaAdminPort}, ${keriaHttpPort}, ${keriaBootPort}) is already in use. Stopping that one\n` +
+        `Warning: One of the specified ports (${this.keriaAdminPort}, ${this.keriaHttpPort}, ${this.keriaBootPort}) is already in use. Stopping that one\n` +
           `Container ID: ${portInUse.Id}\n` +
           `Container Names: ${portInUse.Names.join(", ")}\n` +
           `Container Image: ${portInUse.Image}\n` +
@@ -253,18 +335,24 @@ export class TestKeria {
       console.info(
         `Docker pull: Either existing container doesn't exist or refreshing it.\n`
       );
-      container = await pullContainer(
-        docker,
-        kontainerName,
+      if (container) {
+        console.info(
+          `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`
+        );
+        await container.stop();
+        await container.remove();
+      }
+      await pullContainer(docker, kimageName);
+      container = await this.startContainerWithConfig(
         kimageName,
-        keriaAdminPort,
-        keriaHttpPort,
-        keriaBootPort
+        kontainerName,
+        keriaConfig
       );
-      await container.start();
     }
 
-    await performHealthCheck(`http://localhost:${keriaHttpPort}/spec.yaml`);
+    await performHealthCheck(
+      `http://localhost:${this.keriaHttpPort}/spec.yaml`
+    );
     return container;
   }
 }
@@ -673,10 +761,14 @@ export class TestPaths {
   // origReportsDir: string;
   // configDir: string;
 
-  private constructor(userName: string, userNum: number = 1, maxReportMb = 0) {
+  private constructor(
+    userName: string,
+    dockerComposeFile: string,
+    userNum: number = 1,
+    maxReportMb = 0
+  ) {
     this.dockerComposeFile =
-      process.env.DOCKER_COMPOSE_FILE ||
-      path.join(process.cwd(), "docker-compose-banktest.yaml");
+      process.env.DOCKER_COMPOSE_FILE || dockerComposeFile;
     this.maxReportMb = process.env.MAX_REPORT_MB
       ? parseInt(process.env.MAX_REPORT_MB)
       : maxReportMb;
@@ -749,9 +841,12 @@ export class TestPaths {
       : path.join(process.cwd(), "src/workflows");
   }
 
-  public static getInstance(userName = "Bank_1"): TestPaths {
+  public static getInstance(
+    userName = "Bank_1",
+    dockerComposeFile = path.join(process.cwd(), "docker-compose-banktest.yaml")
+  ): TestPaths {
     if (!TestPaths.instance) {
-      TestPaths.instance = new TestPaths(userName);
+      TestPaths.instance = new TestPaths(userName, dockerComposeFile);
     }
     return TestPaths.instance;
   }
