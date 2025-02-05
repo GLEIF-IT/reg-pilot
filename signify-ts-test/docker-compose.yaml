@@ -1,4 +1,16 @@
 services:
+
+  reg-webapp:
+    image: 2byrds/reg-webapp:latest
+    healthcheck:
+        test: ['CMD', 'curl', '-f', 'http://localhost:3000/']
+        interval: 2s
+        timeout: 3s
+        retries: 5
+        start_period: 8s
+    ports:
+      - 3000:3000
+
   vlei-server:
     image: gleif/vlei
     environment:
