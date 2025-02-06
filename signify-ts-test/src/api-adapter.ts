@@ -12,7 +12,7 @@ export class ApiAdapter {
     this.apiBaseUrl = apiBaseUrl;
     if (!filerBaseUrl || filerBaseUrl === "") {
       console.log(
-        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`
+        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`,
       );
       this.filerBaseUrl = apiBaseUrl;
     } else {
@@ -24,7 +24,7 @@ export class ApiAdapter {
   public async dropReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient
+    client: SignifyClient,
   ): Promise<Response> {
     const heads = new Headers();
     const dreq = { headers: heads, method: "POST", body: null };
@@ -37,7 +37,7 @@ export class ApiAdapter {
   public async getReportStatusByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient
+    client: SignifyClient,
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -64,7 +64,7 @@ export class ApiAdapter {
     aidName: string,
     aidPrefix: string,
     dig: string,
-    client: SignifyClient
+    client: SignifyClient,
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -77,7 +77,7 @@ export class ApiAdapter {
   public async getLeiReportStatusesByAid(
     aidName: string,
     aidPrefix: string,
-    client: SignifyClient
+    client: SignifyClient,
   ): Promise<Response> {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
@@ -93,7 +93,7 @@ export class ApiAdapter {
     fileName: string,
     zipBuffer: Buffer,
     zipDigest: string,
-    client: SignifyClient
+    client: SignifyClient,
   ): Promise<Response> {
     let formData = new FormData();
     let ctype = "application/zip";
@@ -131,7 +131,7 @@ export class ApiAdapter {
     zipBuffer: Buffer,
     client: SignifyClient,
     token: string,
-    envOverride?: TestEnvironment
+    envOverride?: TestEnvironment,
   ): Promise<Response> {
     if (envOverride) {
       this.apiBaseUrl = envOverride.apiBaseUrl;
@@ -140,7 +140,7 @@ export class ApiAdapter {
     let formData = new FormData();
     let ctype = "application/zip";
     console.log(
-      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`
+      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`,
     );
     formData.append("file", zipBuffer, {
       filename: `${fileName}`,
@@ -188,13 +188,20 @@ export class ApiAdapter {
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
+    const startUpload = new Date().getTime();
     const resp = await fetch(url, sreq);
+    const endUpload = new Date().getTime();
+    console.log(
+      `EBA upload response for ${fileName} in ${
+        endUpload - startUpload
+      } ms: ${resp.status}`,
+    );
     return resp;
   }
 
   public async addRootOfTrust(
     configJson: any,
-    keriaHttpPort?: number
+    keriaHttpPort?: number,
   ): Promise<Response> {
     if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
@@ -263,9 +270,12 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any, keriaHttpPort?: number): Promise<Response> {
+  public async addRootOfTrustSinglesig(
+    configJson: any,
+    keriaHttpPort?: number,
+  ): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
-      (usr: any) => usr.type == "GLEIF"
+      (usr: any) => usr.type == "GLEIF",
     )[0].identifiers[0];
     const rootOfTrustIdentifierAgent =
       configJson.agents[
@@ -276,7 +286,7 @@ export class ApiAdapter {
     const clients = await getOrCreateClients(
       1,
       [rootOfTrustIdentifierSecret],
-      true
+      true,
     );
 
     const client = clients[clients.length - 1];

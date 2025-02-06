@@ -369,7 +369,7 @@ export function generateBankConfig(bankId: number) {
     fs.writeFileSync(
       `${testPaths.testUserDir}/config.json`,
       JSON.stringify(config, null, 2),
-      "utf8"
+      "utf8",
     );
     const metaInf = {
       secrets: {
@@ -380,7 +380,7 @@ export function generateBankConfig(bankId: number) {
     fs.writeFileSync(
       `${testPaths.testUserDir}/metaInf.json`,
       JSON.stringify(metaInf, null, 2),
-      "utf8"
+      "utf8",
     );
   }
 }

@@ -3,7 +3,7 @@ import { cleanupReports } from "../utils/bank-reports";
 async function main(bankNum: number) {
   if (isNaN(bankNum)) {
     throw new Error(
-      "A valid bank number is required to run the cleanup reports script."
+      "A valid bank number is required to run the cleanup reports script.",
     );
   }
 

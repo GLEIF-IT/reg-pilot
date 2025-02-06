@@ -55,7 +55,7 @@ export class TestKeria {
     testPaths: TestPaths,
     kAdminPort: number,
     kHttpPort: number,
-    kBootPort: number
+    kBootPort: number,
   ) {
     this.testPaths = testPaths;
     this.keriaAdminPort = kAdminPort;
@@ -67,7 +67,7 @@ export class TestKeria {
     baseAdminPort?: number,
     baseHttpPort?: number,
     baseBootPort?: number,
-    offset?: number
+    offset?: number,
   ): TestKeria {
     if (!TestKeria.instance) {
       if (
@@ -77,7 +77,7 @@ export class TestKeria {
         baseBootPort === undefined
       ) {
         throw new Error(
-          "TestKeria.getInstance() called without port arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
+          "TestKeria.getInstance() called without port arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects.",
         );
       }
     } else if (
@@ -87,20 +87,20 @@ export class TestKeria {
       baseBootPort !== undefined
     ) {
       console.warn(
-        "TestEnvironment.getInstance() called with ports, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects."
+        "TestEnvironment.getInstance() called with ports, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects.",
       );
     }
     const args = TestKeria.processKeriaArgs(
       baseAdminPort!,
       baseHttpPort!,
       baseBootPort!,
-      offset
+      offset,
     );
     TestKeria.instance = new TestKeria(
       testPaths,
       parseInt(args[ARG_KERIA_ADMIN_PORT], 10),
       parseInt(args[ARG_KERIA_HTTP_PORT], 10),
-      parseInt(args[ARG_KERIA_BOOT_PORT], 10)
+      parseInt(args[ARG_KERIA_BOOT_PORT], 10),
     );
     return TestKeria.instance;
   }
@@ -109,7 +109,7 @@ export class TestKeria {
     baseAdminPort: number,
     baseHttpPort: number,
     baseBootPort: number,
-    offset = 0
+    offset = 0,
   ): minimist.ParsedArgs {
     // Parse command-line arguments using minimist
     const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
@@ -143,7 +143,7 @@ export class TestKeria {
     imageName: string,
     containerName: string = "keria",
     keriaConfig?: KeriaConfig,
-    pullImage: boolean = false
+    pullImage: boolean = false,
   ) {
     process.env.DOCKER_HOST = process.env.DOCKER_HOST
       ? process.env.DOCKER_HOST
@@ -153,26 +153,26 @@ export class TestKeria {
       process.env.START_TEST_KERIA === "true"
     ) {
       console.log(
-        `Starting local services using ${this.testPaths.dockerComposeFile} up -d verify`
+        `Starting local services using ${this.testPaths.dockerComposeFile} up -d verify`,
       );
       if (process.env.DOCKER_USER && process.env.DOCKER_PASSWORD) {
         await dockerLogin(process.env.DOCKER_USER, process.env.DOCKER_PASSWORD);
       } else {
         console.info(
-          "Docker login credentials not provided, skipping docker login"
+          "Docker login credentials not provided, skipping docker login",
         );
       }
       await runDockerCompose(
         this.testPaths.dockerComposeFile,
         "up -d",
-        "verify"
+        "verify",
       );
 
       const keriaContainer = await this.launchTestKeria(
         imageName,
         containerName,
         keriaConfig,
-        pullImage
+        pullImage,
       );
       this.containers.set(containerName, keriaContainer);
     }
@@ -188,12 +188,12 @@ export class TestKeria {
         // await testKeria.containers.delete();
       }
       console.log(
-        `Stopping local services using ${this.testPaths.dockerComposeFile}`
+        `Stopping local services using ${this.testPaths.dockerComposeFile}`,
       );
       await stopDockerCompose(
         this.testPaths.dockerComposeFile,
         "down -v",
-        "verify"
+        "verify",
       );
     }
   }
@@ -209,7 +209,7 @@ export class TestKeria {
   async startContainerWithConfig(
     imageName: string,
     containerName: string,
-    keriaConfig?: KeriaConfig
+    keriaConfig?: KeriaConfig,
   ): Promise<Docker.Container> {
     let containerOptions: ContainerCreateOptions;
     containerOptions = {
@@ -247,7 +247,7 @@ export class TestKeria {
         "DEBUG",
       ];
       console.log(
-        `Container started with configuration: ${JSON.stringify(keriaConfig)} at ${tempConfigPath}}`
+        `Container started with configuration: ${JSON.stringify(keriaConfig)} at ${tempConfigPath}}`,
       );
     }
 
@@ -256,7 +256,7 @@ export class TestKeria {
 
     await container.start();
     console.log(
-      `Container started with name: ${containerName}, image: ${imageName}`
+      `Container started with name: ${containerName}, image: ${imageName}`,
     );
 
     return container;
@@ -266,16 +266,14 @@ export class TestKeria {
     kimageName: string,
     kontainerName: string,
     keriaConfig?: KeriaConfig,
-    pullImage: boolean = false
+    pullImage: boolean = false,
   ): Promise<Docker.Container> {
     // Check if the container is already running
     const containers = await docker.listContainers({ all: true });
     let container: Docker.Container | undefined;
 
     const existingContainer = containers.find((c) => {
-      return (
-        c.Names.includes(`/${kontainerName}`)
-      );
+      return c.Names.includes(`/${kontainerName}`);
     });
     // Check if any container is using the specified ports
     const portInUse = containers.find((c) => {
@@ -294,7 +292,7 @@ export class TestKeria {
           `Container Names: ${portInUse.Names.join(", ")}\n` +
           `Container Image: ${portInUse.Image}\n` +
           `Container State: ${portInUse.State}\n` +
-          `Container Status: ${portInUse.Status}`
+          `Container Status: ${portInUse.Status}`,
       );
       await pContainer.stop();
     }
@@ -305,7 +303,7 @@ export class TestKeria {
           `Container Names: ${existingContainer.Names.join(", ")}\n` +
           `Container Image: ${existingContainer.Image}\n` +
           `Container State: ${existingContainer.State}\n` +
-          `Container Status: ${existingContainer.Status}`
+          `Container Status: ${existingContainer.Status}`,
       );
       container = docker.getContainer(existingContainer.Id);
     } else {
@@ -316,11 +314,11 @@ export class TestKeria {
             `Container Names: ${existingContainer.Names.join(", ")}\n` +
             `Container Image: ${existingContainer.Image}\n` +
             `Container State: ${existingContainer.State}\n` +
-            `Container Status: ${existingContainer.Status}`
+            `Container Status: ${existingContainer.Status}`,
         );
         if (pullImage) {
           console.info(
-            `TestKeria: Pulling new image for existing/runner container.\n`
+            `TestKeria: Pulling new image for existing/runner container.\n`,
           );
           await docker.getContainer(existingContainer.Id).remove();
         } else {
@@ -333,11 +331,11 @@ export class TestKeria {
 
     if (!container || pullImage) {
       console.info(
-        `Docker pull: Either existing container doesn't exist or refreshing it.\n`
+        `Docker pull: Either existing container doesn't exist or refreshing it.\n`,
       );
       if (container) {
         console.info(
-          `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`
+          `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`,
         );
         await container.stop();
         await container.remove();
@@ -346,12 +344,12 @@ export class TestKeria {
       container = await this.startContainerWithConfig(
         kimageName,
         kontainerName,
-        keriaConfig
+        keriaConfig,
       );
     }
 
     await performHealthCheck(
-      `http://localhost:${this.keriaHttpPort}/spec.yaml`
+      `http://localhost:${this.keriaHttpPort}/spec.yaml`,
     );
     return container;
   }
@@ -377,7 +375,7 @@ export class TestEnvironment {
   private constructor(
     preset: TestEnvironmentPreset = (process.env
       .TEST_ENVIRONMENT as TestEnvironmentPreset) ?? "docker",
-    testKeria: TestKeria
+    testKeria: TestKeria,
   ) {
     this.preset = preset;
     this.testKeria = testKeria;
@@ -716,18 +714,18 @@ export class TestEnvironment {
 
   public static getInstance(
     preset?: TestEnvironmentPreset,
-    testKeria?: TestKeria
+    testKeria?: TestKeria,
   ): TestEnvironment {
     if (!TestEnvironment.instance) {
       if (preset === undefined || testKeria === undefined) {
         throw new Error(
-          "TestEnvironment.getInstance() called without preset or port config means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects."
+          "TestEnvironment.getInstance() called without preset or port config means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects.",
         );
       }
       TestEnvironment.instance = new TestEnvironment(preset, testKeria);
     } else if (preset !== undefined && testKeria !== undefined) {
       console.warn(
-        "TestEnvironment.getInstance() called with preset and port config, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects."
+        "TestEnvironment.getInstance() called with preset and port config, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects.",
       );
       TestEnvironment.instance = new TestEnvironment(preset, testKeria);
     }
@@ -765,7 +763,7 @@ export class TestPaths {
     userName: string,
     dockerComposeFile: string,
     userNum: number = 1,
-    maxReportMb = 0
+    maxReportMb = 0,
   ) {
     this.dockerComposeFile =
       process.env.DOCKER_COMPOSE_FILE || dockerComposeFile;
@@ -819,7 +817,7 @@ export class TestPaths {
       ? process.env.TEST_REPORT_UNSIGNED
       : path.join(
           this.testDataEbaDir,
-          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf`
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf`,
         );
     this.testReportGeneratedUnsignedZip = process.env
       .TEST_REPORT_GENERATED_UNSIGNED
@@ -827,14 +825,14 @@ export class TestPaths {
       : path.join(
           this.testDataEbaDir,
           this.testUserName,
-          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip`
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.zip`,
         );
     this.testReportGeneratedSignedZip = process.env.TEST_REPORT_GENERATED_SIGNED
       ? process.env.TEST_REPORT_GENERATED_SIGNED
       : path.join(
           this.testSignedReports,
           this.testUserName,
-          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip`
+          `237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123_signed.zip`,
         );
     this.workflowsDir = process.env.WORKFLOWS_DIR
       ? process.env.WORKFLOWS_DIR
@@ -843,7 +841,10 @@ export class TestPaths {
 
   public static getInstance(
     userName = "Bank_1",
-    dockerComposeFile = path.join(process.cwd(), "docker-compose-banktest.yaml")
+    dockerComposeFile = path.join(
+      process.cwd(),
+      "docker-compose-banktest.yaml",
+    ),
   ): TestPaths {
     if (!TestPaths.instance) {
       TestPaths.instance = new TestPaths(userName, dockerComposeFile);
@@ -858,7 +859,7 @@ export class TestPaths {
 export function convertDockerHost(
   url: string,
   moreHostsToReplace?: string,
-  newHost?: string
+  newHost?: string,
 ): string {
   if (newHost) {
     return replaceUrlHost(url, newHost, moreHostsToReplace);
@@ -880,7 +881,7 @@ export function convertDockerHost(
 export function replaceUrlHost(
   url: string,
   newHost: string = "host.docker.internal",
-  moreHostsToReplace: string = ""
+  moreHostsToReplace: string = "",
 ): string {
   const defaultHosts = ["127.0.0.1", "localhost"];
   const hostsToReplace = moreHostsToReplace

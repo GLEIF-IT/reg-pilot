@@ -39,7 +39,7 @@ export async function runWorkflow(
   workflow: any,
   configJson: any,
   env: TestEnvironment,
-  paths: TestPaths
+  paths: TestPaths,
 ) {
   let executedSteps = new Set();
   let creds: Map<string, ApiUser> = new Map<string, ApiUser>();
@@ -53,7 +53,7 @@ export async function runWorkflow(
   async function executeStep(
     stepName: string,
     step: any,
-    env: TestEnvironment
+    env: TestEnvironment,
   ) {
     const paths = TestPaths.getInstance();
     if (step.type == "issue_credential") {
@@ -71,7 +71,7 @@ export async function runWorkflow(
         step.issuee_aid,
         step.credential_source,
         Boolean(step.generate_test_data),
-        step.test_name
+        step.test_name,
       );
       if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "revoke_credential") {
@@ -81,7 +81,7 @@ export async function runWorkflow(
         step.issuer_aid,
         step.issuee_aid,
         Boolean(step.generate_test_data),
-        step.test_name
+        step.test_name,
       );
       if (cred[1]) creds.set(stepName, cred[0]);
     } else if (step.type == "generate_report_xml") {
@@ -91,7 +91,7 @@ export async function runWorkflow(
       const clients = await getOrCreateClients(
         1,
         [aidData[step.aid].agent.secret],
-        true
+        true,
       );
       const roleClient = clients[0];
       const ecrAid = await roleClient.identifiers().get(step.aid);
@@ -101,7 +101,7 @@ export async function runWorkflow(
         keeper,
         testData["unsignedReports"],
         testData["reportTypes"],
-        step.copy_folder
+        step.copy_folder,
       );
     } else if (step.type == "generate_report") {
       const zipWithCopies = createZipWithCopies(
@@ -109,7 +109,7 @@ export async function runWorkflow(
         paths.testUserName,
         paths.maxReportMb,
         paths.refreshTestData,
-        paths.testUserNum
+        paths.testUserNum,
       );
       paths.testReportGeneratedUnsignedZip = zipWithCopies;
     } else if (step.type == "sign_report") {
@@ -120,20 +120,20 @@ export async function runWorkflow(
         paths.testReportGeneratedUnsignedZip,
         paths.testSignedReports,
         user.ecrAid.prefix,
-        keeper
+        keeper,
       );
     } else if (step.type == "api_test") {
       console.log(`Executing: ${step.description}`);
       const apiUsers = await getApiTestData(configJson, env, step.aids);
       env = TestEnvironment.getInstance();
       const apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-      await apiAdapter.addRootOfTrust(configJson, env.testKeria.keriaHttpPort);
+      // await apiAdapter.addRootOfTrust(configJson, env.testKeria.keriaHttpPort);
       if (step.test_case == "api_test_revocation") {
         const aidData = await buildAidData(configJson);
         const clients = await getOrCreateClients(
           1,
           [aidData[step.requestor_aid].agent.secret],
-          true
+          true,
         );
         const roleClient = clients[clients.length - 1];
         const requestorAid = await roleClient
@@ -144,7 +144,7 @@ export async function runWorkflow(
           roleClient,
           step.requestor_aid,
           requestorAidPrefix,
-          creds
+          creds,
         );
       } else if (step.test_case == "api_test_admin") {
         const adminUser = await getApiTestData(configJson, env, [
@@ -163,7 +163,7 @@ export async function runWorkflow(
           const clients = await getOrCreateClients(
             1,
             [aidData[step.requestor_aid].agent.secret],
-            true
+            true,
           );
           const roleClient = clients[clients.length - 1];
           const requestorAid = await roleClient
@@ -174,7 +174,7 @@ export async function runWorkflow(
             roleClient,
             step.requestor_aid,
             requestorAidPrefix,
-            creds
+            creds,
           );
         } else {
           const apiUsers = await getApiTestData(configJson, env, step.aids);
@@ -182,7 +182,7 @@ export async function runWorkflow(
           await single_user_eba_test(
             apiUser,
             env,
-            paths.testReportGeneratedSignedZip
+            paths.testReportGeneratedSignedZip,
           );
         }
       } else {
@@ -205,7 +205,7 @@ export async function launchWorkflow() {
   const workflowFile = env.workflow;
   const testPaths = TestPaths.getInstance();
   const workflow = loadWorkflow(
-    path.join(process.cwd(), testPaths.workflowsDir, workflowFile)
+    path.join(process.cwd(), testPaths.workflowsDir, workflowFile),
   );
   const configFilePath = env.configuration;
 

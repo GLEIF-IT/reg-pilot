@@ -42,7 +42,7 @@ export async function downloadConfigWorkflowReports(
   doReports = true,
   doAllSigned = false,
   doFailReps = false,
-  refresh = true
+  refresh = true,
 ) {
   const testPaths = TestPaths.getInstance();
   console.log(`Downloading workflow/config/reports for bank: ${bankName}`);
@@ -53,7 +53,7 @@ export async function downloadConfigWorkflowReports(
     await downloadFileFromUrl(curBankZipUrl, zipFilePath);
   } else {
     console.log(
-      `Using existing ZIP file: ${zipFilePath} for bank: ${bankName}`
+      `Using existing ZIP file: ${zipFilePath} for bank: ${bankName}`,
     );
   }
   unpackZipFile(zipFilePath, bankName, doReports, doAllSigned, doFailReps);
@@ -64,7 +64,7 @@ export function unpackZipFile(
   bankName: string,
   includeReports = true,
   includeAllSignedReports = false,
-  includeFailReports = false
+  includeFailReports = false,
 ) {
   const testPaths = TestPaths.getInstance();
   const zip = new AdmZip(zipFilePath);
@@ -77,7 +77,7 @@ export function unpackZipFile(
     moveReports(
       testPaths.testTmpSignedReports,
       testPaths.testSignedReports,
-      specificRepType
+      specificRepType,
     );
   } else if (includeReports) {
     console.log(`Moving all signed reports`);
@@ -91,7 +91,7 @@ export function unpackZipFile(
 const moveReports = (
   srcDir: string,
   destDir: string,
-  specificRepType?: string
+  specificRepType?: string,
 ) => {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
@@ -171,7 +171,7 @@ export function createZipWithCopies(
   // }
   const outputZipPath = path.format({
     dir: path.join(path.dirname(pdfPath), bankName),
-    name:zipFileName,
+    name: zipFileName,
     ext: ".zip",
   });
 
@@ -182,14 +182,14 @@ export function createZipWithCopies(
   } else if (fs.existsSync(outputZipPath) && replaceZip) {
     fs.unlinkSync(outputZipPath);
     console.log(`Removed existing ZIP file at ${outputZipPath}`);
-  } 
+  }
 
   const zip = new AdmZip();
   const pdfData = fs.readFileSync(pdfPath);
   const pdfSize = pdfData.length;
   let currentSize = 0;
   let copyIndex = 1;
-  const maxSizeBytes = (maxSizeMb * 1024 * 1024)/divisor; // Convert MB to bytes
+  const maxSizeBytes = (maxSizeMb * 1024 * 1024) / divisor; // Convert MB to bytes
   do {
     const pdfName = `${path.basename(pdfPath, ".pdf")}_${copyIndex}.pdf`;
     zip.addFile(pdfName, pdfData);
@@ -201,18 +201,17 @@ export function createZipWithCopies(
     }
   } while (currentSize < maxSizeBytes);
 
-  console.log(`Added ${copyIndex-1} pdfs to ZIP file`);
+  console.log(`Added ${copyIndex - 1} pdfs to ZIP file`);
   console.log(`ZIP size: ${currentSize} bytes`);
 
   // make the parent path for the output ZIP file
   const parentDir = path.dirname(outputZipPath);
   if (!fs.existsSync(parentDir)) {
-    fs.mkdirSync(parentDir
-    , { recursive: true });
+    fs.mkdirSync(parentDir, { recursive: true });
   }
   zip.writeZip(outputZipPath);
   console.log(
-    `Created ZIP file at ${outputZipPath} with size ${currentSize} bytes`
+    `Created ZIP file at ${outputZipPath} with size ${currentSize} bytes`,
   );
   return outputZipPath;
 }

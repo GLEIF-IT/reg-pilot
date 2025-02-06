@@ -21,6 +21,7 @@ import {
 import Docker from "dockerode";
 import axios from "axios";
 import { exec } from "child_process";
+import net from 'net';
 
 export interface Aid {
   name: string;
@@ -44,7 +45,7 @@ export function sleep(ms: number): Promise<void> {
 export async function admitSinglesig(
   client: SignifyClient,
   aidName: string,
-  recipientAid: HabState
+  recipientAid: HabState,
 ) {
   const grantMsgSaid = await waitAndMarkNotification(client, "/exn/ipex/grant");
 
@@ -92,7 +93,7 @@ export async function assertNotifications(
 
 export async function createAid(
   client: SignifyClient,
-  name: string
+  name: string,
 ): Promise<Aid> {
   const [prefix, oobi] = await getOrCreateIdentifier(client, name);
   return { prefix, oobi, name };
@@ -115,7 +116,7 @@ export function createTimestamp() {
 export async function getEndRoles(
   client: SignifyClient,
   alias: string,
-  role?: string
+  role?: string,
 ): Promise<any> {
   const path =
     role !== undefined
@@ -130,7 +131,7 @@ export async function getEndRoles(
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string
+  credId: string,
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -147,7 +148,7 @@ export async function getIssuedCredential(
   issuerClient: SignifyClient,
   issuerAID: HabState,
   recipientAID: HabState,
-  schemaSAID: string
+  schemaSAID: string,
 ) {
   const credentialList = await issuerClient.credentials().list({
     filter: {
@@ -163,7 +164,7 @@ export async function getIssuedCredential(
 export async function getOrCreateAID(
   client: SignifyClient,
   name: string,
-  kargs: CreateIdentiferArgs
+  kargs: CreateIdentiferArgs,
 ): Promise<HabState> {
   try {
     return await client.identifiers().get(name);
@@ -188,7 +189,7 @@ export async function getOrCreateAID(
  */
 export async function getOrCreateClient(
   bran: string | undefined = undefined,
-  getOnly: boolean = false
+  getOnly: boolean = false,
 ): Promise<SignifyClient> {
   const env = TestEnvironment.getInstance();
   await ready();
@@ -198,7 +199,7 @@ export async function getOrCreateClient(
     env.keriaAdminUrl,
     bran,
     Tier.low,
-    env.keriaBootUrl
+    env.keriaBootUrl,
   );
   try {
     console.log("KERIA client connecting to ", env.keriaAdminUrl);
@@ -211,7 +212,7 @@ export async function getOrCreateClient(
       await client.connect();
     } else {
       throw new Error(
-        "Could not connect to client w/ bran " + bran + e.message
+        "Could not connect to client w/ bran " + bran + e.message,
       );
     }
   }
@@ -236,7 +237,7 @@ export async function getOrCreateClient(
 export async function getOrCreateClients(
   count: number,
   brans: string[] | undefined = undefined,
-  getOnly: boolean = false
+  getOnly: boolean = false,
 ): Promise<SignifyClient[]> {
   const tasks: Promise<SignifyClient>[] = [];
   for (let i = 0; i < count; i++) {
@@ -259,7 +260,7 @@ export async function getOrCreateClients(
 export async function getOrCreateContact(
   client: SignifyClient,
   name: string,
-  oobi: string
+  oobi: string,
 ): Promise<string> {
   const list = await client.contacts().list(undefined, "alias", `^${name}$`);
   // console.log("contacts.list", list);
@@ -288,7 +289,7 @@ export async function getOrCreateContact(
 export async function getOrCreateIdentifier(
   client: SignifyClient,
   name: string,
-  kargs: CreateIdentiferArgs | undefined = undefined
+  kargs: CreateIdentiferArgs | undefined = undefined,
 ): Promise<[string, string]> {
   let id: any = undefined;
   try {
@@ -321,7 +322,7 @@ export async function getOrCreateIdentifier(
   const result: [string, string] = [id, oobi.oobis[0]];
 
   assert(oobi.oobis.length > 0);
-  assert(oobi.oobis[0] !== undefined)
+  assert(oobi.oobis[0] !== undefined);
   console.log(name, result);
   return result;
 }
@@ -335,7 +336,7 @@ export async function getOrIssueCredential(
   schema: string,
   rules?: any,
   source?: any,
-  privacy = false
+  privacy = false,
 ): Promise<any> {
   const credentialList = await issuerClient.credentials().list();
 
@@ -346,7 +347,7 @@ export async function getOrIssueCredential(
         cred.sad.i === issuerAid.prefix &&
         cred.sad.a.i === recipientAid.prefix &&
         cred.sad.a.AID === credData.AID! &&
-        cred.status.et != "rev"
+        cred.status.et != "rev",
     );
     if (credential) return credential;
   }
@@ -373,7 +374,7 @@ export async function getOrIssueCredential(
 export async function revokeCredential(
   issuerClient: SignifyClient,
   issuerAid: Aid,
-  credentialSaid: string
+  credentialSaid: string,
 ): Promise<any> {
   const credentialList = await issuerClient.credentials().list();
 
@@ -389,7 +390,7 @@ export async function revokeCredential(
 
 export async function getStates(client: SignifyClient, prefixes: string[]) {
   const participantStates = await Promise.all(
-    prefixes.map((p) => client.keyStates().get(p))
+    prefixes.map((p) => client.keyStates().get(p)),
   );
   return participantStates.map((s: any[]) => s[0]);
 }
@@ -401,7 +402,7 @@ export async function hasEndRole(
   client: SignifyClient,
   alias: string,
   role: string,
-  eid: string
+  eid: string,
 ): Promise<boolean> {
   const list = await getEndRoles(client, alias, role);
   for (const i of list) {
@@ -434,7 +435,7 @@ export async function warnNotifications(
 
 export async function deleteOperations<T = any>(
   client: SignifyClient,
-  op: Operation<T>
+  op: Operation<T>,
 ) {
   if (op.metadata?.depends) {
     await deleteOperations(client, op.metadata.depends);
@@ -445,7 +446,7 @@ export async function deleteOperations<T = any>(
 
 export async function getReceivedCredential(
   client: SignifyClient,
-  credId: string
+  credId: string,
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: {
@@ -465,7 +466,7 @@ export async function getReceivedCredential(
  */
 export async function markAndRemoveNotification(
   client: SignifyClient,
-  note: Notification
+  note: Notification,
 ): Promise<void> {
   try {
     await client.notifications().mark(note.i);
@@ -479,7 +480,7 @@ export async function markAndRemoveNotification(
  */
 export async function markNotification(
   client: SignifyClient,
-  note: Notification
+  note: Notification,
 ): Promise<void> {
   await client.notifications().mark(note.i);
 }
@@ -487,7 +488,7 @@ export async function markNotification(
 export async function resolveOobi(
   client: SignifyClient,
   oobi: string,
-  alias?: string
+  alias?: string,
 ) {
   const op = await client.oobis().resolve(oobi, alias);
   await waitOperation(client, op);
@@ -496,7 +497,7 @@ export async function resolveOobi(
 export async function waitForCredential(
   client: SignifyClient,
   credSAID: string,
-  MAX_RETRIES: number = 10
+  MAX_RETRIES: number = 10,
 ) {
   let retryCount = 0;
   while (retryCount < MAX_RETRIES) {
@@ -512,14 +513,14 @@ export async function waitForCredential(
 
 export async function waitAndMarkNotification(
   client: SignifyClient,
-  route: string
+  route: string,
 ) {
   const notes = await waitForNotifications(client, route);
 
   await Promise.all(
     notes.map((note) => {
       client.notifications().mark(note.i);
-    })
+    }),
   );
 
   return notes[notes.length - 1]?.a.d ?? "";
@@ -528,7 +529,7 @@ export async function waitAndMarkNotification(
 export async function waitForNotifications(
   client: SignifyClient,
   route: string,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<Notification[]> {
   return retry(async () => {
     const response: { notes: Notification[] } = await client
@@ -536,7 +537,7 @@ export async function waitForNotifications(
       .list();
 
     const notes = response.notes.filter(
-      (note) => note.a.r === route && note.r === false
+      (note) => note.a.r === route && note.r === false,
     );
 
     if (!notes.length) {
@@ -554,7 +555,7 @@ export async function waitForNotifications(
 export async function waitOperation<T = any>(
   client: SignifyClient,
   op: Operation<T> | string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Operation<T>> {
   if (typeof op === "string") {
     op = await client.operations().get(op);
@@ -572,11 +573,11 @@ export async function waitOperation<T = any>(
 export async function getOrCreateRegistry(
   client: SignifyClient,
   aid: Aid,
-  registryName: string
+  registryName: string,
 ): Promise<{ name: string; regk: string }> {
   let registries = await client.registries().list(aid.name);
   registries = registries.filter(
-    (reg: { name: string }) => reg.name == registryName
+    (reg: { name: string }) => reg.name == registryName,
   );
   if (registries.length > 0) {
     assert.equal(registries.length, 1);
@@ -587,7 +588,7 @@ export async function getOrCreateRegistry(
     await waitOperation(client, await regResult.op());
     registries = await client.registries().list(aid.name);
     registries = registries.filter(
-      (reg: { name: string }) => reg.name == registryName
+      (reg: { name: string }) => reg.name == registryName,
     );
   }
   console.log(registries);
@@ -599,7 +600,7 @@ export async function sendGrantMessage(
   senderClient: SignifyClient,
   senderAid: Aid,
   recipientAid: Aid,
-  credential: any
+  credential: any,
 ) {
   const [grant, gsigs, gend] = await senderClient.ipex().grant({
     senderName: senderAid.name,
@@ -620,11 +621,11 @@ export async function sendGrantMessage(
 export async function sendAdmitMessage(
   senderClient: SignifyClient,
   senderAid: Aid,
-  recipientAid: Aid
+  recipientAid: Aid,
 ) {
   const notifications = await waitForNotifications(
     senderClient,
-    "/exn/ipex/grant"
+    "/exn/ipex/grant",
   );
   assert.equal(notifications.length, 1);
   const grantNotification = notifications[0];
@@ -647,7 +648,7 @@ export async function sendAdmitMessage(
 
 export async function dockerLogin(
   username: string,
-  password: string
+  password: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     exec(
@@ -659,7 +660,7 @@ export async function dockerLogin(
         }
         console.log(`Docker login successful: ${stdout}`);
         resolve();
-      }
+      },
     );
   });
 }
@@ -690,7 +691,7 @@ export async function pullContainer(
 export async function performHealthCheck(
   url: string,
   timeout: number = 12000,
-  interval: number = 1000
+  interval: number = 1000,
 ) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
@@ -711,12 +712,12 @@ export async function performHealthCheck(
 export async function runDockerCompose(
   file: string,
   command: string,
-  service: string
+  service: string,
 ): Promise<boolean> {
   const running = await isDockerComposeRunning(file);
   if (!running) {
     console.log(
-      `Starting docker compose command: ${file} ${command} ${service}`
+      `Starting docker compose command: ${file} ${command} ${service}`,
     );
     return new Promise((resolve, reject) => {
       exec(
@@ -728,12 +729,12 @@ export async function runDockerCompose(
           }
           console.log(stdout);
           resolve(true);
-        }
+        },
       );
     });
   } else {
     console.log(
-      `Docker compose is already running: ${file} ${command} ${service}`
+      `Docker compose is already running: ${file} ${command} ${service}`,
     );
     return running;
   }
@@ -742,12 +743,12 @@ export async function runDockerCompose(
 export async function stopDockerCompose(
   file: string,
   command: string,
-  service: string
+  service: string,
 ): Promise<boolean> {
   const running = await isDockerComposeRunning(file);
   if (running) {
     console.log(
-      `Stopping docker compose command: ${file} ${command} ${service}`
+      `Stopping docker compose command: ${file} ${command} ${service}`,
     );
     return new Promise((resolve, reject) => {
       exec(
@@ -759,18 +760,59 @@ export async function stopDockerCompose(
           }
           console.log(stdout);
           resolve(true);
-        }
+        },
       );
     });
   } else {
     console.log(
-      `Docker compose is already stopped: ${file} ${command} ${service}`
+      `Docker compose is already stopped: ${file} ${command} ${service}`,
     );
     return running;
   }
 }
 
-export async function isDockerComposeRunning(file: string): Promise<boolean> {
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(true));
+    server.once('listening', () => {
+      server.close(() => resolve(false));
+    });
+    server.listen(port);
+  });
+}
+
+export async function isDockerComposeRunning(
+  file: string,
+  vleiServerPort: number = 7723,
+  witnessPort: number = 5642,
+  verifierPort: number = 7676,
+  apiPort: number = 8000
+): Promise<boolean> {
+  const ports = [
+    { name: 'vleiServerPort', port: vleiServerPort },
+    { name: 'witnessPort', port: witnessPort },
+    { name: 'verifierPort', port: verifierPort },
+    // { name: 'filerPort', port: filerPort },
+    { name: 'apiPort', port: apiPort }
+  ];
+
+  const portsInUse = await Promise.all(
+    ports.map(async ({ name, port }) => {
+      const inUse = await isPortInUse(port);
+      return inUse ? name : null;
+    })
+  );
+
+  const inUsePorts = portsInUse.filter(Boolean);
+
+  if (inUsePorts.length === ports.length) {
+    console.log('All specified ports are in use. Skipping docker compose check.');
+    return true;
+  } else if (inUsePorts.length > 0) {
+    throw new Error(`The following ports are in use: ${inUsePorts.join(', ')}`);
+  }
+
   return new Promise((resolve, reject) => {
     exec(`docker compose -f ${file} ps`, (error, stdout, stderr) => {
       if (error) {

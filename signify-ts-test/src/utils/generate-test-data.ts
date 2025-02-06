@@ -7,14 +7,14 @@ export async function buildTestData(
   testData: EcrTestData,
   testName: string,
   issueName: string,
-  fileNamePrefix: string = ""
+  fileNamePrefix: string = "",
 ): Promise<string> {
   let testDataDirPrefixed = path.join(
     process.cwd(),
     "../../test",
     "data",
     testDataDir,
-    testName
+    testName,
   );
   if (!fs.existsSync(testDataDirPrefixed)) {
     fs.mkdirSync(testDataDirPrefixed);
@@ -28,7 +28,7 @@ export async function buildTestData(
     "utf8",
     (err: NodeJS.ErrnoException | null) => {
       if (err) throw err;
-    }
+    },
   );
   return testDataDirPrefixed;
 }

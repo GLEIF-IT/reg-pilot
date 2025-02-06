@@ -33,7 +33,7 @@ describe("replaceUrlHost", () => {
   test("should throw an error when no replacement is applied", () => {
     const url = "http://example.com:3000";
     expect(() => replaceUrlHost(url)).toThrowError(
-      `Error appling replacement for URL: ${url}`
+      `Error appling replacement for URL: ${url}`,
     );
   });
 
@@ -42,7 +42,7 @@ describe("replaceUrlHost", () => {
       "http://keria:3902/oobi/EHjzNdad7GNyCagdabp1fQd1ebw1s72Jgf9WuoECA9MC/agent/EDDyFNUPIZcS3sE6sFWtNnvaDUtCGyncHuUpyCtRPeEn";
     const newUrl = replaceUrlHost(url, "host.docker.internal", "keria");
     expect(newUrl).toBe(
-      "http://host.docker.internal:3902/oobi/EHjzNdad7GNyCagdabp1fQd1ebw1s72Jgf9WuoECA9MC/agent/EDDyFNUPIZcS3sE6sFWtNnvaDUtCGyncHuUpyCtRPeEn"
+      "http://host.docker.internal:3902/oobi/EHjzNdad7GNyCagdabp1fQd1ebw1s72Jgf9WuoECA9MC/agent/EDDyFNUPIZcS3sE6sFWtNnvaDUtCGyncHuUpyCtRPeEn",
     );
   });
 });

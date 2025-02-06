@@ -85,8 +85,8 @@ services:
       - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
       - VERIFIER_ADD_ROT=http://vlei-verifier:7676/root_of_trust/
       - VLEI_VERIFIER=http://vlei-verifier:7676
-      - FILER_REPORTS=http://reg-pilot-filer:7878/reports/
-      - FILER_ADMIN_UPLOAD_STATUSES=http://reg-pilot-filer:7878/admin/upload_statuses/
+      - FILER_REPORTS=http://vlei-verifier:7676/reports/
+      - FILER_ADMIN_UPLOAD_STATUSES=http://vlei-verifier:7676/admin/upload_statuses/
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
@@ -95,7 +95,7 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: gleif/vlei-verifier:latest
+    image: gleif/vlei-verifier:0.3.0
     container_name: vlei-verifier
     hostname: vlei-verifier
     environment:

@@ -7,9 +7,9 @@ const config: Config = {
   projects: ["<rootDir>/test"],
   globals: {
     "ts-jest": {
-      tsconfig: "tsconfig.json"
-    }
-  }
+      tsconfig: "tsconfig.json",
+    },
+  },
 };
 
 export default config;
