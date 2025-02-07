@@ -75,12 +75,15 @@ services:
       - 5644:5644
 
   reg-pilot-api:
-    image: gleif/reg-pilot-api:0.1.0
+    image: gleif/reg-pilot-api:dev
     ports:
       - 8000:8000
     environment:
-      - VLEI_VERIFIER=http://vlei-verifier:7676/
-      - FILER_REPORTS=http://vlei-verifier:7676/reports/
+      - ENABLE_CORS=true
+      - VERIFIER_AUTHORIZATIONS=http://vlei-verifier:7676/authorizations/
+      - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
+      - VERIFIER_REPORTS=http://vlei-verifier:7676/reports/
+      - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
@@ -89,7 +92,7 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: gleif/vlei-verifier:0.0.3
+    image: gleif/vlei-verifier:dev
     container_name: vlei-verifier
     hostname: vlei-verifier
     depends_on:
@@ -97,32 +100,8 @@ services:
       - witness-demo
     ports:
       - 7676:7676
-    environment:
-      - KERI_BASER_MAP_SIZE=500000000
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
-      interval: 2s
-      timeout: 3s
-      retries: 5
-      start_period: 2s
-    deploy:
-      resources:
-        limits:
-          memory: 2000M
-        reservations:
-          cpus: "0.5"
-          memory: 128M
-
-  reg-pilot-filer:
-    image: gleif/reg-pilot-filer:dev
-    container_name: reg-pilot-filer
-    hostname: reg-pilot-filer
-    ports:
-      - 7878:7878
-    environment:
-      - VLEI_VERIFIER=http://vlei-verifier:7676
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://reg-pilot-filer:7878/health"]
       interval: 2s
       timeout: 3s
       retries: 5
