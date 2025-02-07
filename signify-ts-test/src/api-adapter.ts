@@ -2,8 +2,8 @@ import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
 import { getOrCreateClients } from "./utils/test-util";
 import path from "path";
-import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
-import { string } from "mathjs";
+import { TestEnvironment } from "./utils/resolve-env";
+import { convertDockerHost } from "./utils/test-host";
 
 export class ApiAdapter {
   apiBaseUrl: string;

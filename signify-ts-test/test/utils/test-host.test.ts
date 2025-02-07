@@ -1,4 +1,4 @@
-import { convertDockerHost, replaceUrlHost } from "../../src/utils/resolve-env";
+import { convertDockerHost, replaceUrlHost } from "../../src/utils/test-host";
 
 describe("replaceUrlHost", () => {
   const originalEnv = process.env;

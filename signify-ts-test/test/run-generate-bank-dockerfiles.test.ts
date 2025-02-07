@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import { number } from "mathjs";
 import * as path from "path";
-import { convertDockerHost } from "../src/utils/resolve-env";
+import { convertDockerHost } from "../src/utils/test-host";
 
 const keriaAdminPort = 20001;
 const keriaBootPort = 20003;
