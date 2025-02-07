@@ -247,6 +247,7 @@ export class ApiAdapter {
       .oobis()
       .get(rootOfTrustMultisigIdentifierName, "agent");
     let oobiUrl = oobi.oobis[0];
+    console.log(`Root of trust OOBI: ${oobiUrl}`);
     const url = new URL(oobiUrl);
     if (url.hostname === "keria")
       oobiUrl = oobiUrl.replace("keria", "localhost");
