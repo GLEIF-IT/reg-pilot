@@ -1,29 +1,20 @@
 import minimist from "minimist";
 import path from "path";
-import Docker from "dockerode";
-import { TestEnvironment, TestKeria, TestPaths } from "../src/utils/resolve-env";
-
-import { getConfig, SIMPLE_TYPE } from "./utils/test-data";
-
-import { loadWorkflow, runWorkflow } from "./utils/run-workflow";
-
 import {
-  downloadConfigWorkflowReports,
-} from "../src/utils/bank-reports";
-import {
-  dockerLogin,
-  launchTestKeria,
-  runDockerCompose,
-  stopDockerCompose,
-} from "./utils/test-util";
+  TestEnvironment,
+  TestKeria,
+  TestPaths,
+} from "../src/utils/resolve-env";
+
+import { getConfig, SIMPLE_TYPE } from "../src/utils/test-data";
+
+import { loadWorkflow, runWorkflow } from "../src/utils/run-workflow";
+
+import { downloadConfigWorkflowReports } from "../src/utils/bank-reports";
 
 let testPaths: TestPaths;
 let env: TestEnvironment;
 let configJson: any;
-let containers: Map<string, Docker.Container> = new Map<
-  string,
-  Docker.Container
->();
 
 console.log(`run-workflow-bank process.argv array: ${process.argv}`);
 
@@ -49,9 +40,7 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
   },
   "--": true,
   unknown: (arg) => {
-    console.warn(
-      `Unknown argument, likely you aren't running from a test script: ${arg}`
-    );
+    console.info(`Unknown run-workflow-bank argument, Skipping: ${arg}`);
     // throw new Error(`Unknown argument: ${arg}`);
     return false;
   },
@@ -73,8 +62,9 @@ const bankContainer = `${bankName}_keria`.toLowerCase();
 const offset = 10 * (bankNum - 1);
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
-const testKeria = TestKeria.getInstance(20001, 20002, 20003, offset);
 testPaths = TestPaths.getInstance(bankName);
+const testKeria = TestKeria.getInstance(testPaths, 20001, 20002, 20003, offset);
+
 // set test data for workflow
 testPaths.testUserName = bankName;
 testPaths.testUserNum = bankNum;
@@ -103,66 +93,21 @@ console.log(
   "refresh:",
   refresh,
   "clean:",
-  clean
+  clean,
 );
 
 beforeAll(async () => {
-  process.env.DOCKER_HOST = process.env.DOCKER_HOST
-    ? process.env.DOCKER_HOST
-    : "localhost";
   process.env.SPEED = "fast";
-  // process.env.TEST_USER_NAME = process.env.TEST_USER_NAME
-  //   ? process.env.TEST_USER_NAME
-  //   : bankName;
-
-  // should we try to launch a user container?
-  if (
-    process.env.START_TEST_KERIA === undefined ||
-    process.env.START_TEST_KERIA === "true"
-  ) {
-    console.log(
-      `Starting local services using ${testPaths.dockerComposeFile} up -d verify`
-    );
-    if (process.env.DOCKER_USER && process.env.DOCKER_PASSWORD) {
-      await dockerLogin(process.env.DOCKER_USER, process.env.DOCKER_PASSWORD);
-    } else {
-      console.warn(
-        "Docker login credentials not provided, skipping docker login"
-      );
-    }
-    await runDockerCompose(testPaths.dockerComposeFile, "up -d", "verify");
-    const keriaContainer = await launchTestKeria(
-      bankContainer,
-      bankImage,
-      testKeriaSetup.keriaAdminPort,
-      testKeriaSetup.keriaHttpPort,
-      testKeriaSetup.keriaBootPort
-    );
-    containers.set(bankName, keriaContainer);
-  }
+  await testKeria.beforeAll(bankImage, bankContainer);
 });
 
 afterAll(async () => {
-  if (clean) {
-    console.log("Cleaning up test data");
-    for (const container of containers.values()) {
-      await container.stop();
-      // await container.remove();
-      await containers.delete(bankName);
-    }
-    console.log(`Stopping local services using ${testPaths.dockerComposeFile}`);
-    await stopDockerCompose(testPaths.dockerComposeFile, "down -v", "verify");
-  }
+  await testKeria.afterAll(clean);
 });
 
 test("api-verifier-bank-test-workflow", async function run() {
   console.log(`Running api-verifier-bank-test-workflow for bank: ${bankName}`);
-  env = TestEnvironment.getInstance(
-    "docker",
-    testKeriaSetup.keriaAdminPort,
-    testKeriaSetup.keriaHttpPort,
-    testKeriaSetup.keriaBootPort
-  );
+  env = TestEnvironment.getInstance("docker", testKeria);
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
   // await generateBankConfig(bankNum);
@@ -170,7 +115,7 @@ test("api-verifier-bank-test-workflow", async function run() {
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "bank-api-verifier-test-workflow.yaml"
+    "bank-api-verifier-test-workflow.yaml",
   );
   const workflow = loadWorkflow(workflowPath);
 
@@ -181,7 +126,7 @@ test("api-verifier-bank-test-workflow", async function run() {
 
 test("eba-verifier-prep-only", async function run() {
   console.warn(
-    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test"
+    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test",
   );
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
@@ -190,12 +135,7 @@ test("eba-verifier-prep-only", async function run() {
 
 test("eba-verifier-bank-test-workflow", async function run() {
   console.log(`Running eba-verifier-bank-test-workflow for bank: ${bankName}`);
-  env = TestEnvironment.getInstance(
-    "eba_bank_test",
-    testKeriaSetup.keriaAdminPort,
-    testKeriaSetup.keriaHttpPort,
-    testKeriaSetup.keriaBootPort
-  );
+  env = TestEnvironment.getInstance("eba_bank_test", testKeria);
 
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
@@ -203,7 +143,7 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "eba-verifier-test-workflow.yaml"
+    "eba-verifier-test-workflow.yaml",
   );
   const workflow = loadWorkflow(workflowPath);
 
@@ -214,23 +154,18 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
 test("vlei-issuance-reports-bank-test-workflow", async function run() {
   console.log(
-    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`
+    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`,
   );
   process.env.REPORT_TYPES = SIMPLE_TYPE;
 
-  env = TestEnvironment.getInstance(
-    "docker",
-    testKeriaSetup.keriaAdminPort,
-    testKeriaSetup.keriaHttpPort,
-    testKeriaSetup.keriaBootPort
-  );
+  env = TestEnvironment.getInstance("docker", testKeria);
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
   // await generateBankConfig(bankNum);
   configJson = getConfig(testPaths.testUserConfigFile);
 
   console.log(
-    `Running vlei issuance and reports generation test for bank: ${bankName}`
+    `Running vlei issuance and reports generation test for bank: ${bankName}`,
   );
   const bankDirPath = testPaths.testUserDir;
   const workflowName = "workflow.yaml";

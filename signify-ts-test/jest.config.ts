@@ -5,14 +5,11 @@ const config: Config = {
   testEnvironment: "node",
   testMatch: ["<rootDir>/test/*.test.ts"],
   projects: ["<rootDir>/test"],
-  moduleNameMapper: {
-    "^@src/(.*)$": "<rootDir>/src/$1"
-  },
   globals: {
     "ts-jest": {
-      tsconfig: "tsconfig.json"
-    }
-  }
+      tsconfig: "tsconfig.json",
+    },
+  },
 };
 
 export default config;

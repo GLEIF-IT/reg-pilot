@@ -467,7 +467,7 @@ run_api_test() {
             # export BANK_NUM=$BANK_NUM
             # export BANK_NAME=$BANK_NAME
             export REG_PILOT_API=$REG_PILOT_API
-            # export REG_PILOT_FILER=$REG_PILOT_FILER
+            export REG_PILOT_FILER=$REG_PILOT_FILER
             echo "Running npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num $BANK_NUM --max-report-size $MAX_REPORT_SIZE 2>&1 | tee $LOG_FILE"
 
             npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" --clean "false" 2>&1 | tee "$LOG_FILE"

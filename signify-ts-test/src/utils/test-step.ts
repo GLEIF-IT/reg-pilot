@@ -13,16 +13,12 @@ export async function step<T>(
   description: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  try {
-    const start = Date.now();
-    const response = await fn();
+  const start = Date.now();
+  const response = await fn();
 
-    // Bypassing console.log to avoid the verbose log output from jest
-    process.stdout.write(
-      `Step - ${description} - finished (${Date.now() - start}ms)\n`,
-    );
-    return response;
-  } catch (error: any) {
-    throw new Error(`Step - ${description} - failed: ${error.message}\n${error.stack}`);
-  }
+  // Bypassing console.log to avoid the verbose log output from jest
+  process.stdout.write(
+    `Step - ${description} - finished (${Date.now() - start}ms)\n`,
+  );
+  return response;
 }

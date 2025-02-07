@@ -1,9 +1,9 @@
 import path from "path";
 import fs from "fs";
-import { buildAidData } from "../../src/utils/handle-json-config";
-import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
+import { buildAidData } from "./handle-json-config";
+import { TestEnvironment, TestPaths } from "./resolve-env";
 import { getOrCreateClients } from "./test-util";
-import { ECR_SCHEMA_SAID } from "../../src/constants";
+import { ECR_SCHEMA_SAID } from "../constants";
 import { SignifyClient } from "signify-ts";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
@@ -21,7 +21,7 @@ export function getConfig(configFilePath: string) {
 export async function getApiTestData(
   configJson: any,
   env: TestEnvironment,
-  aids: string[]
+  aids: string[],
 ) {
   let apiUsers: Array<ApiUser> = [];
   const aidData = await buildAidData(configJson);
@@ -97,7 +97,7 @@ export function getReportGenTestData() {
 
 export async function getGrantedCredential(
   client: SignifyClient,
-  credId: string
+  credId: string,
 ): Promise<any> {
   const credentialList = await client.credentials().list({
     filter: { "-d": credId },
@@ -112,7 +112,7 @@ export async function getGrantedCredential(
 export function getDefaultOrigReports(): string[] {
   const testPaths = TestPaths.getInstance();
   console.log(
-    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${testPaths.testOrigReportsDir}`
+    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${testPaths.testOrigReportsDir}`,
   );
 
   const reports = fs.readdirSync(testPaths.testOrigReportsDir);

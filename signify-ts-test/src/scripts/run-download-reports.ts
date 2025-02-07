@@ -4,7 +4,7 @@ import { TestPaths } from "../utils/resolve-env";
 async function main(bankNum: number) {
   if (isNaN(bankNum)) {
     throw new Error(
-      "A valid bank number is required to run the download reports script."
+      "A valid bank number is required to run the download reports script.",
     );
   }
 
@@ -23,4 +23,4 @@ async function main(bankNum: number) {
 const args = process.argv.slice(2);
 const bankNum = parseInt(args[0], 10);
 console.log(`Running download reports for bank number: ${bankNum}`);
-main(bankNum);
+await main(bankNum);

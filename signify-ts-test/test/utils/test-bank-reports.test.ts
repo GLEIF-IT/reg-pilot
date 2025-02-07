@@ -8,20 +8,26 @@ describe("test bank reports testing", () => {
       "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf";
     const maxSize = 2; // 5 MB
     const userName = "unitTest";
-    const zipFilePath = createZipWithCopies(pdfPath, userName, maxSize, true, 1);
+    const zipFilePath = createZipWithCopies(
+      pdfPath,
+      userName,
+      maxSize,
+      true,
+      1,
+    );
     console.log(`Generated zip file during test: ${zipFilePath}`);
     expect(zipFilePath).toContain(".zip");
     expect(zipFilePath).toContain("eba_reports");
     expect(zipFilePath).toContain(userName);
     const stats = fs.statSync(zipFilePath);
-    expect(stats.size).toBeGreaterThan(1024*1024*1.5); // 1.5 MB
+    expect(stats.size).toBeGreaterThan(1024 * 1024 * 1.5); // 1.5 MB
 
     const zipFilePathHalfTheSize = createZipWithCopies(
       pdfPath,
       userName,
       maxSize,
       true,
-      2
+      2,
     );
     console.log(`Generated zip file during test: ${zipFilePathHalfTheSize}`);
     expect(zipFilePathHalfTheSize).toContain(`.zip`);
@@ -30,6 +36,6 @@ describe("test bank reports testing", () => {
     // Get statistics of the generated ZIP file with name
     const statsHalf = fs.statSync(zipFilePathHalfTheSize);
     expect(statsHalf.size).toBeLessThan(stats.size);
-    expect(statsHalf.size).toBeGreaterThan(1024*1024*.5); // .5 MB
+    expect(statsHalf.size).toBeGreaterThan(1024 * 1024 * 0.5); // .5 MB
   });
 });

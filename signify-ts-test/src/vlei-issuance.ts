@@ -31,7 +31,7 @@ import {
   Aid,
   sleep,
   revokeCredential,
-} from "../test/utils/test-util";
+} from "./utils/test-util";
 import {
   addEndRoleMultisig,
   admitMultisig,
@@ -41,9 +41,9 @@ import {
   grantMultisig,
   issueCredentialMultisig,
   multisigRevoke,
-} from "../test/utils/multisig-utils";
+} from "./utils/multisig-utils";
 import { boolean, sec } from "mathjs";
-import { retry } from "../test/utils/retry";
+import { retry } from "./utils/retry";
 import {
   CRED_RETRY_DEFAULTS,
   SCHEMAS,
@@ -65,7 +65,7 @@ import {
 import fs from "fs";
 import path from "path";
 import { buildTestData, EcrTestData } from "./utils/generate-test-data";
-import { ApiUser } from "../test/utils/test-data";
+import { ApiUser } from "./utils/test-data";
 import { TestEnvironment } from "./utils/resolve-env";
 
 export class VleiIssuance {
@@ -220,7 +220,7 @@ export class VleiIssuance {
           oobi = await client.oobis().get(identifier.name, "agent");
         } else {
           client = this.clients.get(
-            this.aidsInfo.get(identifier.identifiers[0]).agent.name,
+            this.aidsInfo.get(identifier.identifiers[0]).agent.name
           )![0];
           oobi = await client
             .oobis()
@@ -250,21 +250,21 @@ export class VleiIssuance {
               let oobi;
               if (!identifierA.agent) {
                 client = this.clients.get(
-                  this.aidsInfo.get(identifierA.identifiers[0]).agent.name,
+                  this.aidsInfo.get(identifierA.identifiers[0]).agent.name
                 )![0];
               } else {
                 client = this.clients.get(identifierA.agent.name)![0];
               }
               if (!identifierB.agent) {
                 oobi = this.oobis.get(
-                  this.aidsInfo.get(identifierB.identifiers[0]).name,
+                  this.aidsInfo.get(identifierB.identifiers[0]).name
                 )?.[0].oobis[0];
               } else {
                 oobi = this.oobis.get(identifierB.name)?.[0].oobis[0];
               }
               if (client && oobi) {
                 contactPromises.push(
-                  getOrCreateContact(client, identifierB.name, oobi),
+                  getOrCreateContact(client, identifierB.name, oobi)
                 );
               }
             }
@@ -331,7 +331,7 @@ export class VleiIssuance {
     if (delegator != null) {
       kargsSinglesigAID.delpre = this.aids.get(delegator)![0].prefix;
       const delegatorClient = this.clients.get(
-        this.aidsInfo.get(delegator).agent.name,
+        this.aidsInfo.get(delegator).agent.name
       )![0];
 
       const delegatorAid = this.aids.get(delegator)![0];
@@ -365,7 +365,7 @@ export class VleiIssuance {
       });
       assert.equal(
         JSON.stringify(result.serder.ked.a[0]),
-        JSON.stringify(anchor),
+        JSON.stringify(anchor)
       );
 
       const op3 = await client.keyStates().query(delegatorAid.prefix, "1");
@@ -454,7 +454,7 @@ export class VleiIssuance {
           delegatorAidInfo.identifiers;
         let delegatorAids =
           delegatorAidIdentifierNames.map(
-            (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+            (aidIdentifierName) => this.aids.get(aidIdentifierName)![0]
           ) || [];
         const teepre = multisigOps[0][1].name.split(".")[1];
         const anchor = {
@@ -474,7 +474,7 @@ export class VleiIssuance {
           const curAidInfo = this.aidsInfo.get(curAidName);
           const aid = this.aids.get(curAidName)![0];
           const otherAids = delegatorAids.filter(
-            (aidTmp: any) => aid.prefix !== aidTmp.prefix,
+            (aidTmp: any) => aid.prefix !== aidTmp.prefix
           );
           const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
 
@@ -484,7 +484,7 @@ export class VleiIssuance {
             otherAids,
             delegatorMultisigAid,
             anchor,
-            index === 0,
+            index === 0
           );
           delegateOps.push([delegatorClient, delApprOp]);
           if (index === 0) {
@@ -492,7 +492,7 @@ export class VleiIssuance {
           } else {
             await waitAndMarkNotification(
               delegatorClientInitiator!,
-              "/multisig/ixn",
+              "/multisig/ixn"
             );
           }
         }
@@ -636,18 +636,18 @@ export class VleiIssuance {
 
     let issuerAids =
       aidIdentifierNames.map(
-        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0]
       ) || [];
 
     let delegatorAids =
       delegatorAidIdentifierNames.map(
-        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0],
+        (aidIdentifierName) => this.aids.get(aidIdentifierName)![0]
       ) || [];
 
     try {
       for (const aidIdentifierName of aidIdentifierNames) {
         const client = this.clients.get(
-          this.aidsInfo.get(aidIdentifierName).agent.name,
+          this.aidsInfo.get(aidIdentifierName).agent.name
         )![0];
         multisigAids.push(await client.identifiers().get(aidInfo.name));
       }
@@ -681,7 +681,7 @@ export class VleiIssuance {
         const kargsMultisigAIDClone = { ...kargsMultisigAID, mhab: aid };
         const otherAids = issuerAids.filter((aidTmp) => aid !== aidTmp);
         const client = this.clients.get(
-          this.aidsInfo.get(aid.name).agent.name,
+          this.aidsInfo.get(aid.name).agent.name
         )![0];
 
         const op = await createAIDMultisig(
@@ -690,7 +690,7 @@ export class VleiIssuance {
           otherAids,
           aidInfo.name,
           kargsMultisigAIDClone,
-          index === 0, // Set true for the first operation
+          index === 0 // Set true for the first operation
         );
 
         multisigOps.push([client, op]);
@@ -699,7 +699,7 @@ export class VleiIssuance {
       // Wait for multisig inception notifications for all clients
       await waitAndMarkNotification(
         this.clients.get(this.aidsInfo.get(issuerAids[0].name).agent.name)![0],
-        "/multisig/icp",
+        "/multisig/icp"
       );
 
       // Approve delegation
@@ -721,7 +721,7 @@ export class VleiIssuance {
         const curAidInfo = this.aidsInfo.get(curAidName);
         const aid = this.aids.get(curAidName)![0];
         const otherAids = delegatorAids.filter(
-          (aidTmp: any) => aid.prefix !== aidTmp.prefix,
+          (aidTmp: any) => aid.prefix !== aidTmp.prefix
         );
         const delegatorClient = this.clients.get(curAidInfo.agent.name)![0];
 
@@ -731,7 +731,7 @@ export class VleiIssuance {
           otherAids,
           delegatorMultisigAid,
           anchor,
-          index === 0,
+          index === 0
         );
         delegateOps.push([delegatorClient, delApprOp]);
         if (index === 0) {
@@ -739,7 +739,7 @@ export class VleiIssuance {
         } else {
           await waitAndMarkNotification(
             delegatorClientInitiator!,
-            "/multisig/ixn",
+            "/multisig/ixn"
           );
         }
       }
@@ -776,10 +776,10 @@ export class VleiIssuance {
       let oobis: Array<any> = await Promise.all(
         issuerAids.map(async (aid) => {
           const client = this.clients.get(
-            this.aidsInfo.get(aid.name).agent.name,
+            this.aidsInfo.get(aid.name).agent.name
           )![0];
           return await client.oobis().get(multisigAid.name, "agent");
-        }),
+        })
       );
 
       if (oobis.some((oobi) => oobi.oobis.length == 0)) {
@@ -790,7 +790,7 @@ export class VleiIssuance {
           issuerAids.map(async (aid, index) => {
             const otherAids = issuerAids.filter((_, i) => i !== index);
             const client = this.clients.get(
-              this.aidsInfo.get(aid.name).agent.name,
+              this.aidsInfo.get(aid.name).agent.name
             )![0];
             return await addEndRoleMultisig(
               client,
@@ -799,16 +799,16 @@ export class VleiIssuance {
               otherAids,
               multisigAid,
               timestamp,
-              index === 0,
+              index === 0
             );
-          }),
+          })
         );
 
         // Wait for all role operations to complete for each client
         for (let i = 0; i < roleOps.length; i++) {
           for (let j = 0; j < roleOps[i].length; j++) {
             const client = this.clients.get(
-              this.aidsInfo.get(issuerAids[i].name).agent.name,
+              this.aidsInfo.get(issuerAids[i].name).agent.name
             )![0];
             await waitOperation(client, roleOps[i][j]);
           }
@@ -819,20 +819,20 @@ export class VleiIssuance {
         await Promise.all(
           issuerAids.map((aid) => {
             const client = this.clients.get(
-              this.aidsInfo.get(aid.name).agent.name,
+              this.aidsInfo.get(aid.name).agent.name
             )![0];
             return waitAndMarkNotification(client, "/multisig/rpy");
-          }),
+          })
         );
 
         // Retrieve the OOBI again after the operation for all clients
         oobis = await Promise.all(
           issuerAids.map(async (aid) => {
             const client = this.clients.get(
-              this.aidsInfo.get(aid.name).agent.name,
+              this.aidsInfo.get(aid.name).agent.name
             )![0];
             return await client.oobis().get(multisigAid.name, "agent");
-          }),
+          })
         );
       }
       // Ensure that all OOBIs are consistent across all clients
@@ -845,8 +845,8 @@ export class VleiIssuance {
       await Promise.all(
         clients.map(
           async (client) =>
-            await getOrCreateContact(client, multisigAid.name, oobi),
-        ),
+            await getOrCreateContact(client, multisigAid.name, oobi)
+        )
       );
       return multisigAid;
     }

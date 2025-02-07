@@ -1,6 +1,6 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
-import { getOrCreateClients } from "../test/utils/test-util";
+import { getOrCreateClients } from "./utils/test-util";
 import path from "path";
 import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
 import { string } from "mathjs";
@@ -12,7 +12,7 @@ export class ApiAdapter {
     this.apiBaseUrl = apiBaseUrl;
     if (!filerBaseUrl || filerBaseUrl === "") {
       console.log(
-        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`
+        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`,
       );
       this.filerBaseUrl = apiBaseUrl;
     } else {
@@ -131,7 +131,7 @@ export class ApiAdapter {
     zipBuffer: Buffer,
     client: SignifyClient,
     token: string,
-    envOverride?: TestEnvironment
+    envOverride?: TestEnvironment,
   ): Promise<Response> {
     if (envOverride) {
       this.apiBaseUrl = envOverride.apiBaseUrl;
@@ -140,7 +140,7 @@ export class ApiAdapter {
     let formData = new FormData();
     let ctype = "application/zip";
     console.log(
-      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`
+      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`,
     );
     formData.append("file", zipBuffer, {
       filename: `${fileName}`,
@@ -188,13 +188,20 @@ export class ApiAdapter {
 
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
+    const startUpload = new Date().getTime();
     const resp = await fetch(url, sreq);
+    const endUpload = new Date().getTime();
+    console.log(
+      `EBA upload response for ${fileName} in ${
+        endUpload - startUpload
+      } ms: ${resp.status}`,
+    );
     return resp;
   }
 
   public async addRootOfTrust(
     configJson: any,
-    keriaHttpPort?: number
+    keriaHttpPort?: number,
   ): Promise<Response> {
     if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
@@ -240,6 +247,7 @@ export class ApiAdapter {
       .oobis()
       .get(rootOfTrustMultisigIdentifierName, "agent");
     let oobiUrl = oobi.oobis[0];
+    console.log(`Root of trust OOBI: ${oobiUrl}`);
     const url = new URL(oobiUrl);
     if (url.hostname === "keria")
       oobiUrl = oobiUrl.replace("keria", "localhost");
@@ -263,7 +271,10 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any, keriaHttpPort?: number): Promise<Response> {
+  public async addRootOfTrustSinglesig(
+    configJson: any,
+    keriaHttpPort?: number,
+  ): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
       (usr: any) => usr.type == "GLEIF"
     )[0].identifiers[0];

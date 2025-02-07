@@ -8,7 +8,7 @@ import {
   getApiTestData,
   getConfig,
   isEbaDataSubmitter,
-} from "./utils/test-data";
+} from "../src/utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ApiAdapter } from "../src/api-adapter";
 
@@ -29,7 +29,7 @@ export async function run_vlei_verification_test(
   env = TestEnvironment.getInstance();
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 
-  await apiAdapter.addRootOfTrust(configJson, env.keriaHttpPort);
+  await apiAdapter.addRootOfTrust(configJson, env.testKeria.keriaHttpPort);
   for (const user of users) {
     await vlei_verification(user, env);
   }
