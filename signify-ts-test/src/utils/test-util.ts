@@ -21,7 +21,7 @@ import {
 import Docker from "dockerode";
 import axios from "axios";
 import { exec } from "child_process";
-import net from 'net';
+import net from "net";
 
 export interface Aid {
   name: string;
@@ -774,8 +774,8 @@ export async function stopDockerCompose(
 function isPortInUse(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = net.createServer();
-    server.once('error', () => resolve(true));
-    server.once('listening', () => {
+    server.once("error", () => resolve(true));
+    server.once("listening", () => {
       server.close(() => resolve(false));
     });
     server.listen(port);
@@ -787,30 +787,32 @@ export async function isDockerComposeRunning(
   vleiServerPort: number = 7723,
   witnessPort: number = 5642,
   verifierPort: number = 7676,
-  apiPort: number = 8000
+  apiPort: number = 8000,
 ): Promise<boolean> {
   const ports = [
-    { name: 'vleiServerPort', port: vleiServerPort },
-    { name: 'witnessPort', port: witnessPort },
-    { name: 'verifierPort', port: verifierPort },
+    { name: "vleiServerPort", port: vleiServerPort },
+    { name: "witnessPort", port: witnessPort },
+    { name: "verifierPort", port: verifierPort },
     // { name: 'filerPort', port: filerPort },
-    { name: 'apiPort', port: apiPort }
+    { name: "apiPort", port: apiPort },
   ];
 
   const portsInUse = await Promise.all(
     ports.map(async ({ name, port }) => {
       const inUse = await isPortInUse(port);
       return inUse ? name : null;
-    })
+    }),
   );
 
   const inUsePorts = portsInUse.filter(Boolean);
 
   if (inUsePorts.length === ports.length) {
-    console.log('All specified ports are in use. Skipping docker compose check.');
+    console.log(
+      "All specified ports are in use. Skipping docker compose check.",
+    );
     return true;
   } else if (inUsePorts.length > 0) {
-    throw new Error(`The following ports are in use: ${inUsePorts.join(', ')}`);
+    throw new Error(`The following ports are in use: ${inUsePorts.join(", ")}`);
   }
 
   return new Promise((resolve, reject) => {

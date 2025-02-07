@@ -24,7 +24,7 @@ beforeAll(async () => {});
 
 export async function run_vlei_verification_test(
   users: ApiUser[],
-  configJson: any
+  configJson: any,
 ) {
   env = TestEnvironment.getInstance();
   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);

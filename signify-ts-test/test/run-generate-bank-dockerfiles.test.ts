@@ -21,7 +21,7 @@ test("generate-bank-dockerfiles", async function run() {
 function generateDockerfiles(
   firstbank: number,
   bankAmount: number,
-  eba: boolean = false
+  eba: boolean = false,
 ) {
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
