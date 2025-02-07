@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import { buildAidData } from "../../src/utils/handle-json-config";
+import { buildAidData } from "vlei-verifier-workflows";
 import { TestEnvironment } from "./resolve-env";
 import { getOrCreateClients } from "./test-util";
 import { ECR_SCHEMA_SAID } from "../../src/constants";
@@ -15,17 +15,6 @@ export const FAIL_TYPE = "fail";
 const origDir = "orig_reports";
 const failDir = "fail_reports";
 const signedDir = "signed_reports";
-
-export async function getConfig(configFilePath: string, bankTest = false) {
-  let dirPath = "../../src/config/";
-  if (bankTest) {
-    dirPath = "../data/600-banks-test-data/";
-  }
-  const configJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, dirPath) + configFilePath, "utf-8"),
-  );
-  return configJson;
-}
 
 export async function getApiTestData(
   configJson: any,

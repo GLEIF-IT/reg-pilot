@@ -6,13 +6,8 @@ import { HabState, SignifyClient } from "signify-ts";
 import { ApiAdapter } from "../src/api-adapter";
 import { generateFileDigest } from "./utils/generate-digest";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import {
-  ApiUser,
-  getApiTestData,
-  getConfig,
-  isEbaDataSubmitter,
-} from "./utils/test-data";
-import { buildUserData } from "../src/utils/handle-json-config";
+import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import { buildUserData, getConfig } from "vlei-verifier-workflows";
 import { ECR_SCHEMA_SAID } from "../src/constants";
 import { sleep } from "./utils/test-util";
 
@@ -33,8 +28,10 @@ beforeAll(async () => {
 
 if (require.main === module) {
   test("reg-pilot-api", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
+    const configFileName = env.configuration;
+    let dirPath = "../src/config/";
+    const configFilePath = path.join(__dirname, dirPath) + configFileName;
+    const configJson = await getConfig(configFilePath);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(

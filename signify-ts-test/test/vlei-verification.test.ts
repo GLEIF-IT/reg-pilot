@@ -1,16 +1,9 @@
 import { strict as assert } from "assert";
 import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
-import { HabState, SignifyClient } from "signify-ts";
-import fs from "fs";
-import path from "path";
-import {
-  ApiUser,
-  getApiTestData,
-  getConfig,
-  isEbaDataSubmitter,
-} from "./utils/test-data";
-import { buildUserData } from "../src/utils/handle-json-config";
+import { ApiUser, getApiTestData, isEbaDataSubmitter } from "./utils/test-data";
+import { buildUserData, getConfig } from "vlei-verifier-workflows";
 import { ApiAdapter } from "../src/api-adapter";
+import path from "path";
 
 const secretsJsonPath = "../src/config/";
 const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
@@ -31,8 +24,10 @@ beforeAll(async () => {
 // from the report test
 if (require.main === module) {
   test("vlei-verification", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
+    const configFileName = env.configuration;
+    let dirPath = "../src/config/";
+    const configFilePath = path.join(__dirname, dirPath) + configFileName;
+    const configJson = await getConfig(configFilePath);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     const apiUsers = await getApiTestData(

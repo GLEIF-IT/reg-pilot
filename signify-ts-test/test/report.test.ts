@@ -10,13 +10,13 @@ import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
 import {
   buildAidData,
   buildUserData,
-  User,
-} from "../src/utils/handle-json-config";
+  getConfig,
+} from "vlei-verifier-workflows";
 
 import { unknownPrefix } from "../src/constants";
 import { sign } from "crypto";
 import { boolean, re } from "mathjs";
-import { getConfig, getReportGenTestData } from "./utils/test-data";
+import { getReportGenTestData } from "./utils/test-data";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
 export const SIMPLE_TYPE = "simple";
@@ -63,8 +63,10 @@ function deleteReportsDir(repDir: string): void {
 if (require.main === module) {
   test("report-generation-test", async function run() {
     env = resolveEnvironment();
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
+    const configFileName = env.configuration;
+    let dirPath = "../src/config/";
+    const configFilePath = path.join(__dirname, dirPath) + configFileName;
+    const configJson = await getConfig(configFilePath);
     let users = await buildUserData(configJson);
     users = users.filter((user) => user.type === "ECR");
     for (const user of users) {
