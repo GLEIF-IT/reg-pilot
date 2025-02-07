@@ -1,6 +1,7 @@
+import fs from "fs";
+import path from "path";
+
 const testDataDir = "test_data";
-const fs = require("fs");
-const path = require("path");
 
 export async function buildTestData(
   testData: EcrTestData,
@@ -9,7 +10,7 @@ export async function buildTestData(
   fileNamePrefix: string = "",
 ): Promise<string> {
   let testDataDirPrefixed = path.join(
-    __dirname,
+    process.cwd(),
     "../../test",
     "data",
     testDataDir,
@@ -25,7 +26,7 @@ export async function buildTestData(
     `${testDataDirPrefixed}/${fileName}`,
     testDataJson,
     "utf8",
-    (err: Error) => {
+    (err: NodeJS.ErrnoException | null) => {
       if (err) throw err;
     },
   );

@@ -15,7 +15,9 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 5  | 2024-11-14 | 1.2.0-rc4      | [b4c7d3f]        | 
 | 6  | 2024-11-20 | 1.2.0-rc4      | [6ec9191]        | 
 | 7  | 2024-11-28 | 1.2.0-rc4      | [bad12ad]        | 
-
+| 8  | 2024-12-26 | 1.2.0-rc4      | [6330918]        | 
+| 9  | 2025-01-17 | 1.2.0-rc4      | [dbdcc8c]        | 
+| 10 | 2025-01-28 | 1.2.0-rc4      | [dc93cee]        | 
 
 #### b. test domain
 
@@ -28,7 +30,9 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 5  | 2024-11-18 | 1.2.0-rc4      | [b4c7d3f]        | 
 | 6  | 2024-11-20 | 1.2.0-rc4      | [6ec9191]        | 
 | 7  | 2024-11-28 | 1.2.0-rc4      | [bad12ad]        | 
-
+| 8  | 2024-12-26 | 1.2.0-rc4      | [6330918]        | 
+| 9  | 2024-12-30 | 1.2.0-rc4      | [f756a84]        | 
+| 10 | 2025-01-10 | 1.2.0-rc4      | [dbdcc8c]        | 
 
 ### 2. vlei-verifier
 
@@ -50,6 +54,9 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 12 | 2024-11-20 | 1.2.0-rc4      | [ba84a12]        | 
 | 13 | 2024-11-28 | 1.2.0-rc4      | [506d1af]        | 
 | 14 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
+| 15 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
+| 16 | 2024-12-26 | 1.2.0-rc4      | [2a62f70]        | 
+| 17 | 2025-01-17 | 1.2.0-rc4      | [f2631ce]        | 
 
 #### b. test domain
 
@@ -67,5 +74,12 @@ This document details the deployment history of the `reg-pilot-api` and `vlei-ve
 | 10 | 2024-11-20 | 1.2.0-rc4      | [ba84a12]        | 
 | 11 | 2024-11-28 | 1.2.0-rc4      | [506d1af]        | 
 | 12 | 2024-12-11 | 1.2.0-rc4      | [bd1d4d0]        | 
+| 13 | 2024-12-18 | 1.2.0-rc4      | [1097e7e]        | 
+| 14 | 2024-12-26 | 1.2.0-rc4      | [2a62f70]        | 
+| 15 | 2024-12-30 | 1.2.0-rc4      | [ac98204]        | 
+| 16 | 2025-01-10 | 1.2.0-rc4      | [f2631ce]        | 
+| 17 | 2025-01-15 | 1.2.0-rc4      | [46a92f6]        | 
+| 18 | 2025-01-28 | 1.2.0-rc4      | [f2631ce]        | 
+
 
 

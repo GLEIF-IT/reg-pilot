@@ -1,9 +1,9 @@
 import path from "path";
 import fs from "fs";
-import { buildAidData } from "../../src/utils/handle-json-config";
-import { TestEnvironment } from "./resolve-env";
+import { buildAidData } from "./handle-json-config";
+import { TestEnvironment, TestPaths } from "./resolve-env";
 import { getOrCreateClients } from "./test-util";
-import { ECR_SCHEMA_SAID } from "../../src/constants";
+import { ECR_SCHEMA_SAID } from "../constants";
 import { SignifyClient } from "signify-ts";
 
 export const EXTERNAL_MAN_TYPE = "external_manifest";
@@ -12,18 +12,9 @@ export const UNFOLDERED_TYPE = "unfoldered";
 export const UNZIPPED_TYPE = "unzipped";
 export const FAIL_TYPE = "fail";
 
-const origDir = "orig_reports";
-const failDir = "fail_reports";
-const signedDir = "signed_reports";
-
-export async function getConfig(configFilePath: string, bankTest = false) {
-  let dirPath = "../../src/config/";
-  if (bankTest) {
-    dirPath = "../data/600-banks-test-data/";
-  }
-  const configJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, dirPath) + configFilePath, "utf-8"),
-  );
+export function getConfig(configFilePath: string) {
+  const configFile = fs.readFileSync(configFilePath, "utf-8");
+  const configJson = JSON.parse(configFile);
   return configJson;
 }
 
@@ -35,11 +26,13 @@ export async function getApiTestData(
   let apiUsers: Array<ApiUser> = [];
   const aidData = await buildAidData(configJson);
   for (const aid of aids) {
-    const clients = await getOrCreateClients(
-      1,
-      [aidData[aid].agent.secret],
-      true,
-    );
+    let secret;
+    if (aidData[aid].identifiers) {
+      secret = aidData[aidData[aid].identifiers[0]].agent.secret;
+    } else {
+      secret = aidData[aid].agent.secret;
+    }
+    const clients = await getOrCreateClients(1, [secret], true);
     const roleClient = clients[clients.length - 1];
     let apiUser: ApiUser = {
       ecrAid: null,
@@ -92,10 +85,11 @@ export function getReportGenTestData() {
       ? [getDefaultOrigReports()[0]]
       : getDefaultOrigReports();
 
-  console.log("Unsigned reports: ", unsignedReports);
+  const testPaths = TestPaths.getInstance();
+  console.log("Original unsigned reports: ", testPaths.testOrigReportsDir);
   return {
-    failDir: failDir,
-    signedDir: signedDir,
+    failDir: testPaths.testFailReports,
+    signedDir: testPaths.testSignedReports,
     reportTypes: reportTypes,
     unsignedReports: unsignedReports,
   };
@@ -116,20 +110,18 @@ export async function getGrantedCredential(
 }
 
 export function getDefaultOrigReports(): string[] {
+  const testPaths = TestPaths.getInstance();
   console.log(
-    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${origDir}`,
+    `UNSIGNED_REPORTS not set, getting default unsigned reports from ${testPaths.testOrigReportsDir}`,
   );
 
-  // Loop over the files in the ./data/orig_reports directory
-  const origReportsDir = path.join(__dirname, "..", "data", origDir);
-
-  const reports = fs.readdirSync(origReportsDir);
+  const reports = fs.readdirSync(testPaths.testOrigReportsDir);
   console.log("Available reports: ", reports);
 
   const unsignedReps = [] as string[];
   for (const reportFile of reports) {
     // const file = reports[0];
-    const filePath = path.join(origReportsDir, reportFile);
+    const filePath = path.join(testPaths.testOrigReportsDir, reportFile);
     unsignedReps.push(filePath);
   }
 

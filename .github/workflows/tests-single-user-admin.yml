@@ -1,0 +1,47 @@
+name: Run Singlesig Single User Admin Tests
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+  workflow_dispatch:
+jobs:
+  test-single-aid-singlesig-admin:
+    name: Run singlesig single user admin integration test using keria:${{ matrix.keria-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: signify-ts-test/
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        keria-version: ["0.2.0-dev3"]
+        node-version: ["20"]
+    env:
+      KERIA_IMAGE_TAG: ${{ matrix.keria-version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}       
+      - name: install deps
+        run: |
+          npm cache clean --force
+          npm set registry https://registry.npmjs.org/
+          npm ci     
+        
+      - name: Run docker
+        run: ./test-workflow.sh --docker=verify 
+      
+      - name: Build
+        run: ./test-workflow.sh --build
+
+      - name: Issue Credentials, Generate reports, API test, Verifier test
+        run: WORKFLOW=singlesig-single-user-admin.yaml CONFIGURATION=configuration-singlesig-single-user-admin.json ./test-workflow.sh --data-report-verify-proxy
+
+

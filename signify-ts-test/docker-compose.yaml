@@ -1,4 +1,15 @@
 services:
+  reg-webapp:
+    image: 2byrds/reg-webapp:latest
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 8s
+    ports:
+      - 3000:3000
+
   vlei-server:
     image: gleif/vlei
     environment:
@@ -75,16 +86,14 @@ services:
       - 5644:5644
 
   reg-pilot-api:
-    image: gleif/reg-pilot-api:dev
+    image: gleif/reg-pilot-api:latest
     ports:
       - 8000:8000
     environment:
       - ENABLE_CORS=true
-      - VERIFIER_AUTHORIZATIONS=http://vlei-verifier:7676/authorizations/
-      - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
+      - VLEI_VERIFIER=http://vlei-verifier:7676
       - FILER_REPORTS=http://reg-pilot-filer:7878/reports/
-      - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
-      - VERIFIER_ADD_ROT=http://vlei-verifier:7676/root_of_trust/
+      - FILER_ADMIN_UPLOAD_STATUSES=http://reg-pilot-filer:7878/admin/upload_statuses/
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
@@ -93,9 +102,11 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: gleif/vlei-verifier:dev
+    image: gleif/vlei-verifier:latest
     container_name: vlei-verifier
     hostname: vlei-verifier
+    environment:
+      - VERIFIER_CONFIG_FILE=verifier-config-test.json
     depends_on:
       - vlei-server
       - witness-demo
@@ -109,7 +120,7 @@ services:
       start_period: 2s
 
   reg-pilot-filer:
-    image: gleif/reg-pilot-filer:dev
+    image: gleif/reg-pilot-filer:latest
     container_name: reg-pilot-filer
     hostname: reg-pilot-filer
     ports:

@@ -1,7 +1,8 @@
 import { SignifyClient } from "signify-ts";
 import FormData from "form-data";
-import { getOrCreateClients } from "../test/utils/test-util";
+import { getOrCreateClients } from "./utils/test-util";
 import path from "path";
+import { convertDockerHost, TestEnvironment } from "./utils/resolve-env";
 import { string } from "mathjs";
 
 export class ApiAdapter {
@@ -9,9 +10,10 @@ export class ApiAdapter {
   filerBaseUrl: string = "";
   constructor(apiBaseUrl: string, filerBaseUrl: string) {
     this.apiBaseUrl = apiBaseUrl;
-    this.apiBaseUrl = apiBaseUrl.replace("127.0.0.1", "host.docker.internal");
     if (!filerBaseUrl || filerBaseUrl === "") {
-      console.log("Filer base URL not provided. Using API base URL.");
+      console.log(
+        `Filer base URL not provided. Using API base URL: ${apiBaseUrl}`,
+      );
       this.filerBaseUrl = apiBaseUrl;
     } else {
       console.log(`Filer base URL provided ${filerBaseUrl}`);
@@ -40,6 +42,19 @@ export class ApiAdapter {
     const heads = new Headers();
     const sreq = { headers: heads, method: "GET", body: null };
     const surl = `${this.apiBaseUrl}/status/${aidPrefix}`;
+    let shreq = await client.createSignedRequest(aidName, surl, sreq);
+    const sresp = await fetch(surl, shreq);
+    return sresp;
+  }
+
+  public async getReportsStatusAdmin(
+    aidName: string,
+    aidPrefix: string,
+    client: SignifyClient,
+  ): Promise<Response> {
+    const heads = new Headers();
+    const sreq = { headers: heads, method: "GET", body: null };
+    const surl = `${this.apiBaseUrl}/admin/upload_statuses/${aidPrefix}`;
     let shreq = await client.createSignedRequest(aidName, surl, sreq);
     const sresp = await fetch(surl, shreq);
     return sresp;
@@ -102,15 +117,31 @@ export class ApiAdapter {
     return resp;
   }
 
+  public hasGLEIFWithMultisig(data: any): boolean {
+    return data.users.some(
+      (user: any) =>
+        (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
+        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
+    );
+  }
+
   public async ebaUploadReport(
     aidName: string,
     fileName: string,
     zipBuffer: Buffer,
     client: SignifyClient,
     token: string,
+    envOverride?: TestEnvironment,
   ): Promise<Response> {
+    if (envOverride) {
+      this.apiBaseUrl = envOverride.apiBaseUrl;
+      this.filerBaseUrl = envOverride.filerBaseUrl;
+    }
     let formData = new FormData();
     let ctype = "application/zip";
+    console.log(
+      `Uploading EBA report ${fileName} for user ${aidName} of size: ${zipBuffer.length}`,
+    );
     formData.append("file", zipBuffer, {
       filename: `${fileName}`,
       contentType: `${ctype}`,
@@ -124,7 +155,7 @@ export class ApiAdapter {
         ...formData.getHeaders(),
         "errp-load-test": "74b63b0fd729",
         Authorization: `Bearer ${token}`,
-        uiversion: "1.3.10-474-FINAL-PILLAR3-trunk",
+        uiversion: "1.3.10-484-FINAL-master",
         "sec-ch-ua-platform": "macOS",
         "sec-ch-ua":
           '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
@@ -150,26 +181,32 @@ export class ApiAdapter {
     };
     // const url = `https://errp.test.eba.europa.eu/api/upload`;
     const url = `${this.filerBaseUrl}/upload`;
-    console.log(`EBA upload URL: ${url}`);
+
+    // const reqJsonString = JSON.stringify(req);
+    // const last500Chars = reqJsonString.slice(-500);
+    // console.log(`EBA upload URL: ${url} and last 500 chars of req: ${last500Chars}`);
+
     let sreq = await client.createSignedRequest(aidName, url, req);
     // const sreqBod = await sreq.text();
+    const startUpload = new Date().getTime();
     const resp = await fetch(url, sreq);
+    const endUpload = new Date().getTime();
+    console.log(
+      `EBA upload response for ${fileName} in ${
+        endUpload - startUpload
+      } ms: ${resp.status}`,
+    );
     return resp;
   }
 
-  public hasGLEIFWithMultisig(data: any): boolean {
-    return data.users.some(
-      (user: any) =>
-        (user.type === "GLEIF" || user.type === "GLEIF_EXTERNAL") &&
-        user.identifiers.some((id: any) => data.identifiers[id]?.identifiers),
-    );
-  }
-
-  public async addRootOfTrust(configJson: any): Promise<Response> {
+  public async addRootOfTrust(
+    configJson: any,
+    keriaHttpPort?: number,
+  ): Promise<Response> {
     if (this.hasGLEIFWithMultisig(configJson)) {
       return await this.addRootOfTrustMultisig(configJson);
     } else {
-      return await this.addRootOfTrustSinglesig(configJson);
+      return await this.addRootOfTrustSinglesig(configJson, keriaHttpPort);
     }
   }
 
@@ -233,7 +270,10 @@ export class ApiAdapter {
     return lresp;
   }
 
-  public async addRootOfTrustSinglesig(configJson: any): Promise<Response> {
+  public async addRootOfTrustSinglesig(
+    configJson: any,
+    keriaHttpPort?: number,
+  ): Promise<Response> {
     const rootOfTrustIdentifierName = configJson.users.filter(
       (usr: any) => usr.type == "GLEIF",
     )[0].identifiers[0];
@@ -248,6 +288,7 @@ export class ApiAdapter {
       [rootOfTrustIdentifierSecret],
       true,
     );
+
     const client = clients[clients.length - 1];
     const rootOfTrustAid = await client
       .identifiers()
@@ -260,16 +301,20 @@ export class ApiAdapter {
     // if (url.hostname === "keria")
     // oobiUrl = oobiUrl.replace("keria", "localhost");
     // console.log(`OobiUrl: ${oobiUrl}`);
-    if (url.hostname === "keria")
-      oobiUrl = oobiUrl.replace("keria", "host.docker.internal");
-    if (process.env.KERIA_AGENT_PORT) {
-      oobiUrl = oobiUrl.replace("3902", process.env.KERIA_AGENT_PORT);
+    console.log(`Original OobiUrl ${oobiUrl}`);
+    if (url.hostname === "keria") {
+      oobiUrl = convertDockerHost(oobiUrl, "keria");
     }
-    // console.log(`OobiUrl: ${oobiUrl}`);
+    if (keriaHttpPort) {
+      oobiUrl = oobiUrl.replace("3902", keriaHttpPort.toString());
+      console.log(`Replaced OobiUrl port ${url.port}: ${oobiUrl}`);
+    }
+    console.log(`Fetcching OobiUrl: ${oobiUrl}`);
     const oobiResp = await fetch(oobiUrl);
     const oobiRespBody = await oobiResp.text();
     const heads = new Headers();
     heads.set("Content-Type", "application/json");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
     let lbody = {
       vlei: oobiRespBody,
       aid: rootOfTrustAid.prefix,
@@ -281,6 +326,8 @@ export class ApiAdapter {
       body: JSON.stringify(lbody),
     };
     const lurl = `${this.apiBaseUrl}/add_root_of_trust`;
+    console.log("Adding test Root of trust URL: ", lurl);
+    console.log("Adding test Root of trust Req: ", lreq);
     const lresp = await fetch(lurl, lreq);
     return lresp;
   }

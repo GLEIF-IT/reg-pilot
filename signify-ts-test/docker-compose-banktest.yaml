@@ -75,16 +75,12 @@ services:
       - 5644:5644
 
   reg-pilot-api:
-    image: gleif/reg-pilot-api:dev
+    image: gleif/reg-pilot-api:0.1.0
     ports:
       - 8000:8000
     environment:
-      - ENABLE_CORS=true
-      - VERIFIER_AUTHORIZATIONS=http://vlei-verifier:7676/authorizations/
-      - VERIFIER_PRESENTATIONS=http://vlei-verifier:7676/presentations/
-      - FILER_REPORTS=http://reg-pilot-filer:7878/reports/
-      - VERIFIER_REQUESTS=http://vlei-verifier:7676/request/verify/
-      - VERIFIER_ADD_ROT=http://vlei-verifier:7676/root_of_trust/
+      - VLEI_VERIFIER=http://vlei-verifier:7676/
+      - FILER_REPORTS=http://vlei-verifier:7676/reports/
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://reg-pilot-api:8000/ping"]
       interval: 2s
@@ -93,7 +89,7 @@ services:
       start_period: 2s
 
   vlei-verifier:
-    image: gleif/vlei-verifier:dev
+    image: gleif/vlei-verifier:0.0.3
     container_name: vlei-verifier
     hostname: vlei-verifier
     depends_on:
@@ -101,12 +97,21 @@ services:
       - witness-demo
     ports:
       - 7676:7676
+    environment:
+      - KERI_BASER_MAP_SIZE=500000000
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://vlei-verifier:7676/health"]
       interval: 2s
       timeout: 3s
       retries: 5
       start_period: 2s
+    deploy:
+      resources:
+        limits:
+          memory: 2000M
+        reservations:
+          cpus: "0.5"
+          memory: 128M
 
   reg-pilot-filer:
     image: gleif/reg-pilot-filer:dev
@@ -130,6 +135,4 @@ services:
       reg-pilot-api:
         condition: service_healthy
       vlei-verifier:
-        condition: service_healthy
-      reg-pilot-filer:
         condition: service_healthy

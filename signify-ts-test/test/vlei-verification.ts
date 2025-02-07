@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { resolveEnvironment, TestEnvironment } from "./utils/resolve-env";
+import { TestEnvironment } from "../src/utils/resolve-env";
 import { HabState, SignifyClient } from "signify-ts";
 import fs from "fs";
 import path from "path";
@@ -8,7 +8,7 @@ import {
   getApiTestData,
   getConfig,
   isEbaDataSubmitter,
-} from "./utils/test-data";
+} from "../src/utils/test-data";
 import { buildUserData } from "../src/utils/handle-json-config";
 import { ApiAdapter } from "../src/api-adapter";
 
@@ -20,42 +20,24 @@ let apiAdapter: ApiAdapter;
 
 afterEach(async () => {});
 
-beforeAll(async () => {
-  env = resolveEnvironment();
-  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
-});
+beforeAll(async () => {});
 
-// This test assumes you have run a vlei test that sets up the
-// role identifiers and Credentials.
-// It also assumes you have generated the different report files
-// from the report test
-if (require.main === module) {
-  test("vlei-verification", async function run() {
-    const configFilePath = env.configuration;
-    const configJson = await getConfig(configFilePath, false);
-    let users = await buildUserData(configJson);
-    users = users.filter((user) => user.type === "ECR");
-    const apiUsers = await getApiTestData(
-      configJson,
-      env,
-      users.map((user) => user.identifiers[0].name),
-    );
-    await run_vlei_verification_test(apiUsers, configJson);
-  }, 100000);
-}
 export async function run_vlei_verification_test(
   users: ApiUser[],
   configJson: any,
 ) {
-  await apiAdapter.addRootOfTrust(configJson);
+  env = TestEnvironment.getInstance();
+  apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+
+  await apiAdapter.addRootOfTrust(configJson, env.testKeria.keriaHttpPort);
   for (const user of users) {
-    await vlei_verification(user);
+    await vlei_verification(user, env);
   }
 }
 
 module.exports = { run_vlei_verification_test };
 
-async function vlei_verification(user: ApiUser) {
+export async function vlei_verification(user: ApiUser, env: TestEnvironment) {
   try {
     let hpath = "/health";
     let hreq = { method: "GET", body: null };
@@ -76,6 +58,7 @@ async function vlei_verification(user: ApiUser) {
 
     let heads = new Headers();
     heads.set("Content-Type", "application/json+cesr");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
     let preq = { headers: heads, method: "PUT", body: ecrCredCesr };
     let ppath = `/presentations/${ecrCred.sad.d}`;
     let presp = await fetch(env.verifierBaseUrl + ppath, preq);
@@ -96,6 +79,7 @@ async function vlei_verification(user: ApiUser) {
 
     heads = new Headers();
     heads.set("method", "POST");
+    heads.set("Connection", "close"); // avoids debugging fetch failures
 
     let vurl = `${env.verifierBaseUrl}/request/verify/${user.ecrAid.prefix}?${params}`;
     let vreq = await user.roleClient.createSignedRequest(user.idAlias, vurl, {

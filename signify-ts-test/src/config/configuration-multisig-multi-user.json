@@ -168,6 +168,7 @@
     },
     "qvi-multisig-1": {
       "name": "qvi-multisig-1",
+      "delegator": "gleif-multisig-1",
       "identifiers": ["qvi-aid-1", "qvi-aid-2", "qvi-aid-3"],
       "isith": ["2/3", "1/2", "1/2"],
       "nsith": ["2/3", "1/2", "1/2"]

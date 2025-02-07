@@ -58,5 +58,5 @@ workflow:
       type: "api_test"
       aids: ["ecr-aid-1"]
       description: "Running API test for ecr-aid-1 user"
-      test_case: "revoked_cred_upload_test"
+      test_case: "api_test_revocation"
       requestor_aid: "qvi-aid-1"

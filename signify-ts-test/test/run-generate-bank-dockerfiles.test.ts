@@ -1,10 +1,11 @@
 import * as fs from "fs";
 import { number } from "mathjs";
 import * as path from "path";
+import { convertDockerHost } from "../src/utils/resolve-env";
 
-const baseKeriaUrl = 20001;
-const baseKeriaBootUrl = 20003;
-const baseKeriaAgentPort = 20002;
+const keriaAdminPort = 20001;
+const keriaBootPort = 20003;
+const keriaHttpPort = 20002;
 const outputDir = "../images";
 
 // Run containers with --network host to have access to the locally running Kerias(ex. docker run --network host bank_1_api_test)
@@ -33,18 +34,20 @@ function generateDockerfiles(
     testName = "api-verifier-bank-test-workflow";
   }
 
+  const apiBaseUrl = process.env.REG_PILOT_API;
+  const filerBaseUrl = process.env.REG_PILOT_FILER;
+
   // Generate Dockerfiles
   const lastbank = firstbank + bankAmount - 1;
+
   for (let i = firstbank; i <= lastbank; i++) {
     const bankName = `Bank_${i}`;
-    const keriaUrl = `http://host.docker.internal:${baseKeriaUrl + (i - 1) * 10}`;
-    const keriaBootUrl = `http://host.docker.internal:${baseKeriaBootUrl + (i - 1) * 10}`;
-    // const apiBaseUrl = process.env.REG_PILOT_API;
-    // const filerBaseUrl = process.env.REG_PILOT_FILER;
-    // ENV TEST_ENVIRONMENT=${process.env.TEST_ENVIRONMENT}
-    // ENV REG_PILOT_FILER=${filerBaseUrl}
-    // ENV REG_PILOT_API=${apiBaseUrl}
-
+    const offset = (i - 1) * 10;
+    const kAdminPort = keriaAdminPort + offset;
+    const kHttpPort = keriaHttpPort + offset;
+    const kBootPort = keriaBootPort + offset;
+    const keriaAdminUrl = convertDockerHost(`http://localhost:${kAdminPort}`);
+    const keriaBootUrl = convertDockerHost(`http://localhost:${kBootPort}`);
     const dockerfileContent = `
   # Use a base image with the correct platform
   FROM node:20-alpine AS base
@@ -56,17 +59,23 @@ function generateDockerfiles(
   RUN npm install --legacy-peer-deps
   
   RUN npm run build
+  ENV TEST_ENVIRONMENT=${process.env.TEST_ENVIRONMENT}
+  ENV BANK_NUM=${i}
   ENV BANK_NAME=${bankName}
-  ENV KERIA=${keriaUrl}
+  ENV KERIA=${keriaAdminUrl}
   ENV KERIA_BOOT=${keriaBootUrl}
-  ENV KERIA_AGENT_PORT=${baseKeriaAgentPort + (i - 1) * 10} 
+  ENV KERIA_ADMIN_PORT=${kAdminPort}
+  ENV KERIA_HTTP_PORT=${kHttpPort} 
+  ENV REG_PILOT_API=${apiBaseUrl}
+  ENV REG_PILOT_FILER=${filerBaseUrl}
+  # ENV USE_DOCKER_INTERNAL=${process.env.USE_DOCKER_INTERNAL}
   
-  CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank-api.test.ts"]
+  CMD ["npx", "jest", "--testNamePattern", "${testName}", "start", "./test/run-workflow-bank.test.ts"]
   `;
 
     // Write the Dockerfile to the output directory
     const filePath = path.join(outputDir, `bank_${i}.dockerfile`);
     fs.writeFileSync(filePath, dockerfileContent.trim());
-    console.log(`Generated: ${filePath}`);
+    console.log(`Generated: ${filePath} with content: ${dockerfileContent}`);
   }
 }

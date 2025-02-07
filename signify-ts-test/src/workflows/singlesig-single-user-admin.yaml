@@ -1,0 +1,87 @@
+workflow:
+  steps:
+    qvi_cred:
+      id: "qvi_cred"
+      type: "issue_credential"
+      attributes:
+        LEI: "254900OPPU84GM83MG36"
+      issuer_aid: "gleif-aid-1"
+      issuee_aid: "qvi-aid-1"
+      description: "GLEIF issues QVI vLEI credential"
+      credential: "gleif_to_qvi_vlei_cred"
+    le_cred:
+      id: "le_cred"
+      type: "issue_credential"
+      attributes:
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "qvi-aid-1"
+      issuee_aid: "le-aid-1"
+      description: "QVI issues LE vLEI credential"
+      credential: "qvi_to_le_vlei_cred"
+      credential_source: "qvi_cred"
+    ecr_cred:
+      id: "ecr_cred"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-aid-1"
+      description: "LE issues ECR vLEI credential"
+      credential: "le_to_ecr_vlei_cred"
+      credential_source: "le_cred"
+    ecr_cred2:
+      id: "ecr_cred2"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-aid-2"
+      description: "LE issues ECR vLEI credential"
+      credential: "le_to_ecr_vlei_cred"
+      credential_source: "le_cred"
+    ecr_cred3:
+      id: "ecr_cred3"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-aid-3"
+      description: "LE issues ECR vLEI credential"
+      credential: "le_to_ecr_vlei_cred"
+      credential_source: "le_cred"
+    ecr_admin_cred:
+      id: "ecr_admin_cred"
+      type: "issue_credential"
+      attributes:
+        personLegalName: "John Doe"
+        LEI: "875500ELOZEL05BVXV37"
+      issuer_aid: "le-aid-1"
+      issuee_aid: "ecr-admin-aid-1"
+      description: "LE issues ECR vLEI credential"
+      credential: "le_to_ecr_admin_vlei_cred"
+      credential_source: "le_cred"
+    gen_report_ecr1:
+      id: "gen_report_ecr1"
+      type: "generate_report"
+      aid: "ecr-aid-1"
+      description: "Generating reports for ecr-aid-1 user"
+    gen_report_ecr2:
+      id: "gen_report_ecr2"
+      type: "generate_report"
+      aid: "ecr-aid-2"
+      description: "Generating reports for ecr-aid-2 user"
+    gen_report_ecr3:
+      id: "gen_report_ecr3"
+      type: "generate_report"
+      aid: "ecr-aid-3"
+      description: "Generating reports for ecr-aid-3 user"
+    api_test_admin:
+      id: "api_test_admin"
+      type: "api_test"
+      test_case: "api_test_admin"
+      aids: ["ecr-aid-1", "ecr-aid-2", "ecr-aid-3"]
+      admin_aid: "ecr-admin-aid-1"
+      description: "Running API test for ecr-aid-1 user"
