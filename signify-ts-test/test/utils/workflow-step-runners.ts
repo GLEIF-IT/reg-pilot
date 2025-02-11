@@ -28,14 +28,14 @@ export class GenerateReportXmlStepRunner extends StepRunner {
     vi: VleiIssuance,
     stepName: string,
     step: any,
-    configJson: any
+    configJson: any,
   ): Promise<any> {
     const testData = getReportGenTestData();
     const aidData = await buildAidData(configJson);
     const clients = await getOrCreateClients(
       1,
       [aidData[step.aid].agent.secret],
-      true
+      true,
     );
     const roleClient = clients[0];
     const ecrAid = await roleClient.identifiers().get(step.aid);
@@ -44,20 +44,20 @@ export class GenerateReportXmlStepRunner extends StepRunner {
       __dirname,
       "../data",
       testData["failDir"],
-      ecrAid.prefix
+      ecrAid.prefix,
     );
     const signedDirPrefixed = path.join(
       __dirname,
       "../data",
       testData["signedDir"],
-      ecrAid.prefix
+      ecrAid.prefix,
     );
     const result = await generate_reports(
       ecrAid.prefix,
       keeper,
       testData["unsignedReports"],
       testData["reportTypes"],
-      step.copy_folder
+      step.copy_folder,
     );
     return result;
   }
@@ -69,7 +69,7 @@ export class GenerateReportStepRunner extends StepRunner {
     vi: VleiIssuance,
     stepName: string,
     step: any,
-    configJson: any
+    configJson: any,
   ): Promise<any> {
     const paths = TestPaths.getInstance();
     const zipWithCopies = createZipWithCopies(
@@ -77,7 +77,7 @@ export class GenerateReportStepRunner extends StepRunner {
       paths.testUserName,
       paths.maxReportMb,
       paths.refreshTestData,
-      paths.testUserNum
+      paths.testUserNum,
     );
     paths.testReportGeneratedUnsignedZip = zipWithCopies;
   }
@@ -89,7 +89,7 @@ export class SignReportStepRunner extends StepRunner {
     vi: VleiIssuance,
     stepName: string,
     step: any,
-    configJson: any
+    configJson: any,
   ): Promise<any> {
     const env = TestEnvironment.getInstance();
     const paths = TestPaths.getInstance();
@@ -100,7 +100,7 @@ export class SignReportStepRunner extends StepRunner {
       paths.testReportGeneratedUnsignedZip,
       paths.testSignedReports,
       user.ecrAid.prefix,
-      keeper
+      keeper,
     );
   }
 }
@@ -111,7 +111,7 @@ export class ApiTestStepRunner extends StepRunner {
     vi: VleiIssuance,
     stepName: string,
     step: any,
-    configJson: any
+    configJson: any,
   ): Promise<any> {
     let env = TestEnvironment.getInstance();
     const apiUsers = await getApiTestData(configJson, env, step.aids);
@@ -121,7 +121,7 @@ export class ApiTestStepRunner extends StepRunner {
       const clients = await getOrCreateClients(
         1,
         [aidData[step.requestor_aid].agent.secret],
-        true
+        true,
       );
       const roleClient = clients[clients.length - 1];
       const requestorAid = await roleClient
@@ -132,7 +132,7 @@ export class ApiTestStepRunner extends StepRunner {
         roleClient,
         step.requestor_aid,
         requestorAidPrefix,
-        new Map() // TODO: instead of new Map() must be map of creds.
+        new Map(), // TODO: instead of new Map() must be map of creds.
       );
     } else if (step.test_case == "api_test_admin") {
       const adminUser = await getApiTestData(configJson, env, [step.admin_aid]);
@@ -156,7 +156,7 @@ export class VleiVerificationTestStepRunner extends StepRunner {
     vi: VleiIssuance,
     stepName: string,
     step: any,
-    configJson: any = null
+    configJson: any = null,
   ): Promise<any> {
     let env = TestEnvironment.getInstance();
     const apiUsers = await getApiTestData(configJson, env, step.aids);

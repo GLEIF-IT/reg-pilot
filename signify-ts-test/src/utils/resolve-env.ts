@@ -294,12 +294,15 @@ export class TestKeria {
           `Container State: ${portInUse.State}\n` +
           `Container Status: ${portInUse.Status}`,
       );
-      if (pullImage) { 
-        console.log(`Existing container running on ${portInUse}, stopping that one`)
+      if (pullImage) {
+        console.log(
+          `Existing container running on ${portInUse}, stopping that one`,
+        );
         await pContainer.stop();
-      }
-      else {
-        console.log(`Existing container running on ${portInUse}, using that one`)
+      } else {
+        console.log(
+          `Existing container running on ${portInUse}, using that one`,
+        );
         container = pContainer;
       }
     }

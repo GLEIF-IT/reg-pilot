@@ -103,7 +103,7 @@ console.log(
   "refresh:",
   refresh,
   "clean:",
-  clean
+  clean,
 );
 
 beforeAll(async () => {
@@ -125,7 +125,7 @@ test("api-verifier-bank-test-workflow", async function run() {
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "bank-api-verifier-test-workflow.yaml"
+    "bank-api-verifier-test-workflow.yaml",
   );
   const workflow = loadWorkflow(workflowPath);
 
@@ -142,7 +142,7 @@ test("api-verifier-bank-test-workflow", async function run() {
 
 test("eba-verifier-prep-only", async function run() {
   console.warn(
-    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test"
+    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test",
   );
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
@@ -159,7 +159,7 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "eba-verifier-test-workflow.yaml"
+    "eba-verifier-test-workflow.yaml",
   );
   const workflow = loadWorkflow(workflowPath);
 
@@ -176,7 +176,7 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
 test("vlei-issuance-reports-bank-test-workflow", async function run() {
   console.log(
-    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`
+    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`,
   );
   process.env.REPORT_TYPES = SIMPLE_TYPE;
 
@@ -187,7 +187,7 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
   configJson = await getConfig(testPaths.testUserConfigFile);
 
   console.log(
-    `Running vlei issuance and reports generation test for bank: ${bankName}`
+    `Running vlei issuance and reports generation test for bank: ${bankName}`,
   );
   const bankDirPath = testPaths.testUserDir;
   const workflowName = "workflow.yaml";
@@ -201,7 +201,7 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
     wr.registerRunner("api_test", new ApiTestStepRunner());
     wr.registerRunner(
       "vlei_verification_test",
-      new VleiVerificationTestStepRunner()
+      new VleiVerificationTestStepRunner(),
     );
     const workflowRunResult = await wr.runWorkflow();
     assert.equal(workflowRunResult, true);

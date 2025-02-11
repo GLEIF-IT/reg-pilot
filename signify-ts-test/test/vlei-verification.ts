@@ -12,7 +12,7 @@ let apiAdapter: ApiAdapter;
 // afterEach(async () => {});
 
 // beforeAll(async () => {
-//   const testKeria = 
+//   const testKeria =
 //   env = TestEnvironment.getInstance("docker",);
 //   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
 // });

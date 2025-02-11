@@ -58,7 +58,14 @@ import {
 
 import { ApiUser } from "./utils/test-data";
 import { TestEnvironment } from "./utils/resolve-env";
-import { buildCredentials, buildTestData, buildUserData, CredentialInfo, EcrTestData, User } from "vlei-verifier-workflows";
+import {
+  buildCredentials,
+  buildTestData,
+  buildUserData,
+  CredentialInfo,
+  EcrTestData,
+  User,
+} from "vlei-verifier-workflows";
 
 export class VleiIssuance {
   configPath: string = "config/";
