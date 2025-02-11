@@ -29,9 +29,12 @@
     "mathjs": "^12.4.0",
     "minimist": "^1.2.8",
     "signify-ts": "github:weboftrust/signify-ts#main",
-    "structured-headers": "^0.5.0"
+    "structured-headers": "^0.5.0",
+    "vlei-verifier-workflows": "^0.0.2"
   },
   "devDependencies": {
+    "@babel/preset-typescript": "^7.26.0",
+    "@jest/globals": "^29.7.0",
     "@mermaid-js/mermaid-cli": "^10.6.1",
     "@types/adm-zip": "^0.5.5",
     "@types/dockerode": "^3.3.32",
@@ -54,7 +57,7 @@
     "jsdoc": "^4.0.2",
     "minami": "^1.2.3",
     "prettier": "^3.3.3",
-    "ts-jest": "^29.1.1",
+    "ts-jest": "^29.2.5",
     "ts-mockito": "^2.6.1",
     "ts-node": "^10.9.1",
     "typedoc": "^0.25.3",

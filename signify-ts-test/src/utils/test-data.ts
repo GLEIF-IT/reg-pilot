@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import { buildAidData } from "./handle-json-config";
+import { buildAidData } from "vlei-verifier-workflows";
 import { TestEnvironment, TestPaths } from "./resolve-env";
 import { getOrCreateClients } from "./test-util";
 import { ECR_SCHEMA_SAID } from "../constants";

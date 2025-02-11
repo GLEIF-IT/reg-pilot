@@ -1,15 +1,6 @@
 import { strict as assert } from "assert";
 import { TestEnvironment } from "../src/utils/resolve-env";
-import { HabState, SignifyClient } from "signify-ts";
-import fs from "fs";
-import path from "path";
-import {
-  ApiUser,
-  getApiTestData,
-  getConfig,
-  isEbaDataSubmitter,
-} from "../src/utils/test-data";
-import { buildUserData } from "../src/utils/handle-json-config";
+import { ApiUser, isEbaDataSubmitter } from "../src/utils/test-data";
 import { ApiAdapter } from "../src/api-adapter";
 
 const secretsJsonPath = "../src/config/";
@@ -18,10 +9,34 @@ const ECR_SCHEMA_SAID = "EEy9PkikFcANV1l7EHukCeXqrzT1hNZjGlUk7wuMO5jw";
 let env: TestEnvironment;
 let apiAdapter: ApiAdapter;
 
-afterEach(async () => {});
+// afterEach(async () => {});
 
-beforeAll(async () => {});
+// beforeAll(async () => {
+//   const testKeria = 
+//   env = TestEnvironment.getInstance("docker",);
+//   apiAdapter = new ApiAdapter(env.apiBaseUrl, env.filerBaseUrl);
+// });
 
+// This test assumes you have run a vlei test that sets up the
+// role identifiers and Credentials.
+// It also assumes you have generated the different report files
+// from the report test
+// if (require.main === module) {
+//   test("vlei-verification", async function run() {
+//     const configFileName = env.configuration;
+//     let dirPath = "../src/config/";
+//     const configFilePath = path.join(__dirname, dirPath) + configFileName;
+//     const configJson = await getConfig(configFilePath);
+//     let users = await buildUserData(configJson);
+//     users = users.filter((user) => user.type === "ECR");
+//     const apiUsers = await getApiTestData(
+//       configJson,
+//       env,
+//       users.map((user) => user.identifiers[0].name),
+//     );
+//     await run_vlei_verification_test(apiUsers, configJson);
+//   }, 100000);
+// }
 export async function run_vlei_verification_test(
   users: ApiUser[],
   configJson: any,

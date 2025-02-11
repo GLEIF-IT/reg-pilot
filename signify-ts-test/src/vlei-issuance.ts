@@ -56,17 +56,9 @@ import {
   OOR_SCHEMA_SAID,
 } from "./constants";
 
-import {
-  User,
-  CredentialInfo,
-  buildUserData,
-  buildCredentials,
-} from "./utils/handle-json-config";
-import fs from "fs";
-import path from "path";
-import { buildTestData, EcrTestData } from "./utils/generate-test-data";
 import { ApiUser } from "./utils/test-data";
 import { TestEnvironment } from "./utils/resolve-env";
+import { buildCredentials, buildTestData, buildUserData, CredentialInfo, EcrTestData, User } from "vlei-verifier-workflows";
 
 export class VleiIssuance {
   configPath: string = "config/";

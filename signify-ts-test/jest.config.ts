@@ -10,6 +10,9 @@ const config: Config = {
       tsconfig: "tsconfig.json",
     },
   },
+  transform: {
+    "^.+\\.tsx?$": ["ts-jest", { useESM: true }],
+  },
 };
 
 export default config;

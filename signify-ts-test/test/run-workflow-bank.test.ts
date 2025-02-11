@@ -5,12 +5,22 @@ import {
   TestKeria,
   TestPaths,
 } from "../src/utils/resolve-env";
+import {
+  WorkflowRunner,
+  getConfig,
+  loadWorkflow,
+} from "vlei-verifier-workflows";
 
-import { getConfig, SIMPLE_TYPE } from "../src/utils/test-data";
-
-import { loadWorkflow, runWorkflow } from "../src/utils/run-workflow";
+import { SIMPLE_TYPE } from "../src/utils/test-data";
 
 import { downloadConfigWorkflowReports } from "../src/utils/bank-reports";
+import {
+  ApiTestStepRunner,
+  GenerateReportStepRunner,
+  SignReportStepRunner,
+  VleiVerificationTestStepRunner,
+} from "./utils/workflow-step-runners";
+import assert from "assert";
 
 let testPaths: TestPaths;
 let env: TestEnvironment;
@@ -63,7 +73,7 @@ const offset = 10 * (bankNum - 1);
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
 testPaths = TestPaths.getInstance(bankName);
-const testKeria = TestKeria.getInstance(testPaths, 20001, 20002, 20003, offset);
+const testKeria = TestKeria.getInstance(testPaths, 3901, 3902, 3903, offset);
 
 // set test data for workflow
 testPaths.testUserName = bankName;
@@ -93,7 +103,7 @@ console.log(
   "refresh:",
   refresh,
   "clean:",
-  clean,
+  clean
 );
 
 beforeAll(async () => {
@@ -111,26 +121,32 @@ test("api-verifier-bank-test-workflow", async function run() {
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
   // await generateBankConfig(bankNum);
-  configJson = getConfig(testPaths.testUserConfigFile);
+  configJson = await getConfig(testPaths.testUserConfigFile);
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "bank-api-verifier-test-workflow.yaml",
+    "bank-api-verifier-test-workflow.yaml"
   );
   const workflow = loadWorkflow(workflowPath);
 
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env, testPaths);
+    const wr = new WorkflowRunner(workflow, configJson);
+    await wr.prepareClients();
+    wr.registerRunner("generate_report", new GenerateReportStepRunner());
+    wr.registerRunner("api_test", new ApiTestStepRunner());
+    wr.registerRunner("sign_report", new SignReportStepRunner());
+    const workflowRunResult = await wr.runWorkflow();
+    assert.equal(workflowRunResult, true);
   }
 }, 3600000);
 
 test("eba-verifier-prep-only", async function run() {
   console.warn(
-    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test",
+    "eba-verifier-prep-only is not a real test but allows for the preparation of the EBA verifier test"
   );
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
-  configJson = getConfig(testPaths.testUserConfigFile);
+  configJson = await getConfig(testPaths.testUserConfigFile);
 });
 
 test("eba-verifier-bank-test-workflow", async function run() {
@@ -139,22 +155,28 @@ test("eba-verifier-bank-test-workflow", async function run() {
 
   await downloadConfigWorkflowReports(bankName, false, false, false, refresh);
   // await generateBankConfig(bankNum);
-  configJson = getConfig(testPaths.testUserConfigFile);
+  configJson = await getConfig(testPaths.testUserConfigFile);
 
   const workflowPath = path.join(
     testPaths.workflowsDir,
-    "eba-verifier-test-workflow.yaml",
+    "eba-verifier-test-workflow.yaml"
   );
   const workflow = loadWorkflow(workflowPath);
 
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env, testPaths);
+    const wr = new WorkflowRunner(workflow, configJson);
+    await wr.prepareClients();
+    wr.registerRunner("generate_report", new GenerateReportStepRunner());
+    wr.registerRunner("api_test", new ApiTestStepRunner());
+    wr.registerRunner("sign_report", new SignReportStepRunner());
+    const workflowRunResult = await wr.runWorkflow();
+    assert.equal(workflowRunResult, true);
   }
 }, 3600000);
 
 test("vlei-issuance-reports-bank-test-workflow", async function run() {
   console.log(
-    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`,
+    `Running vlei-issuance-reports-bank-test-workflow for bank: ${bankName}`
   );
   process.env.REPORT_TYPES = SIMPLE_TYPE;
 
@@ -162,10 +184,10 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
 
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
   // await generateBankConfig(bankNum);
-  configJson = getConfig(testPaths.testUserConfigFile);
+  configJson = await getConfig(testPaths.testUserConfigFile);
 
   console.log(
-    `Running vlei issuance and reports generation test for bank: ${bankName}`,
+    `Running vlei issuance and reports generation test for bank: ${bankName}`
   );
   const bankDirPath = testPaths.testUserDir;
   const workflowName = "workflow.yaml";
@@ -173,6 +195,15 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
   const workflow = loadWorkflow(workflowPath);
 
   if (workflow && configJson) {
-    await runWorkflow(workflow, configJson, env, testPaths);
+    const wr = new WorkflowRunner(workflow, configJson);
+    await wr.prepareClients();
+    wr.registerRunner("generate_report", new GenerateReportStepRunner());
+    wr.registerRunner("api_test", new ApiTestStepRunner());
+    wr.registerRunner(
+      "vlei_verification_test",
+      new VleiVerificationTestStepRunner()
+    );
+    const workflowRunResult = await wr.runWorkflow();
+    assert.equal(workflowRunResult, true);
   }
 }, 3600000);
