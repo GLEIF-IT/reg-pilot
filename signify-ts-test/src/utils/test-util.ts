@@ -1,4 +1,3 @@
-import FormData from "form-data";
 import signify, {
   CreateIdentiferArgs,
   EventResult,
@@ -13,7 +12,16 @@ import signify, {
 } from "signify-ts";
 import { RetryOptions, retry } from "./retry";
 import assert from "assert";
-import { resolveEnvironment } from "./resolve-env";
+import {
+  KeriaConfig,
+  TestEnvironment,
+  TestKeria,
+  TestPaths,
+} from "./resolve-env";
+import Docker from "dockerode";
+import axios from "axios";
+import { exec } from "child_process";
+import net from "net";
 
 export interface Aid {
   name: string;
@@ -183,15 +191,22 @@ export async function getOrCreateClient(
   bran: string | undefined = undefined,
   getOnly: boolean = false,
 ): Promise<SignifyClient> {
-  const env = resolveEnvironment();
+  const env = TestEnvironment.getInstance();
   await ready();
   bran ??= randomPasscode();
   bran = bran.padEnd(21, "_");
-  const client = new SignifyClient(env.url, bran, Tier.low, env.bootUrl);
+  const client = new SignifyClient(
+    env.keriaAdminUrl,
+    bran,
+    Tier.low,
+    env.keriaBootUrl,
+  );
   try {
+    console.log("KERIA client connecting to ", env.keriaAdminUrl);
     await client.connect();
   } catch (e: any) {
     if (!getOnly) {
+      console.log("KERIA client connecting to ", env.keriaBootUrl);
       const res = await client.boot();
       if (!res.ok) throw new Error();
       await client.connect();
@@ -282,7 +297,7 @@ export async function getOrCreateIdentifier(
     // console.log("identifiers.get", identfier);
     id = identfier.prefix;
   } catch {
-    const env = resolveEnvironment();
+    const env = TestEnvironment.getInstance();
     kargs ??=
       env.witnessIds.length > 0
         ? { toad: env.witnessIds.length, wits: env.witnessIds }
@@ -305,6 +320,9 @@ export async function getOrCreateIdentifier(
 
   const oobi = await client.oobis().get(name, "agent");
   const result: [string, string] = [id, oobi.oobis[0]];
+
+  assert(oobi.oobis.length > 0);
+  assert(oobi.oobis[0] !== undefined);
   console.log(name, result);
   return result;
 }
@@ -626,4 +644,195 @@ export async function sendAdmitMessage(
   op = await waitOperation(senderClient, op);
 
   await markAndRemoveNotification(senderClient, grantNotification);
+}
+
+export async function dockerLogin(
+  username: string,
+  password: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    exec(
+      `docker login -u ${username} -p ${password}`,
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error logging into Docker: ${stderr}`);
+          return reject(error);
+        }
+        console.log(`Docker login successful: ${stdout}`);
+        resolve();
+      },
+    );
+  });
+}
+
+export async function pullContainer(
+  docker: Docker,
+  kimageName: string,
+): Promise<void> {
+  // Pull Docker image
+  await new Promise<void>((resolve, reject) => {
+    docker.pull(kimageName, (err: any, stream: NodeJS.ReadableStream) => {
+      if (err) return reject(err);
+      docker.modem.followProgress(stream, onFinished, onProgress);
+
+      function onFinished(err: any, output: any) {
+        if (err) return reject(err);
+        resolve();
+      }
+
+      function onProgress(event: any) {
+        console.log(event);
+      }
+    });
+  });
+}
+
+// Function to perform health check
+export async function performHealthCheck(
+  url: string,
+  timeout: number = 12000,
+  interval: number = 1000,
+) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const response = await axios.get(url);
+      if (response.status === 200) {
+        console.log("Service is healthy");
+        return;
+      }
+    } catch (error) {
+      console.log(`Waiting for service to be healthy ${url}: ${error}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+  throw new Error(`Service at ${url} did not become healthy in time`);
+}
+
+export async function runDockerCompose(
+  file: string,
+  command: string,
+  service: string,
+): Promise<boolean> {
+  const running = await isDockerComposeRunning(file);
+  if (!running) {
+    console.log(
+      `Starting docker compose command: ${file} ${command} ${service}`,
+    );
+    return new Promise((resolve, reject) => {
+      exec(
+        `docker compose -f ${file} ${command} ${service}`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error running docker compose command: ${stderr}`);
+            return reject(error);
+          }
+          console.log(stdout);
+          resolve(true);
+        },
+      );
+    });
+  } else {
+    console.log(
+      `Docker compose is already running: ${file} ${command} ${service}`,
+    );
+    return running;
+  }
+}
+
+export async function stopDockerCompose(
+  file: string,
+  command: string,
+  service: string,
+): Promise<boolean> {
+  const running = await isDockerComposeRunning(file);
+  if (running) {
+    console.log(
+      `Stopping docker compose command: ${file} ${command} ${service}`,
+    );
+    return new Promise((resolve, reject) => {
+      exec(
+        `docker compose -f ${file} ${command} ${service}`,
+        (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error stopping docker compose command: ${stderr}`);
+            return reject(error);
+          }
+          console.log(stdout);
+          resolve(true);
+        },
+      );
+    });
+  } else {
+    console.log(
+      `Docker compose is already stopped: ${file} ${command} ${service}`,
+    );
+    return running;
+  }
+}
+
+function isPortInUse(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once("error", () => resolve(true));
+    server.once("listening", () => {
+      server.close(() => resolve(false));
+    });
+    server.listen(port);
+  });
+}
+
+export async function isDockerComposeRunning(
+  file: string,
+  vleiServerPort: number = 7723,
+  witnessPort: number = 5642,
+  verifierPort: number = 7676,
+  apiPort: number = 8000,
+): Promise<boolean> {
+  const ports = [
+    { name: "vleiServerPort", port: vleiServerPort },
+    { name: "witnessPort", port: witnessPort },
+    { name: "verifierPort", port: verifierPort },
+    // { name: 'filerPort', port: filerPort },
+    { name: "apiPort", port: apiPort },
+  ];
+
+  const portsInUse = await Promise.all(
+    ports.map(async ({ name, port }) => {
+      const inUse = await isPortInUse(port);
+      return inUse ? name : null;
+    }),
+  );
+
+  const inUsePorts = portsInUse.filter(Boolean);
+
+  if (inUsePorts.length === ports.length) {
+    console.log(
+      "All specified ports are in use. Skipping docker compose check.",
+    );
+    return true;
+  } else if (inUsePorts.length > 0) {
+    console.log(`The following ports are in use: ${inUsePorts.join(", ")}`);
+    return true;
+  }
+
+  return new Promise((resolve, reject) => {
+    exec(`docker compose -f ${file} ps`, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error checking docker compose status: ${stderr}`);
+        return reject(error);
+      }
+      // Check if the output contains only headers and no running services
+      const lines = stdout.trim().split("\n");
+      if (lines.length <= 1) {
+        console.log(`docker compose status: ${lines}\n Service is not running`);
+        resolve(false);
+      } else {
+        // Check if the service is listed as running
+        const isRunning = stdout.includes("Up");
+        console.log(`docker compose status: ${lines}\n Service is running`);
+        resolve(isRunning);
+      }
+    });
+  });
 }

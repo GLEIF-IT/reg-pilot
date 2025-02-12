@@ -1,4 +1,3 @@
-import { generate_reports } from "../report.test";
 import {
   StepRunner,
   getOrCreateClients,
@@ -6,21 +5,25 @@ import {
   VleiIssuance,
 } from "vlei-verifier-workflows";
 
-import { getReportGenTestData, getApiTestData } from "./test-data";
-
+import path from "path";
+import { generate_reports, getEbaSignedReport } from "../../src/utils/report";
+import {
+  getApiTestData,
+  getReportGenTestData,
+} from "../../src/utils/test-data";
 import {
   run_api_admin_test,
   run_api_revocation_test,
   run_api_test,
   run_api_test_no_delegation,
-} from "../reg-pilot-api.test";
-import { run_vlei_verification_test } from "../vlei-verification.test";
-import { resolveEnvironment } from "./resolve-env";
+  run_eba_api_test,
+} from "../reg-pilot-api";
+import { TestEnvironment, TestPaths } from "../../src/utils/resolve-env";
+import { createZipWithCopies } from "../../src/utils/bank-reports";
+import { run_vlei_verification_test } from "../vlei-verification";
 
-import path from "path";
-
-export class GenerateReportStepRunner extends StepRunner {
-  type: string = "generate_report";
+export class GenerateReportXmlStepRunner extends StepRunner {
+  type: string = "generate_report_xml";
   public async run(
     vi: VleiIssuance,
     stepName: string,
@@ -50,15 +53,55 @@ export class GenerateReportStepRunner extends StepRunner {
       ecrAid.prefix,
     );
     const result = await generate_reports(
-      ecrAid,
+      ecrAid.prefix,
       keeper,
-      signedDirPrefixed,
-      failDirPrefixed,
       testData["unsignedReports"],
       testData["reportTypes"],
       step.copy_folder,
     );
     return result;
+  }
+}
+
+export class GenerateReportStepRunner extends StepRunner {
+  type: string = "generate_report";
+  public async run(
+    vi: VleiIssuance,
+    stepName: string,
+    step: any,
+    configJson: any,
+  ): Promise<any> {
+    const paths = TestPaths.getInstance();
+    const zipWithCopies = createZipWithCopies(
+      paths.testReportUnsigned,
+      paths.testUserName,
+      paths.maxReportMb,
+      paths.refreshTestData,
+      paths.testUserNum,
+    );
+    paths.testReportGeneratedUnsignedZip = zipWithCopies;
+  }
+}
+
+export class SignReportStepRunner extends StepRunner {
+  type: string = "sign_report";
+  public async run(
+    vi: VleiIssuance,
+    stepName: string,
+    step: any,
+    configJson: any,
+  ): Promise<any> {
+    const env = TestEnvironment.getInstance();
+    const paths = TestPaths.getInstance();
+    const apiUsers = await getApiTestData(configJson, env, [step.aid]);
+    const user = apiUsers[0];
+    const keeper = user.roleClient.manager!.get(user.ecrAid);
+    paths.testReportGeneratedSignedZip = await getEbaSignedReport(
+      paths.testReportGeneratedUnsignedZip,
+      paths.testSignedReports,
+      user.ecrAid.prefix,
+      keeper,
+    );
   }
 }
 
@@ -70,7 +113,7 @@ export class ApiTestStepRunner extends StepRunner {
     step: any,
     configJson: any,
   ): Promise<any> {
-    let env = resolveEnvironment();
+    let env = TestEnvironment.getInstance();
     const apiUsers = await getApiTestData(configJson, env, step.aids);
     let result;
     if (step.test_case == "api_test_revocation") {
@@ -90,15 +133,16 @@ export class ApiTestStepRunner extends StepRunner {
         step.requestor_aid,
         requestorAidPrefix,
         new Map(), // TODO: instead of new Map() must be map of creds.
-        configJson,
       );
     } else if (step.test_case == "api_test_admin") {
       const adminUser = await getApiTestData(configJson, env, [step.admin_aid]);
-      result = await run_api_admin_test(apiUsers, configJson, adminUser[0]);
+      result = await run_api_admin_test(apiUsers, adminUser[0]);
     } else if (step.test_case == "api_test_no_delegation") {
-      result = await run_api_test_no_delegation(apiUsers, configJson);
+      result = await run_api_test_no_delegation(apiUsers);
     } else if (step.test_case == "api_test") {
       result = await run_api_test(apiUsers, configJson);
+    } else if (step.test_case == "eba_api_test") {
+      result = await run_eba_api_test(apiUsers);
     } else {
       console.log(`invalid workflow API test case: ${step.test_case}`);
     }
@@ -107,14 +151,14 @@ export class ApiTestStepRunner extends StepRunner {
 }
 
 export class VleiVerificationTestStepRunner extends StepRunner {
-  type: string = "revoke_credential";
+  type: string = "vlei_verification_test";
   public async run(
     vi: VleiIssuance,
     stepName: string,
     step: any,
     configJson: any = null,
   ): Promise<any> {
-    let env = resolveEnvironment();
+    let env = TestEnvironment.getInstance();
     const apiUsers = await getApiTestData(configJson, env, step.aids);
     const result = await run_vlei_verification_test(apiUsers, configJson);
     return result;

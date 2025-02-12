@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Extracted values from resolve-env.ts
-WAN='BBilc4-L3tFUnfM_wJr4S4OJanAv_VmF_dJNN6vkf2Ha'
-WIL='BLskRTInXnMxWaGqcpSyMgo0nYbalW99cGZESrz3zapM'
-WES='BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX'
-
 # Check if TEST_ENVIRONMENT is set
 if [ -z "$TEST_ENVIRONMENT" ]; then
     # Default values for 'docker' environment
@@ -17,11 +12,12 @@ if [ -z "$TEST_ENVIRONMENT" ]; then
 fi
 
 # Export environment variables
-export TEST_ENVIRONMENT REG_PILOT_API VLEI_VERIFIER KERIA KERIA_BOOT VLEI_SERVER
+export TEST_ENVIRONMENT REG_PILOT_API REG_PILOT_FILER VLEI_VERIFIER KERIA KERIA_BOOT VLEI_SERVER
 
 # Print environment variable values
 echo "TEST_ENVIRONMENT=$TEST_ENVIRONMENT"
 echo "REG_PILOT_API=$REG_PILOT_API"
+echo "REG_PILOT_FILER=$REG_PILOT_FILER"
 echo "VLEI_VERIFIER=$VLEI_VERIFIER"
 echo "KERIA=$KERIA"
 echo "KERIA_BOOT=$KERIA_BOOT"
@@ -40,7 +36,7 @@ while [[ $# -gt 0 ]]; do
             case $docker_action in
                 deps | verify)
                     docker compose down -v
-                    docker compose up $docker_action -d --pull always
+                    docker compose up "$docker_action" -d --pull always
                     ;;
                 *)
                     echo "Unknown docker action: $docker_action"
@@ -53,8 +49,9 @@ while [[ $# -gt 0 ]]; do
             npm run build
             shift # past argument
             ;;
-        --reports-download)
-            npx jest ./run-bank-reports-download.test.ts --runInBand --forceExit
+        --reports-download=*)
+            bank_name="${1#*=}"
+            npx tsx ./src/scripts/run-download-reports.ts "$bank_name"
             download_exit_code=$?  
                 if [[ $download_exit_code -ne 0 ]]; then
                 exit 1  
@@ -62,7 +59,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;
         --reports-cleanup)
-            npx jest ./run-bank-reports-cleanup.test.ts --runInBand --forceExit
+            npx tsx ./src/scripts/bank-reports-cleanup.ts "$bank_name"
             cleanup_exit_code=$?  
                 if [[ $cleanup_exit_code -ne 0 ]]; then
                 exit 1  
@@ -78,7 +75,7 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             ;;     
         --verify-proxy)
-            npx jest ./run-workflow-bank-api.test.ts --runInBand --detectOpenHandles --forceExit
+            npx jest ./run-workflow-bank.test.ts --runInBand --detectOpenHandles --forceExit
             verify_exit_code=$?  
                 if [[ $verify_exit_code -ne 0 ]]; then
                 exit 1  

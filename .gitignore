@@ -16,4 +16,6 @@ examples/signify-react-ts/.cache
 /signify-ts-test/test/data/600-banks-test-data/
 /signify-ts-test/test/data/tmp_reports/
 /signify-ts-test/test/data/tmp_reports_unpacked/
+/signify-ts-test/test/data/eba_reports/*
+/signify-ts-test/bank_test_logs/
 /images/

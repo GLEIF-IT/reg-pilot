@@ -10,9 +10,9 @@ workflow:
       type: "sign_report"
       aid: "ecr-aid-1"
       description: "Signing reports for ecr-aid-1 user"
-    api_test_ecr1:
-      id: "api_test_ecr1"
+    eba_api_test_ecr1:
+      id: "eba_api_test_ecr1"
       type: "api_test"
-      test_case: "api_test"
+      test_case: "eba_api_test"
       aids: ["ecr-aid-1"]
-      description: "Running API test for ecr-aid-1 user"
+      description: "Running eba API test for ecr-aid-1 user"
