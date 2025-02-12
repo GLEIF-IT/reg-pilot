@@ -29,6 +29,7 @@ const WES = "BIKKuvBwpmDVA4Ds-EpL5bt9OqPzWPja2LigFYZN2YfX";
 const ARG_KERIA_ADMIN_PORT = "keria-admin-port";
 const ARG_KERIA_HTTP_PORT = "keria-http-port";
 const ARG_KERIA_BOOT_PORT = "keria-boot-port";
+const ARG_KERIA_START_PORT = "keria-start-port";
 
 const docker = new Docker();
 
@@ -71,23 +72,17 @@ export class TestKeria {
   ): TestKeria {
     if (!TestKeria.instance) {
       if (
-        testPaths === undefined ||
-        baseAdminPort === undefined ||
-        baseHttpPort === undefined ||
-        baseBootPort === undefined
+        testPaths === undefined
       ) {
         throw new Error(
-          "TestKeria.getInstance() called without port arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects.",
+          "TestKeria.getInstance() called without arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects.",
         );
       }
     } else if (
-      testPaths !== undefined ||
-      baseAdminPort !== undefined ||
-      baseHttpPort !== undefined ||
-      baseBootPort !== undefined
+      testPaths !== undefined
     ) {
       console.warn(
-        "TestEnvironment.getInstance() called with ports, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects.",
+        "TestEnvironment.getInstance() called with arguments, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects.",
       );
     }
     const args = TestKeria.processKeriaArgs(
@@ -142,8 +137,8 @@ export class TestKeria {
   async beforeAll(
     imageName: string,
     containerName: string = "keria",
-    keriaConfig?: KeriaConfig,
     pullImage: boolean = false,
+    keriaConfig?: KeriaConfig,
   ) {
     process.env.DOCKER_HOST = process.env.DOCKER_HOST
       ? process.env.DOCKER_HOST

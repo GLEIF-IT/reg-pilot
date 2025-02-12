@@ -1,5 +1,5 @@
 import minimist from "minimist";
-import path from "path";
+import path, { parse } from "path";
 import {
   TestEnvironment,
   TestKeria,
@@ -33,6 +33,7 @@ const ARG_MAX_REPORT_SIZE = "max-report-size";
 const ARG_BANK_NUM = "bank-num";
 const ARG_REFRESH = "refresh";
 const ARG_CLEAN = "clean";
+const ARG_KERIA_START_PORT = "keria-start-port";
 
 // Parse command-line arguments using minimist
 const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
@@ -41,12 +42,14 @@ const args = minimist(process.argv.slice(process.argv.indexOf("--") + 1), {
     [ARG_BANK_NUM]: "b",
     [ARG_REFRESH]: "r",
     [ARG_CLEAN]: "c",
+    [ARG_KERIA_START_PORT]: "ksp",
   },
   default: {
     [ARG_MAX_REPORT_SIZE]: 0, // Default to 1 MB
     [ARG_BANK_NUM]: 1,
     [ARG_REFRESH]: false,
     [ARG_CLEAN]: true,
+    [ARG_KERIA_START_PORT]: 3900, //TODO once prepareClient in vlei-verifiers-workflow is updated, this could be 20000
   },
   "--": true,
   unknown: (arg) => {
@@ -64,8 +67,8 @@ console.log("Parsed arguments:", {
 });
 
 const maxReportMbArg = parseInt(args[ARG_MAX_REPORT_SIZE], 10);
-const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 0; // 1 MB
-const bankNum = parseInt(args[ARG_BANK_NUM], 10) || 1;
+const maxReportMb = !isNaN(maxReportMbArg) ? maxReportMbArg : 1; // 1 MB
+const bankNum = parseInt(args[ARG_BANK_NUM], 10) || 0;
 const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const bankContainer = `${bankName}_keria`.toLowerCase();
@@ -73,7 +76,10 @@ const offset = 10 * (bankNum - 1);
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
 testPaths = TestPaths.getInstance(bankName);
-const testKeria = TestKeria.getInstance(testPaths, 3901, 3902, 3903, offset);
+const keriaAdminPort = parseInt(args[ARG_KERIA_START_PORT])+1 || 20001;
+const keriaHttpPort = parseInt(args[ARG_KERIA_START_PORT])+2 || 20002;
+const keriaBootPort = parseInt(args[ARG_KERIA_START_PORT])+3 || 20003;
+const testKeria = TestKeria.getInstance(testPaths, keriaAdminPort, keriaHttpPort, keriaBootPort, offset);
 
 // set test data for workflow
 testPaths.testUserName = bankName;
@@ -90,14 +96,14 @@ console.log(
   bankContainer,
   "bankName:",
   bankName,
-  "offset:",
-  offset,
   "keriaAdminPort:",
   testKeria.keriaAdminPort,
   "keriaHttpPort:",
   testKeria.keriaHttpPort,
   "keriaBootPort:",
   testKeria.keriaBootPort,
+  "offset:",
+  offset,
   "maxReportMb:",
   maxReportMb,
   "refresh:",
@@ -108,7 +114,7 @@ console.log(
 
 beforeAll(async () => {
   process.env.SPEED = "fast";
-  await testKeria.beforeAll(bankImage, bankContainer);
+  await testKeria.beforeAll(bankImage, bankContainer, refresh);
 });
 
 afterAll(async () => {

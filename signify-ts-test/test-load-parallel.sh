@@ -15,6 +15,7 @@ USE_DOCKER_INTERNAL=""
 RETRY=3
 TEST_ENVIRONMENT="${TEST_ENVIRONMENT:=docker}"
 MAX_REPORT_SIZE="1" # 1MB
+KERIA_START_PORT=20000
 
 usage() {
     echo "---------------------------------------------------------------------------------------"
@@ -114,6 +115,10 @@ parse_args() {
                 ;;
             --max-report-size)
                 MAX_REPORT_SIZE=$2;
+                shift
+                ;;
+            --keria-start-port)
+                KERIA_START_PORT=$2;
                 shift
                 ;;
             *)
@@ -470,7 +475,7 @@ run_api_test() {
             export REG_PILOT_FILER=$REG_PILOT_FILER
             echo "Running npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num $BANK_NUM --max-report-size $MAX_REPORT_SIZE 2>&1 | tee $LOG_FILE"
 
-            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" --clean "false" 2>&1 | tee "$LOG_FILE"
+            npx jest --testNamePattern $TEST_NAME start $TEST_FILE -- --bank-num "$BANK_NUM" --max-report-size "$MAX_REPORT_SIZE" --clean "false" --keria-start-port "$KERIA_START_PORT" 2>&1 | tee "$LOG_FILE"
     fi    
 
     API_TEST_STATUS=${PIPESTATUS[0]}
