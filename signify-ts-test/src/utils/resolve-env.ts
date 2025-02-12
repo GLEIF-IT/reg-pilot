@@ -71,16 +71,12 @@ export class TestKeria {
     offset?: number,
   ): TestKeria {
     if (!TestKeria.instance) {
-      if (
-        testPaths === undefined
-      ) {
+      if (testPaths === undefined) {
         throw new Error(
           "TestKeria.getInstance() called without arguments means we expected it to be initialized earlier. This must be done with great care to avoid unexpected side effects.",
         );
       }
-    } else if (
-      testPaths !== undefined
-    ) {
+    } else if (testPaths !== undefined) {
       console.warn(
         "TestEnvironment.getInstance() called with arguments, but instance already exists. Overriding original config. This must be done with great care to avoid unexpected side effects.",
       );

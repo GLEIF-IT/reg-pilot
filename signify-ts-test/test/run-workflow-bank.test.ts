@@ -76,10 +76,16 @@ const offset = 10 * (bankNum - 1);
 const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
 const clean = args[ARG_CLEAN] === "true";
 testPaths = TestPaths.getInstance(bankName);
-const keriaAdminPort = parseInt(args[ARG_KERIA_START_PORT])+1 || 20001;
-const keriaHttpPort = parseInt(args[ARG_KERIA_START_PORT])+2 || 20002;
-const keriaBootPort = parseInt(args[ARG_KERIA_START_PORT])+3 || 20003;
-const testKeria = TestKeria.getInstance(testPaths, keriaAdminPort, keriaHttpPort, keriaBootPort, offset);
+const keriaAdminPort = parseInt(args[ARG_KERIA_START_PORT]) + 1 || 20001;
+const keriaHttpPort = parseInt(args[ARG_KERIA_START_PORT]) + 2 || 20002;
+const keriaBootPort = parseInt(args[ARG_KERIA_START_PORT]) + 3 || 20003;
+const testKeria = TestKeria.getInstance(
+  testPaths,
+  keriaAdminPort,
+  keriaHttpPort,
+  keriaBootPort,
+  offset,
+);
 
 // set test data for workflow
 testPaths.testUserName = bankName;
