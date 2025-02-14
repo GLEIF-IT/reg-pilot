@@ -8,8 +8,8 @@ on:
       - "main"
   workflow_dispatch:
 jobs: 
-  test-multiple-aids-multisig:
-    name: Run multisig multi user integration test using keria:${{ matrix.keria-version }}
+  test-api-singlesig:
+    name: Run single sig user integration test using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -39,6 +39,4 @@ jobs:
         run: npm run build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: npx jest --testNamePattern ./test/run-workflow-bank.test.ts start api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "20000"
-
-  
+        run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
