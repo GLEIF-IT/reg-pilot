@@ -1,4 +1,4 @@
-name: Run Multisig Multi User Tests
+name: Run Singlesig API Script Test
 on:
   push:
     branches:
@@ -35,13 +35,10 @@ jobs:
           npm set registry https://registry.npmjs.org/
           npm ci    
 
-      - name: Run docker
-        run: ./test-workflow.sh --docker=verify 
-      
       - name: Build
-        run: ./test-workflow.sh --build
+        run: npm run build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: WORKFLOW=multisig-multi-user.yaml CONFIGURATION=configuration-multisig-multi-user.json ./test-workflow.sh --data-report-verify-proxy
+        run: npx jest --testNamePattern ./test/run-workflow-bank.test.ts start api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "20000"
 
   
