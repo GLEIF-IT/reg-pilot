@@ -248,12 +248,12 @@ export class TestKeria {
       container = await docker.createContainer(containerOptions);
       await container.start();
       console.log(
-        `Container started with name: ${containerName}, image: ${imageName}`
+        `Container started with name: ${containerName}, image: ${imageName}`,
       );
     } catch (error) {
       console.warn(
         `Error startContainerWithConfig container with name: ${containerName}, image: ${imageName}`,
-        error
+        error,
       );
       const cont = await docker.listContainers({ all: true });
       const found = cont.find((c) => {
@@ -265,7 +265,7 @@ export class TestKeria {
       } catch (error) {
         console.warn(
           `Error starting existing container with name: ${containerName}, image: ${imageName}`,
-          error
+          error,
         );
       }
     }
@@ -302,16 +302,16 @@ export class TestKeria {
           `Container Names: ${portInUse.Names.join(", ")}\n` +
           `Container Image: ${portInUse.Image}\n` +
           `Container State: ${portInUse.State}\n` +
-          `Container Status: ${portInUse.Status}`
+          `Container Status: ${portInUse.Status}`,
       );
       if (pullImage) {
         console.log(
-          `Existing container running on ${JSON.stringify(portInUse)}, stopping that one`
+          `Existing container running on ${JSON.stringify(portInUse)}, stopping that one`,
         );
         await pContainer.stop();
       } else {
         console.log(
-          `Existing container running on ${JSON.stringify(portInUse)}, using that one`
+          `Existing container running on ${JSON.stringify(portInUse)}, using that one`,
         );
         container = pContainer;
       }
@@ -351,18 +351,18 @@ export class TestKeria {
 
     if (!container || pullImage) {
       console.info(
-        `Docker pull: Either existing container doesn't exist or refreshing it.\n`
+        `Docker pull: Either existing container doesn't exist or refreshing it.\n`,
       );
       if (container) {
         console.info(
-          `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`
+          `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`,
         );
         try {
           await container.stop();
           await container.remove();
         } catch (e) {
           console.warn(
-            `Unable to stop/remove pre-existing test keria ${kontainerName}: ${e}`
+            `Unable to stop/remove pre-existing test keria ${kontainerName}: ${e}`,
           );
         }
       }
@@ -371,13 +371,13 @@ export class TestKeria {
       } catch (error) {
         console.warn(
           `Error pulling container with name: ${kontainerName}, image: ${kimageName}`,
-          error
+          error,
         );
       }
       container = await this.startContainerWithConfig(
         kimageName,
         kontainerName,
-        keriaConfig
+        keriaConfig,
       );
     }
 

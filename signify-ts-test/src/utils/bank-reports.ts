@@ -55,7 +55,7 @@ export async function downloadConfigWorkflowReports(
     } catch (error) {
       console.warn(
         `Error downloading config/workflow/reports for: ${bankName}`,
-        error
+        error,
       );
     }
   } else {
