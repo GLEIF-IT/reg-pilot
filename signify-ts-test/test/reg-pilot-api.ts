@@ -996,6 +996,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
     body: JSON.stringify(lbody),
   };
   let lpath = `/login`;
+  console.log("login request", JSON.stringify(lreq).slice(0, 500));
   const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
