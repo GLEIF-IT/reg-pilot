@@ -45,12 +45,19 @@ export async function downloadConfigWorkflowReports(
   refresh = true,
 ) {
   const testPaths = TestPaths.getInstance();
-  console.log(`Downloading workflow/config/reports for bank: ${bankName}`);
-  const curBankZipUrl = `${bankReportsUrl}/${bankName}.zip`;
   const zipFilePath = `${testPaths.tmpReportsDir}/${bankName}.zip`;
+  const curBankZipUrl = `${bankReportsUrl}/${bankName}.zip`;
 
   if (refresh || !fs.existsSync(zipFilePath)) {
-    await downloadFileFromUrl(curBankZipUrl, zipFilePath);
+    try {
+      console.log(`Downloading workflow/config/reports for bank: ${bankName}`);
+      await downloadFileFromUrl(curBankZipUrl, zipFilePath);
+    } catch (error) {
+      console.warn(
+        `Error downloading config/workflow/reports for: ${bankName}`,
+        error
+      );
+    }
   } else {
     console.log(
       `Using existing ZIP file: ${zipFilePath} for bank: ${bankName}`,
