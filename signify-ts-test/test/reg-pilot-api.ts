@@ -945,8 +945,10 @@ async function checkLogin(
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
   const url = env.apiBaseUrl + cpath;
   let sreq = await client.createSignedRequest(user.idAlias, url, creq);
+  console.log("checklogin request", sreq);
   const cresp = await fetch(url, sreq);
   let cbody = await cresp.json();
+  console.log("checklogin response", cresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
       assert.equal(cresp.status, 401);
