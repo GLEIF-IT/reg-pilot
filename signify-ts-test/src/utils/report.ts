@@ -98,7 +98,7 @@ export async function generate_reports(
   let zipsProcessed = 0;
   const signedReports = [] as string[];
   console.log(
-    `Generating ${reportTypes} signed reports from orig reports: ${unsignedReports}`
+    `Generating ${reportTypes} signed reports from orig reports: ${unsignedReports}`,
   );
 
   for (const unsignedReport of unsignedReports) {
@@ -118,7 +118,7 @@ export async function generate_reports(
       reportTypes,
       keeper,
       ecrAid,
-      signedDirPrefixed
+      signedDirPrefixed,
     );
 
     assert.equal(signedReports.length > 0, true);
@@ -128,7 +128,7 @@ export async function generate_reports(
       fs.mkdirSync(tempDir, { recursive: true });
       assert.equal(
         await createFailReports(failDirPrefixed, signedDirPrefixed),
-        true
+        true,
       );
     }
 
@@ -136,13 +136,13 @@ export async function generate_reports(
       fs.cpSync(
         signedDirPrefixed,
         path.join(dataDir, copyFolder, "signed_reports", ecrAid),
-        { recursive: true }
+        { recursive: true },
       );
       if (reportTypes.includes(FAIL_TYPE)) {
         fs.cpSync(
           failDirPrefixed,
           path.join(dataDir, copyFolder, "fail_reports", ecrAid),
-          { recursive: true }
+          { recursive: true },
         );
       }
     }
@@ -164,7 +164,7 @@ export async function createSignedReports(
   reportTypes: string[] = [SIMPLE_TYPE],
   keeper: signify.Keeper,
   ecrAid: string,
-  signedDirPrefixed: string
+  signedDirPrefixed: string,
 ): Promise<string[]> {
   const fileName = path.basename(filePath, path.extname(filePath));
   const signedReports = [] as string[];
@@ -249,7 +249,7 @@ export async function createSignedReports(
       // just copy the zip file here for a single digest/signature
       fsExtra.copySync(
         filePath,
-        path.join(testPaths.tmpReportsDir, path.basename(filePath))
+        path.join(testPaths.tmpReportsDir, path.basename(filePath)),
       );
       console.log(`Copied ${filePath} to ${testPaths.tmpReportsDir}`);
       // }
@@ -265,7 +265,7 @@ export async function createSignedReports(
       const manifestPath = path.join(
         testPaths.tmpReportsDir,
         "META-INF",
-        "reports.json"
+        "reports.json",
       );
       console.log(`Writing manifest with digests/signatures ${manifestPath}`);
 
@@ -294,14 +294,14 @@ export async function getEbaSignedReport(
   filePath: string,
   signedDirPath: string,
   aid: string,
-  keeper: signify.Keeper
+  keeper: signify.Keeper,
 ): Promise<string> {
   const signedZips = await createSignedReports(
     filePath,
     [SIMPLE_TYPE],
     keeper,
     aid,
-    path.join(signedDirPath, aid)
+    path.join(signedDirPath, aid),
   );
   return signedZips[0];
 }
@@ -310,7 +310,7 @@ async function buildManifest(
   repPath: string,
   simple: boolean,
   keeper: signify.Keeper,
-  ecrAid: string
+  ecrAid: string,
 ): Promise<Manifest> {
   // if repPath is a directory then list the files in it
   let reportEntries: string[];
@@ -535,7 +535,7 @@ async function removeMetaInfReportsJson(
 async function addSignatureToReport(
   signatureBlock: Signature,
   keeper: signify.Keeper,
-  ecrAid: string
+  ecrAid: string,
 ): Promise<boolean> {
   const sigs = [] as string[];
   for (const signer of keeper.signers as Signer[]) {
