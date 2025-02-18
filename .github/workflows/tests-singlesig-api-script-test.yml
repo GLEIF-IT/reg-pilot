@@ -1,4 +1,4 @@
-name: Run Singlesig API Script Test
+name: Run unit and integration tests
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs: 
   test-api-singlesig:
-    name: Run single sig user integration test using keria:${{ matrix.keria-version }}
+    name: Run unit and integration tests, using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -36,4 +36,6 @@ jobs:
         run: npm run build
 
       - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
+        run: npm test
+        # run: npx jest ./test/run-workflow-bank.test.ts -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
+        # run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
