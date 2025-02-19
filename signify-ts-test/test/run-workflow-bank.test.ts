@@ -73,8 +73,8 @@ const bankImage = `ronakseth96/keria:TestBank_${bankNum}`;
 const bankName = "Bank_" + bankNum;
 const bankContainer = `${bankName}_keria`.toLowerCase();
 const offset = 10 * (bankNum - 1);
-const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "true" : true;
-const clean = args[ARG_CLEAN] === "true";
+const refresh = args[ARG_REFRESH] ? args[ARG_REFRESH] === "false" : true;
+const clean = args[ARG_CLEAN] === "false";
 testPaths = TestPaths.getInstance(bankName);
 const keriaAdminPort = parseInt(args[ARG_KERIA_START_PORT]) + 1 || 20001;
 const keriaHttpPort = parseInt(args[ARG_KERIA_START_PORT]) + 2 || 20002;
@@ -193,8 +193,8 @@ test("vlei-issuance-reports-bank-test-workflow", async function run() {
   process.env.REPORT_TYPES = SIMPLE_TYPE;
 
   env = TestEnvironment.getInstance("docker", testKeria);
-
   await downloadConfigWorkflowReports(bankName, true, false, false, refresh);
+
   // await generateBankConfig(bankNum);
   configJson = await getConfig(testPaths.testUserConfigFile);
 

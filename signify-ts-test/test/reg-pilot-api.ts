@@ -945,8 +945,10 @@ async function checkLogin(
   let cpath = `/checklogin/${user.ecrAid.prefix}`;
   const url = env.apiBaseUrl + cpath;
   let sreq = await client.createSignedRequest(user.idAlias, url, creq);
+  console.log("checklogin request", sreq);
   const cresp = await fetch(url, sreq);
   let cbody = await cresp.json();
+  console.log("checklogin response", cresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {
     if (credRevoked) {
       assert.equal(cresp.status, 401);
@@ -994,6 +996,7 @@ async function login(user: ApiUser, cred: any, credCesr: any) {
     body: JSON.stringify(lbody),
   };
   let lpath = `/login`;
+  console.log("login request", JSON.stringify(lreq).slice(0, 500));
   const lresp = await fetch(env.apiBaseUrl + lpath, lreq);
   console.log("login response", lresp);
   if (isEbaDataSubmitter(cred, user.ecrAid.prefix)) {

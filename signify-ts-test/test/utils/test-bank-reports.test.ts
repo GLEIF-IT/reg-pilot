@@ -1,15 +1,17 @@
 import fs from "fs";
 import { createZipWithCopies } from "../../src/utils/bank-reports";
+import { TestPaths } from "../../src/utils/resolve-env";
 
 describe("test bank reports testing", () => {
   test("generate dynamic eba zip for signature", async () => {
     // Example usage
-    const pdfPath =
-      "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf";
+    // const pdfPath =
+    //   "test/data/eba_reports/237932ALYUME7DQDC2D7.CON_GR_PILLAR3010000_P3REMDISDOCS_2023-12-31_202401113083647123.pdf";
     const maxSize = 2; // 5 MB
     const userName = "unitTest";
+    const testPaths = TestPaths.getInstance(userName);
     const zipFilePath = createZipWithCopies(
-      pdfPath,
+      testPaths.testReportUnsigned,
       userName,
       maxSize,
       true,
@@ -23,7 +25,7 @@ describe("test bank reports testing", () => {
     expect(stats.size).toBeGreaterThan(1024 * 1024 * 1.5); // 1.5 MB
 
     const zipFilePathHalfTheSize = createZipWithCopies(
-      pdfPath,
+      testPaths.testReportUnsigned,
       userName,
       maxSize,
       true,

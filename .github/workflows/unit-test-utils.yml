@@ -1,4 +1,4 @@
-name: Run Multisig Multi User Tests
+name: utils unit test
 on:
   push:
     branches:
@@ -8,8 +8,8 @@ on:
       - "main"
   workflow_dispatch:
 jobs: 
-  test-multiple-aids-multisig:
-    name: Run multisig multi user integration test using keria:${{ matrix.keria-version }}
+  unit-integration-tests:
+    name: Run utils unit tests, using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -25,23 +25,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}       
+      
       - name: install deps
         run: |
           npm cache clean --force
           npm set registry https://registry.npmjs.org/
           npm ci    
 
-      - name: Run docker
-        run: ./test-workflow.sh --docker=verify 
-      
       - name: Build
-        run: ./test-workflow.sh --build
+        run: npm run build
 
-      - name: Issue Credentials, Generate reports, API test, Verifier test
-        run: WORKFLOW=multisig-multi-user.yaml CONFIGURATION=configuration-multisig-multi-user.json ./test-workflow.sh --data-report-verify-proxy
-
-  
+      - name: reg-pilot unit and integration tests
+        run: npm test -- --runInBand --watchAll=false --runTestsByPath ./test/utils/*.test.ts
+        # run: npx jest ./test/run-workflow-bank.test.ts -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
+        # run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"

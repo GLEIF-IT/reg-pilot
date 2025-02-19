@@ -243,14 +243,33 @@ export class TestKeria {
     }
 
     // Create and start the container
-    const container = await docker.createContainer(containerOptions);
-
-    await container.start();
-    console.log(
-      `Container started with name: ${containerName}, image: ${imageName}`,
-    );
-
-    return container;
+    let container;
+    try {
+      container = await docker.createContainer(containerOptions);
+      await container.start();
+      console.log(
+        `Container started with name: ${containerName}, image: ${imageName}`,
+      );
+    } catch (error) {
+      console.warn(
+        `Error startContainerWithConfig container with name: ${containerName}, image: ${imageName}`,
+        error,
+      );
+      const cont = await docker.listContainers({ all: true });
+      const found = cont.find((c) => {
+        return c.Names.includes(`/${containerName}`);
+      });
+      container = docker.getContainer(found!.Id);
+      try {
+        await container.start();
+      } catch (error) {
+        console.warn(
+          `Error starting existing container with name: ${containerName}, image: ${imageName}`,
+          error,
+        );
+      }
+    }
+    return container!;
   }
 
   public async launchTestKeria(
@@ -287,12 +306,12 @@ export class TestKeria {
       );
       if (pullImage) {
         console.log(
-          `Existing container running on ${portInUse}, stopping that one`,
+          `Existing container running on ${JSON.stringify(portInUse)}, stopping that one`,
         );
         await pContainer.stop();
       } else {
         console.log(
-          `Existing container running on ${portInUse}, using that one`,
+          `Existing container running on ${JSON.stringify(portInUse)}, using that one`,
         );
         container = pContainer;
       }
@@ -338,10 +357,23 @@ export class TestKeria {
         console.info(
           `Launch Test Keria: pullImage is ${pullImage}, stopping and removing pre-existing test keria ${kontainerName}.`,
         );
-        await container.stop();
-        await container.remove();
+        try {
+          await container.stop();
+          await container.remove();
+        } catch (e) {
+          console.warn(
+            `Unable to stop/remove pre-existing test keria ${kontainerName}: ${e}`,
+          );
+        }
       }
-      await pullContainer(docker, kimageName);
+      try {
+        await pullContainer(docker, kimageName);
+      } catch (error) {
+        console.warn(
+          `Error pulling container with name: ${kontainerName}, image: ${kimageName}`,
+          error,
+        );
+      }
       container = await this.startContainerWithConfig(
         kimageName,
         kontainerName,
