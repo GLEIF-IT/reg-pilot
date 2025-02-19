@@ -1,4 +1,4 @@
-name: Run unit and integration tests
+name: utils unit test
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 jobs: 
   unit-integration-tests:
-    name: Run unit and integration tests, using keria:${{ matrix.keria-version }}
+    name: Run utils unit tests, using keria:${{ matrix.keria-version }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -36,6 +36,6 @@ jobs:
         run: npm run build
 
       - name: reg-pilot unit and integration tests
-        run: npm test
+        run: npm test -- --runInBand --watchAll=false --runTestsByPath ./test/utils/*.test.ts
         # run: npx jest ./test/run-workflow-bank.test.ts -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
         # run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
