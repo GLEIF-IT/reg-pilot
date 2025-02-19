@@ -1,0 +1,41 @@
+name: eba login and upload integration test
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+  workflow_dispatch:
+jobs: 
+  unit-integration-tests:
+    name: Run eba login and upload integration test, using keria:${{ matrix.keria-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: signify-ts-test/
+    strategy:
+      matrix:
+        os: ["ubuntu-latest"]
+        keria-version: ["0.2.0-dev3"]
+        node-version: ["20"]
+    env:
+      KERIA_IMAGE_TAG: ${{ matrix.keria-version }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: install deps
+        run: |
+          npm cache clean --force
+          npm set registry https://registry.npmjs.org/
+          npm ci    
+
+      - name: Build
+        run: npm run build
+
+      - name: reg-pilot unit and integration tests
+        run: npm test -- --runInBand --watchAll=false --testNamePattern eba-verifier-bank-test-workflow\$ --runTestsByPath ./test/run-workflow-bank.test.ts
+        # run: npx jest ./test/run-workflow-bank.test.ts -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
+        # run: npx jest ./test/run-workflow-bank.test.ts --testNamePattern api-verifier-bank-test-workflow -- --bank-num "1" --max-report-size "0" --clean "false" --keria-start-port "3900"
